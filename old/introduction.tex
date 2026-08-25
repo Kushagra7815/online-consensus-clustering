@@ -1,0 +1,82 @@
+\section{Introduction}
+
+Consensus clustering was first studied by Ailon, Charikar and Newman \cite{ailon2008aggregating}. Given a set of input clusterings 
+\[
+\m{I} = \{ \m{C}_1, \m{C}_2, \ldots, \m{C}_m \}
+\]
+defined on a common set of vertices $V$, the goal is to compute a clustering $\m{C}^*$ that minimizes the aggregated pairwise distance to all input clusterings. 
+Formally, we seek
+\[
+    \m{C}^* = \argmin_{\m{C}} \left( \sum_{i = 1}^m \dist(\m{C}_i, \m{C}) \right),
+\]
+where $\dist(\m{C}_i, \m{C}_j)$ denotes the pairwise disagreement between clusterings $\m{C}_i$ and $\m{C}_j$, measured as the number of vertex pairs that are clustered together in one clustering but separated in the other:
+\[
+    \dist(\m{C}_i, \m{C}_j) = 
+    \big| \{ (u,v) \mid 
+    (u \sim_{\m{C}_i} v \land u \nsim_{\m{C}_j} v)
+    \lor 
+    (u \nsim_{\m{C}_i} v \land u \sim_{\m{C}_j} v)
+    \} \big|.
+\]
+Here, $u \sim_{\m{C}} v$ indicates that vertices $u$ and $v$ belong to the same cluster in $\m{C}$.
+
+\subsection{Our Contributions}
+
+\begin{restatable}{theorem}{lazymedoid}[High probability upper bound]
+\label{thm:sampled-lazy-medoid}
+    Let \(\varepsilon,\eta\in(0,1]\) and \(\delta\in(0,1)\). There is a randomized online algorithm for consensus clustering that, with probability at least \(1-\delta\), satisfies for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+Moreover, on the same event, every vertex has recourse at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+\end{restatable}
+
+\begin{restatable}{theorem}{zerorecoupper}[In expectation zero recourse upper bound]
+    \label{thm:random-zero-recourse}
+    There is a randomized online algorithm for consensus clustering such that, for every time step \(t\),
+    \[
+        \mathbb{E}\bigl[\obj_t(S_t)\bigr] \le 2\left(1-\frac1m\right)\obj_t(\OPT_t).
+    \]
+    Moreover, the algorithm has zero recourse.
+\end{restatable}
+
+\begin{restatable}[Deterministic zero-recourse lower bound]{theorem}{detzerorecourselb}
+\label{thm:det-zero-recourse-lb}
+For every deterministic zero-recourse online algorithm and every integer \(q\ge 1\), there exists an online consensus clustering instance with \(q+2\) vertices and \(4\) input clusterings such that, at the final time \(T\),
+\[
+    \obj_T(S_T)
+    \ge
+    \left(2-\frac{1}{q+1}\right)\obj_T(\OPT_T).
+\]
+Consequently, every deterministic zero-recourse online algorithm has competitive ratio at least
+\[
+    2-o(1).
+\]
+\end{restatable}
+
+\begin{restatable}[Randomized zero-recourse lower bound]{theorem}{randzerorecourselb}
+\label{thm:rand-zero-recourse-lb}
+For every randomized zero-recourse online algorithm and every integer \(q\ge 1\), there exists an online consensus clustering instance with \(q+2\) vertices and \(4\) input clusterings such that, at the final time \(T\),
+\[
+    \mathbb E[\obj_T(S_T)]
+    \ge
+    \left(
+        \frac32-\frac{1}{2(q+1)}
+    \right)\obj_T(\OPT_T),
+\]
+where the expectation is over the algorithm's internal randomness. Consequently, every randomized zero-recourse online algorithm has expected competitive ratio at least
+\[
+    \frac32-o(1).
+\]
+\end{restatable}
+
+\kushagra{Look at the preliminaries for the definition of notations.}

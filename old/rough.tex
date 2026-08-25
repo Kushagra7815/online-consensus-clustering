@@ -1,0 +1,88 @@
+\iffalse
+For a vertex $v^t$, we define its \emph{neighborhood} as the set of previously arrived vertices that are co-clustered with $v^t$ in at least half of the input clusterings revealed up to time~$t$.
+Formally,
+\[
+    \nbhd(v^t)
+    \;=\;
+    \left\{\, v^{t'} \;\middle|\; t' < t \;\land\; v^{t'} \sim_{\ge m/2} v^t \,\right\},
+\]
+where $v^{t'} \sim_{\ge m/2} v^t$ denotes that $v^{t'}$ and $v^t$ belong to the same cluster in at least $m/2$ of the input clusterings
+$\m{C}_k^t$, for $k \in [m]$.
+\fi
+
+\iffalse
+\paragraph{Algorithm Description.}
+We are now ready to describe the $\oncon$ algorithm.
+At time stamp~$t$, upon the arrival of vertex $v^t$, the algorithm proceeds as follows.
+
+\begin{enumerate}
+    \item If the neighborhood $\nbhd(v^t)$ intersects vertices from exactly one cluster in the current clustering $\m{C}^t$, then $v^t$ is assigned to that cluster.
+
+    \item If the neighborhood $\nbhd(v^t)$ does not intersect any cluster in $\m{C}^t$, then $v^t$ is placed in a new singleton cluster.
+
+    \item Otherwise, $v^t$ is assigned to a cluster in $\m{C}^t$ that maximizes the size of its intersection with $\nbhd(v^t)$.
+    More specifically, $v^t$ is assigned to a cluster
+    \[
+        C_{\max} \in \arg\max_{C \in \m{C}^t} \; \card{C \cap \nbhd(v^t)}.
+    \]
+    Ties, if any, are broken arbitrarily.
+\end{enumerate}
+\fi
+
+\iffalse
+
+\begin{proof}
+Fix a vertex $v^{t'}$ that arrived at time stamp $t' \le t$.
+Suppose that upon arrival, the algorithm assigns $v^{t'}$ to a cluster
+$C_k^{t'-1} \in \m{C}^{t'-1}$.
+
+To bound the disagreement between $\m{C}^t$ and $\m{C}^{t^*}$,
+we analyze pairs incident to $v^{t'}$.
+Partition the set of good pairs $G$ incident to $v^{t'}$
+into two subsets $D$ and $G \setminus D$, where $D$ consists of all
+good pairs $(v^{t'},u)$ such that exactly one of the following holds:
+
+\begin{itemize}
+    \item $u \in \nbhd(v^{t'})$ but $u \notin C_k^{t'-1}$, or
+    \item $u \notin \nbhd(v^{t'})$ but $u \in C_k^{t'-1}$.
+\end{itemize}
+
+Now consider any pair $(v^{t'}, w) \in G \setminus D$,
+where $w$ arrived before $v^{t'}$.
+By definition of $G \setminus D$, we have that either
+
+\begin{itemize}
+    \item $w \in \nbhd(v^{t'})$ and $w \in C_k^{t'-1}$, or
+    \item $w \notin \nbhd(v^{t'})$ and $w \notin C_k^{t'-1}$.
+\end{itemize}
+
+In the first case, the algorithm places $v^{t'}$ together with $w$
+in $\m{C}^{t'}$, and this relationship remains unchanged in $\m{C}^t$.
+Since $w \in \nbhd(v^{t'})$, the pair $(v^{t'},w)$ is co-clustered
+in at least $m/2$ input clusterings.
+Because the pair is good, the optimal clustering $\m{C}^{t^*}$
+also co-clusters $v^{t'}$ and $w$.
+Thus, $\m{C}^t$ and $\m{C}^{t^*}$ agree on this pair.
+
+In the second case, the algorithm separates $v^{t'}$ and $w$,
+and since $w \notin \nbhd(v^{t'})$, the pair is separated
+in at least $m/2$ input clusterings.
+Again, because the pair is good, $\m{C}^{t^*}$ also separates them.
+Thus, the two clusterings agree in this case as well.
+
+Therefore, $\m{C}^t$ and $\m{C}^{t^*}$ agree on all pairs in
+$G \setminus D$.
+It follows that any disagreement between the two clusterings
+must arise from either a bad pair or a pair in $D$.
+Hence,
+\[
+    \dist(\m{C}^t, \m{C}^{t^*})
+    \le
+    |\overline{G}| + |D|.
+\]
+
+We now show that $|D| \le 2 |\overline{G}|$,
+which completes the proof.
+\stuck{I am stuck here. Previously, I thought this can be proved but now it seems impossible.}
+\end{proof}
+\fi

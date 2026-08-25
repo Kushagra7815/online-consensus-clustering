@@ -1,0 +1,751 @@
+\section{Online Monotone Metric Median}
+
+In this section, we state and prove a general version of the
+\(\texttt{sampled-lazy-medoid}\) algorithm. The result is not specific to
+consensus clustering. It applies to any online median problem in a metric space
+where the distances between the input trajectories are monotone over time.
+
+Informally, we are given \(m\) input trajectories in a sequence of metric
+spaces. At every time step \(t\), the algorithm must output a point whose total
+distance to the \(m\) current input points is close to the optimal median cost.
+The algorithm samples a logarithmic number of input trajectories and lazily
+switches among them. With high probability, the sampled set contains a good
+input point at every time step, and the lazy switching rule ensures low
+recourse.
+
+We first define the general problem.
+
+\paragraph{Online monotone metric median.}
+An instance consists of a sequence of metric spaces
+\[
+    (\mathcal M_t,d_t), \qquad t=1,\ldots,T,
+\]
+and \(m\) input trajectories
+\[
+    P_1,\ldots,P_m.
+\]
+At time \(t\), trajectory \(P_i\) is represented by a point
+\[
+    p_i^t\in \mathcal M_t.
+\]
+The algorithm must maintain an output point
+\[
+    S_t\in \mathcal M_t.
+\]
+
+For any point \(x\in\mathcal M_t\), define its objective value at time \(t\) as
+\[
+    \obj_t(x)
+    :=
+    \sum_{i=1}^m d_t(p_i^t,x).
+\]
+Let
+\[
+    \OPT_t
+    \in
+    \arg\min_{x\in\mathcal M_t}\obj_t(x)
+\]
+be an optimal median at time \(t\). Thus,
+\[
+    \obj_t(\OPT_t)
+    =
+    \min_{x\in\mathcal M_t}
+    \sum_{i=1}^m d_t(p_i^t,x).
+\]
+
+We assume the instance is monotone in the following sense: for every pair of
+input trajectories \(i,j\in[m]\), the distance
+\[
+    d_t(p_i^t,p_j^t)
+\]
+is nondecreasing in \(t\). That is, for all \(t<T\),
+\[
+    d_t(p_i^t,p_j^t)
+    \le
+    d_{t+1}(p_i^{t+1},p_j^{t+1}).
+\]
+
+For each input trajectory \(P_j\), define its medoid cost at time \(t\) by
+\[
+    c_j(t)
+    :=
+    \obj_t(p_j^t)
+    =
+    \sum_{i=1}^m d_t(p_i^t,p_j^t).
+\]
+We assume that medoid costs are bounded and discretized: for some parameter
+\(\Lambda\),
+\[
+    c_j(t)\in \{0\}\cup [1,\Lambda]
+\]
+for every \(j\in[m]\) and every \(t\in[T]\).
+
+The algorithm considered below always outputs one of the sampled input
+trajectories. Therefore, in the abstract metric-median problem, we measure
+recourse by the number of times the maintained sampled trajectory changes. If
+the algorithm maintains index \(a_t\), then its switching recourse is
+\[
+    \left|
+    \{t>1:a_t\neq a_{t-1}\}
+    \right|.
+\]
+
+\begin{restatable}[Sampled lazy-medoid for online monotone metric median]{theorem}{metricmediansampledlazy}
+\label{thm:metric-median-sampled-lazy}
+Let \(\varepsilon,\eta\in(0,1]\), and let \(\delta\in(0,1)\). There is a randomized online algorithm for the online monotone metric median problem such that, with probability at least \(1-\delta\), for every time step \(t\in[T]\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+Moreover, on the same event, the switching recourse is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{T}{\delta}
+        \log(1+\Lambda)
+    \right).
+\]
+\end{restatable}
+
+\subsection{Algorithm \texttt{sampled-lazy-medoid}}
+
+In this section, we describe the algorithm
+\(\texttt{sampled-lazy-medoid}\). The algorithm samples a small set of input
+trajectories before the online process starts. It then maintains one sampled
+trajectory and switches only when the current sampled trajectory becomes worse
+than the best sampled trajectory by a multiplicative factor.
+
+\paragraph{Input.}
+The algorithm receives an online monotone metric median instance with \(m\)
+input trajectories
+\[
+    P_1,\ldots,P_m
+\]
+and time horizon \(T\). It is also given parameters
+\[
+    \varepsilon,\eta\in(0,1],
+    \qquad
+    \delta\in(0,1).
+\]
+
+\paragraph{Output.}
+At every time step \(t\), the algorithm outputs a point
+\[
+    S_t\in\mathcal M_t.
+\]
+
+\paragraph{Sampling step.}
+Before the online process starts, the algorithm samples
+\[
+    q
+    =
+    \left\lceil
+        \frac{2+\varepsilon}{\varepsilon}
+        \ln\frac{T}{\delta}
+    \right\rceil
+\]
+indices independently and uniformly from \([m]\). Let
+\[
+    K
+\]
+be the resulting sampled multiset of indices.
+
+For every sampled index \(j\in K\), define
+\[
+    c_j(t)
+    =
+    \obj_t(p_j^t)
+    =
+    \sum_{i=1}^m d_t(p_i^t,p_j^t).
+\]
+Also define the best sampled medoid cost
+\[
+    M_K(t)
+    =
+    \min_{j\in K} c_j(t).
+\]
+
+\paragraph{Lazy switching rule.}
+At time \(t=1\), the algorithm chooses
+\[
+    a_1\in \arg\min_{j\in K} c_j(1),
+\]
+breaking ties lexicographically, and outputs
+\[
+    S_1=p_{a_1}^1.
+\]
+
+At every later time step \(t>1\), after the points
+\[
+    p_1^t,\ldots,p_m^t
+\]
+are revealed, the algorithm computes \(c_j(t)\) for all \(j\in K\).
+
+If the previously maintained trajectory \(a_{t-1}\) satisfies
+\[
+    c_{a_{t-1}}(t)
+    \le
+    (1+\eta)M_K(t),
+\]
+then the algorithm keeps the same trajectory:
+\[
+    a_t=a_{t-1}.
+\]
+Otherwise, it switches to a sampled minimizer:
+\[
+    a_t\in \arg\min_{j\in K} c_j(t),
+\]
+again breaking ties lexicographically.
+
+Finally, the algorithm outputs
+\[
+    S_t=p_{a_t}^t.
+\]
+
+\subsection{Competitive Ratio and Recourse of \texttt{sampled-lazy-medoid}}
+
+In this section, we prove \cref{thm:metric-median-sampled-lazy}. The proof has two parts. First, we show that with high probability, the sampled set \(K\) contains a near-best input trajectory at every time step. Second, we use monotonicity to prove that the lazy switching rule changes the maintained trajectory only polylogarithmically many times.
+
+\begin{lemma}[Average medoid bound]
+\label{lem:metric-average-medoid}
+For every time step \(t\),
+\[
+    \frac1m
+    \sum_{j=1}^m c_j(t)
+    \le
+    2\obj_t(\OPT_t).
+\]
+\end{lemma}
+
+\begin{proof}
+By definition,
+\[
+\begin{aligned}
+    \frac1m\sum_{j=1}^m c_j(t)
+    &=
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i=1}^m
+    d_t(p_i^t,p_j^t).
+\end{aligned}
+\]
+For every pair \(i,j\), the triangle inequality gives
+\[
+    d_t(p_i^t,p_j^t)
+    \le
+    d_t(p_i^t,\OPT_t)+d_t(\OPT_t,p_j^t).
+\]
+Therefore,
+\[
+\begin{aligned}
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i=1}^m
+    d_t(p_i^t,p_j^t)
+    &\le
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i=1}^m
+    \left(
+        d_t(p_i^t,\OPT_t)+d_t(\OPT_t,p_j^t)
+    \right)\\
+    &=
+    \frac1m
+    \left(
+        m\sum_{i=1}^m d_t(p_i^t,\OPT_t)
+        +
+        m\sum_{j=1}^m d_t(\OPT_t,p_j^t)
+    \right)\\
+    &=
+    2\sum_{i=1}^m d_t(p_i^t,\OPT_t)\\
+    &=
+    2\obj_t(\OPT_t).
+\end{aligned}
+\]
+This proves the lemma.
+\end{proof}
+
+\begin{lemma}[The sample contains a good medoid]
+\label{lem:metric-sample-good}
+With probability at least \(1-\delta\), for every time step \(t\in[T]\),
+\[
+    M_K(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+\end{lemma}
+
+\begin{proof}
+Fix a time step \(t\). Define the set of good indices
+\[
+    G_t
+    =
+    \left\{
+        j\in[m]:
+        c_j(t)
+        \le
+        (2+\varepsilon)\obj_t(\OPT_t)
+    \right\}.
+\]
+
+We first show that \(G_t\) contains a nontrivial fraction of all indices. By
+\cref{lem:metric-average-medoid},
+\[
+    \frac1m\sum_{j=1}^m c_j(t)
+    \le
+    2\obj_t(\OPT_t).
+\]
+If fewer than
+\[
+    \frac{\varepsilon}{2+\varepsilon}m
+\]
+indices were in \(G_t\), then more than
+\[
+    \frac{2}{2+\varepsilon}m
+\]
+indices would have cost strictly larger than
+\[
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+This would imply
+\[
+    \frac1m\sum_{j=1}^m c_j(t)
+    >
+    \frac{2}{2+\varepsilon}
+    \cdot
+    (2+\varepsilon)\obj_t(\OPT_t)
+    =
+    2\obj_t(\OPT_t),
+\]
+contradicting the average bound. Hence
+\[
+    |G_t|
+    \ge
+    \frac{\varepsilon}{2+\varepsilon}m.
+\]
+
+Each sampled index is chosen uniformly from \([m]\). Therefore, the probability that none of the \(q\) samples lies in \(G_t\) is at most
+\[
+    \left(
+        1-\frac{\varepsilon}{2+\varepsilon}
+    \right)^q
+    \le
+    \exp\left(
+        -\frac{\varepsilon}{2+\varepsilon}q
+    \right).
+\]
+By the choice of
+\[
+    q
+    =
+    \left\lceil
+        \frac{2+\varepsilon}{\varepsilon}
+        \ln\frac{T}{\delta}
+    \right\rceil,
+\]
+this failure probability is at most
+\[
+    \frac{\delta}{T}.
+\]
+
+Taking a union bound over all time steps \(t=1,\ldots,T\), with probability at least \(1-\delta\), the sampled set \(K\) intersects \(G_t\) for every \(t\). On this event, for every time \(t\),
+\[
+    M_K(t)
+    =
+    \min_{j\in K} c_j(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+This proves the lemma.
+\end{proof}
+
+\begin{lemma}[Competitive ratio]
+\label{lem:metric-sampled-competitive}
+On the event of \cref{lem:metric-sample-good}, for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+\end{lemma}
+
+\begin{proof}
+By construction, the maintained index \(a_t\) always satisfies
+\[
+    c_{a_t}(t)
+    \le
+    (1+\eta)M_K(t).
+\]
+Indeed, if the previous index \(a_{t-1}\) satisfies this inequality, the algorithm keeps it. Otherwise, the algorithm switches to an index attaining \(M_K(t)\), in which case the inequality holds trivially.
+
+Since
+\[
+    S_t=p_{a_t}^t,
+\]
+we have
+\[
+    \obj_t(S_t)=c_{a_t}(t).
+\]
+Therefore,
+\[
+    \obj_t(S_t)
+    \le
+    (1+\eta)M_K(t).
+\]
+On the event of \cref{lem:metric-sample-good},
+\[
+    M_K(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+Combining the two inequalities,
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+\end{proof}
+
+We now prove the recourse bound.
+
+\begin{lemma}[Monotonicity of sampled medoid costs]
+\label{lem:metric-costs-monotone}
+For every sampled index \(j\in K\), the function \(c_j(t)\) is nondecreasing in \(t\). Moreover, \(M_K(t)\) is nondecreasing in \(t\).
+\end{lemma}
+
+\begin{proof}
+Fix \(j\in K\). By definition,
+\[
+    c_j(t)
+    =
+    \sum_{i=1}^m d_t(p_i^t,p_j^t).
+\]
+By the monotonicity assumption, for every \(i\in[m]\),
+\[
+    d_t(p_i^t,p_j^t)
+    \le
+    d_{t+1}(p_i^{t+1},p_j^{t+1}).
+\]
+Summing over \(i\), we get
+\[
+    c_j(t)\le c_j(t+1).
+\]
+Thus \(c_j(t)\) is nondecreasing.
+
+Since \(M_K(t)\) is the minimum of the nondecreasing functions \(c_j(t)\), \(j\in K\), it is also nondecreasing.
+\end{proof}
+
+\begin{lemma}[Switching bound]
+\label{lem:metric-switching-bound}
+The total number of switches made by \(\texttt{sampled-lazy-medoid}\) is at most
+\[
+    O\left(
+        |K|\cdot
+        \frac{1}{\eta}
+        \log(1+\Lambda)
+    \right).
+\]
+\end{lemma}
+
+\begin{proof}
+Define the smoothed sampled minimum
+\[
+    \widehat M_K(t)
+    :=
+    1+M_K(t).
+\]
+Since every medoid cost lies in \(\{0\}\cup[1,\Lambda]\), we have
+\[
+    1\le \widehat M_K(t)\le 1+\Lambda
+\]
+for every \(t\).
+
+Fix a sampled index \(j\in K\). We bound how many times the algorithm can switch back to \(j\) after previously switching away from \(j\).
+
+Suppose the algorithm switches away from \(j\) at time \(t\). Then, by the switching rule,
+\[
+    c_j(t)>(1+\eta)M_K(t).
+\]
+Suppose that at some later time \(t'>t\), the algorithm switches back to \(j\). Since the algorithm switches to a sampled minimizer,
+\[
+    c_j(t')=M_K(t').
+\]
+By monotonicity of \(c_j\),
+\[
+    c_j(t')\ge c_j(t).
+\]
+Hence
+\[
+    M_K(t')
+    =
+    c_j(t')
+    \ge
+    c_j(t)
+    >
+    (1+\eta)M_K(t).
+\]
+
+We now show that the smoothed quantity \(\widehat M_K\) grows by a multiplicative factor. If \(M_K(t)=0\), then
+\[
+    c_j(t)>0.
+\]
+Since medoid costs are either zero or at least \(1\), this implies
+\[
+    c_j(t)\ge 1.
+\]
+Therefore,
+\[
+    M_K(t')=c_j(t')\ge 1,
+\]
+and hence
+\[
+    \widehat M_K(t')=1+M_K(t')\ge 2.
+\]
+Since \(\widehat M_K(t)=1\), we get
+\[
+    \widehat M_K(t')
+    \ge
+    2\widehat M_K(t)
+    \ge
+    \left(1+\frac{\eta}{2}\right)\widehat M_K(t),
+\]
+because \(\eta\le 1\).
+
+Now suppose \(M_K(t)\ge 1\). Then
+\[
+\begin{aligned}
+    \widehat M_K(t')
+    &=1+M_K(t')\\
+    &>
+    1+(1+\eta)M_K(t).
+\end{aligned}
+\]
+Since \(M_K(t)\ge 1\),
+\[
+    1+(1+\eta)M_K(t)
+    \ge
+    \left(1+\frac{\eta}{2}\right)(1+M_K(t)).
+\]
+Thus,
+\[
+    \widehat M_K(t')
+    \ge
+    \left(1+\frac{\eta}{2}\right)\widehat M_K(t).
+\]
+
+Therefore, between two consecutive selections of the same sampled index \(j\), after the algorithm has switched away from \(j\), the smoothed sampled minimum \(\widehat M_K\) increases by a factor at least
+\[
+    1+\frac{\eta}{2}.
+\]
+
+Since
+\[
+    \widehat M_K(t)\le 1+\Lambda
+\]
+at all times, each sampled index can be reselected at most
+\[
+    O\left(
+        \log_{1+\eta/2}(1+\Lambda)
+    \right)
+    =
+    O\left(
+        \frac{1}{\eta}
+        \log(1+\Lambda)
+    \right)
+\]
+times. Summing over all sampled indices \(j\in K\), the total number of switches is at most
+\[
+    O\left(
+        |K|\cdot
+        \frac{1}{\eta}
+        \log(1+\Lambda)
+    \right).
+\]
+\end{proof}
+
+\begin{lemma}[Recourse bound]
+\label{lem:metric-recourse-bound}
+The switching recourse of \(\texttt{sampled-lazy-medoid}\) is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{T}{\delta}
+        \log(1+\Lambda)
+    \right).
+\]
+\end{lemma}
+
+\begin{proof}
+By definition, the switching recourse is the number of times the maintained sampled index changes.
+
+By \cref{lem:metric-switching-bound}, the total number of switches is at most
+\[
+    O\left(
+        |K|\cdot
+        \frac{1}{\eta}
+        \log(1+\Lambda)
+    \right).
+\]
+The sample size is
+\[
+    |K|
+    =
+    q
+    =
+    O\left(
+        \frac{1}{\varepsilon}
+        \log\frac{T}{\delta}
+    \right).
+\]
+Therefore, the switching recourse is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{T}{\delta}
+        \log(1+\Lambda)
+    \right).
+\]
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:metric-median-sampled-lazy}]
+By \cref{lem:metric-sample-good}, with probability at least \(1-\delta\), for every time step \(t\),
+\[
+    M_K(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+Condition on this event.
+
+By \cref{lem:metric-sampled-competitive}, for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+By \cref{lem:metric-recourse-bound}, the switching recourse is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{T}{\delta}
+        \log(1+\Lambda)
+    \right).
+\]
+This proves the theorem.
+\end{proof}
+
+\begin{restatable}[Consensus clustering instantiation]{corollary}{sampledlazymedoidconsensus}
+\label{cor:sampled-lazy-consensus}
+For online consensus clustering, there is a randomized online algorithm that, with probability at least \(1-\delta\), satisfies for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t),
+\]
+and every vertex has recourse at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+In particular, by setting
+\[
+    \varepsilon=\eta=\frac{1}{\log(mn)}
+\]
+and
+\[
+    \delta=(mn)^{-\Theta(1)},
+\]
+we obtain a \((2+o(1))\)-competitive algorithm with
+\[
+    O(\log^4(mn))
+\]
+recourse, with high probability.
+\end{restatable}
+
+\begin{proof}
+We instantiate the online monotone metric median theorem with
+\[
+    \mathcal M_t=\{\text{clusterings of }V^t\},
+\]
+and
+\[
+    d_t(\m A,\m B)=\dist_{V^t}(\m A,\m B).
+\]
+The \(m\) input trajectories are
+\[
+    p_i^t=\m C_i^t,
+\]
+the restrictions of the \(m\) input clusterings to the arrived vertex set.
+
+The objective becomes
+\[
+    \obj_t(\m C)
+    =
+    \sum_{i=1}^m
+    \dist_{V^t}(\m C_i^t,\m C),
+\]
+which is exactly the online consensus clustering objective.
+
+The monotonicity condition holds because when a new vertex arrives, the distance between any two restricted input clusterings only gains additional nonnegative pairwise disagreement terms. Thus, for every \(i,j\),
+\[
+    \dist_{V^t}(\m C_i^t,\m C_j^t)
+    \le
+    \dist_{V^{t+1}}(\m C_i^{t+1},\m C_j^{t+1}).
+\]
+
+Moreover, all consensus objectives are integer-valued and bounded by
+\[
+    \Lambda
+    =
+    m\binom n2.
+\]
+The time horizon is
+\[
+    T=n.
+\]
+Applying \cref{thm:metric-median-sampled-lazy}, we get that, with probability at least \(1-\delta\), for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t),
+\]
+and the switching recourse is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+
+Finally, in online consensus clustering, while the algorithm follows the same sampled input clustering, no previously arrived vertex changes cluster ID. A vertex can change cluster ID only when the algorithm switches from one sampled input clustering to another. Therefore the vertex recourse is at most the switching recourse.
+
+Setting
+\[
+    \varepsilon=\eta=\frac{1}{\log(mn)}
+\]
+and
+\[
+    \delta=(mn)^{-\Theta(1)}
+\]
+gives
+\[
+    (2+\varepsilon)(1+\eta)
+    =
+    2+o(1),
+\]
+and
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right)
+    =
+    O(\log^4(mn)).
+\]
+This proves the corollary.
+\end{proof}

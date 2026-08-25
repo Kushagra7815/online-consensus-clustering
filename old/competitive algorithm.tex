@@ -1,0 +1,132 @@
+\section{An $\appr$ competitive algorithm}
+In this section, we provide an algorithm for the $\occ$ problem. We name this algorithm the $\oncon$ algorithm. Specifically, we aim to prove \cref{thm:online-consensus}, which we restate below for completeness. 
+
+\onlineconsensus*
+
+
+\subsection{Algorithm $\oncon$}
+
+In this section, we describe the $\oncon$ algorithm.
+We begin by introducing the necessary notation.
+
+Let $\m{C}^t$ denote the clustering maintained by the algorithm at time step~$t$, and let $v^t$ be the vertex that arrives at time~$t$.
+Thus, $\m{C}^1$ consists of a single cluster containing only $v^1$.
+
+At each time step~$t$, we construct a complete graph 
+\[
+    G^t = (V^t, E^t),
+\]
+where $V^t$ is the set of vertices that have arrived by time~$t$.
+For every pair $(u,v) \in V^t \times V^t$, the edge $(u,v)$ is labeled `+' if $u$ and $v$ are co-clustered in at least $m/2$ of the input clusterings, and labeled `-' otherwise.
+
+To describe the algorithm we need the help of the following result by Cohen-Addad et al \cite{cohen2022online}.
+
+\begin{lemma}\cite{cohen2022online}
+\label{lem:cohen}
+    There exists an $O(1)$-competitive algorithm for the online correlation clustering problem with $O(\log n)$ recourse.
+\end{lemma}
+
+\paragraph{Algorithm Description.}
+Now, we are ready to describe the algorithm. Upon the arrival of vertex $v^t$, the algorithm performs the following steps:
+
+\begin{enumerate}
+    \item Construct the graph $G^t$ on the vertex set $V^t$ as defined above.
+    
+    \item Run the online correlation clustering algorithm of Cohen-Addad et al.~\cite{cohen2022online} on $G^t$ to obtain the clustering $\m{C}^t$.
+\end{enumerate}
+
+
+\subsection{Bounding the Competitive Ratio and Recourse}
+
+In this section, we establish the competitive ratio of the $\oncon$ algorithm and also bound its recourse.
+In particular, we prove the following lemma.
+
+\begin{lemma}\label{lem:main}
+    The $\oncon$ algorithm is $\appr$-competitive with $O(\log n)$ recourse.
+\end{lemma}
+
+To prove \cref{lem:main}, we introduce additional terminology.
+Fix a time stamp~$t$ and let $\m{C}^{t^*}$ denote an optimal offline clustering with respect to the input clusterings
+$\m{C}_1^t, \ldots, \m{C}_m^t$ on the vertex set $V^t$.
+
+\paragraph{Good Pairs.}
+A pair $(u,v) \in V^t \times V^t$ is called \emph{good} if the optimal clustering $\m{C}^{t^*}$ agrees with at least half of the input clusterings on the pair $(u,v)$.
+Formally, $(u,v)$ is good if one of the following holds:
+\begin{itemize}
+    \item $u$ and $v$ belong to the same cluster in $\m{C}^{t^*}$ and are co-clustered in at least $m/2$ of the input clusterings $\m{C}_1^t, \ldots, \m{C}_m^t$, or
+    \item $u$ and $v$ belong to different clusters in $\m{C}^{t^*}$ and are separated in at least $m/2$ of the input clusterings.
+\end{itemize}
+
+We denote by $G$ the set of good pairs and by $\overline{G}$ the set of pairs that are not good. Note that for the pairs in $\overline{G}$ the optimal solution $\m{C}^{t^*}$ only agrees with at most half of the input clusterings, hence
+\[
+    \obj(\m{C}^{t^*}) = \sum_{i = 1}^m \dist(\m{C}_i, \m{C}^{t^*}) \geq \card{\overline{G}} \frac{m}{2}
+\]
+
+Now, to prove \cref{lem:main} we need to prove the following claims.
+
+\begin{claim}\label{clm:bounding-bad-pairs}
+    $|\overline{G}| \leq 2 \frac{\opt}{m}$.
+\end{claim}
+
+\begin{proof}
+    We know that, 
+    \[
+        |\overline{G}|\frac{m}{2} \leq \opt
+    \]
+    hence,
+    \[
+        |\overline{G}| \leq 2 \frac{\obj(\m{C}^{t^*}
+        )}{m}
+    \]
+\end{proof}
+
+\begin{claim}\label{clm:bounding-distance-to-opt}
+    \[\dist(\m{C}^t, \m{C}^{t^*}) \le  (\rho + 1)|\overline{G}| \] 
+    where $\rho$ is the competitive ratio of Cohen-Addad et al \cite{cohen2022online} for online correlation clustering problem.
+\end{claim}
+
+\begin{proof}
+    Let us assume $\overline{G}'$ be the set of pairs $(u,v)$ that do not agree with the clustering $\m{C}^t$. More specifically, for the pair $(u,v)$ one of the following holds
+    \begin{itemize}
+       \item $u$ and $v$ belong to the same cluster in $\m{C}^{t}$, but $(u,v)$ is a '-' edge in $G^t$.or
+        \item $u$ and $v$ belong to different clusters in $\m{C}^{t}$ but $(u,v)$ is a '+' edge in $G^t$
+    \end{itemize}
+    We can relate the cardinality of $ \overline{G}' $ and $ \overline{G} $ as follows. By definition, $ \overline{G} $ is the set of pairs that $ \m{C}^{t^*} $ disagrees with the graph $ G^{t} $. Hence, the optimal correlation cost of $\m{C}^{t^*}$ is $ \card{\overline{G}} $. Similarly, we can say the correlation cost of $\m{C}^t$ is $\card{\overline{G}'}$. %The same argument applies for $ \overline{G}' $.
+    Consider an optimal solution to the correlation clustering problem of $ G^{t} $. The cost of this solution can not exceed $ \card{\overline{G}} $.
+    
+    Since, the algorithm by Cohen-Addad et al \cite{cohen2022online} is $\rho$-competitive we have
+    \[
+        \card{\overline{G}'} \leq \rho \card{\overline{G}}.
+    \]
+    Now, consider a pair
+    \[
+        (u,v) \in (V^t \times V^t) \setminus (\overline{G} \cup \overline{G}')
+    \]
+    Suppose $(u,v)$ is a `+' edge in $G^t$ then $u$ and $v$ must be co-clustered in $\m{C}^t$ because $(u, v) \notin \overline{G}'$. Since, $(u,v) \notin \overline{G}$, $u$ and $v$ must also be co-clustered in $\m{C}^{t^*}$. Similar reasoning follows when $(u,v)$ is a `-' edge.
+
+    Hence, $\m{C}^{t^*}$ and $\m{C}^{t}$ agree with each other on the pairs 
+    \[
+        (u,v) \in (V^t \times V^t) \setminus (\overline{G} \cup \overline{G}')
+    \]
+    
+   Thus, 
+   \begin{align} 
+        \dist(\m{C}^t, \m{C}^{t^*}) &\le |\overline{G}| + |\overline{G}'| \n \\ 
+        &\leq |\overline{G}| + \rho|\overline{G}| \n \\ 
+        &= (\rho + 1)|\overline{G}|. \n
+    \end{align}
+\end{proof}
+
+Now we are ready to prove \cref{lem:main}.
+
+\begin{proof}[Proof of \cref{lem:main}]
+    \begin{align}
+        \sum_{i = 1}^m \dist(\m{C}_i^t, \m{C}^t) &\leq \sum_{i = 1}^m \dist(\m{C}_i^t, \m{C}^{t^*}) + \sum_{i = 1}^m \dist(\m{C}^{t^*}, \m{C}^{t}) \n \\
+        &\leq \opt + (\rho + 1)|\overline{G}|m && \text{by \cref{clm:bounding-distance-to-opt}} \n \\
+        &\leq \opt + 2 \cdot (\rho + 1) \opt && \text{by \cref{clm:bounding-bad-pairs}} \n \\
+        &= (2\rho + 3) \opt \n \\
+        &= \appr \, \, \opt \n
+    \end{align}
+\end{proof}
+
+\paragraph{Bounding the recourse.} Since the online algorithm of Cohen-Addad et al \cite{cohen2022online} has $O(\log n)$ recourse our algorithm also has $O(\log n)$ recourse.

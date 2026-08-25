@@ -1,0 +1,132 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+% \usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{xcolor}
+\usepackage[colorlinks=true]{hyperref}
+\definecolor{red}{HTML}{F88379}
+%\definecolor{blue}{HTML}{3F70B2}
+%\definecolor{orange}{HTML}{A47458}
+%\definecolor{yellow}{HTML}{9B7A3C}
+\hypersetup{
+    linkcolor=blue
+    ,citecolor=orange
+    ,filecolor=purple
+    ,urlcolor=orange
+    ,menucolor=purple
+    ,runcolor=purple
+}
+\usepackage{amsmath, amssymb, amsthm, amsfonts, graphicx, color, subcaption, enumerate, bm, array, mathtools}
+
+\usepackage[capitalise,nameinlink]{cleveref}
+
+%%%%%% To disable comments, use the following one %%%%%%
+%\usepackage[colorinlistoftodos,prependcaption,textsize=tiny, disable]{todonotes}
+
+% Use this to give comments
+\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+\newcommand{\kushagra}[1]{\todo[color=yellow, inline]{kushagra: #1}}
+\newcommand{\stuck}[1]{\todo[color=red, inline]{kushagra: #1}}
+\newcommand{\tienlong}[1]{\todo[color=green, inline]{long: #1}}
+
+\usepackage{multicol, multirow}
+\usepackage{thmtools, thm-restate}
+\usepackage{ragged2e}
+\usepackage{lineno}
+\sloppy
+\usepackage{framed}
+\usepackage[framemethod=tikz]{mdframed}
+% Comment this out for no line numbers
+% \linenumbers
+
+%\usepackage{algorithm}
+%\usepackage{algpseudocode}
+
+\usepackage[linesnumbered, ruled, vlined]{algorithm2e}
+%\SetKwComment{Comment}{/* }{ */}
+
+\usepackage{subfiles}
+\graphicspath{{graphics/}}
+
+\crefname{claim}{Claim}{Claims}
+\crefname{property}{Property}{Properties}
+\crefname{algocf}{Algorithm}{Algorithms}
+\Crefname{algocf}{Algorithm}{Algorithms}
+
+\usepackage[style=trad-alpha,natbib=true,maxcitenames=4]{biblatex}
+\addbibresource{ref.bib}
+
+\usepackage{dirtytalk}
+
+%\usepackage[backend=biber,style=alphabetic,]{biblatex}
+%\addbibresource{ref.bib}
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+% These lines will set the math fonts in boldface when they are in the titles
+
+% I gave theorems their own counter that is not aligned with sections. I think the currents setup where theorems in section 4.X would be labelled with 1.Y was confusing 
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{claim}[lemma]{Claim}
+\newtheorem{fact}[lemma]{Fact}
+\newtheorem{corollary}{Corollary}
+\newtheorem{observation}[lemma]{Observation}
+\newtheorem{proposition}[lemma]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[lemma]{Definition}
+\newtheorem{axiom}[lemma]{Axiom}
+
+\theoremstyle{remark}
+\newtheorem{remark}[lemma]{Remark}
+\newtheorem*{remark*}{Remark}
+
+\input{macros}
+%---------------------------------------------
+\title{Online Consensus Clustering}
+
+\author{ some authors }
+
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\subfile{abstract}
+
+\newpage
+\bigskip
+\tableofcontents
+\bigskip
+\thispagestyle{empty}
+
+% \newpage
+
+% \listoftodos
+
+\newpage
+\pagenumbering{arabic}
+\input{introduction}
+\input{preliminaries}
+\input{competitive algorithm}
+\input{Toy-Example for merge case}
+\input{Another proof Toy Example for merge case}
+\input{new-results}
+\input{High-probability-low-recourse}
+\input{zero-recourse}
+\input{online-monotone-metric-median}
+\newpage
+
+\printbibliography
+\appendix
+
+%\input{appendix}
+
+
+
+\end{document}

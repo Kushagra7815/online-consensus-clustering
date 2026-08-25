@@ -1,0 +1,370 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm,algpseudocode} 
+\usepackage{mathtools}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{observation}{Observation}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\sym}{\,\triangle\,}
+\newcommand{\OPTCC}{\OPT_{\mathrm{CC}}}
+\newcommand{\OPT}{\mathrm{OPT}}
+\newcommand{\costCC}{\mathrm{cost}_{\mathrm{CC}}}
+\newcommand{\cost}{\mathrm{cost}}
+\newcommand{\Ep}{\mathbb{E}}
+\newcommand{\Epivot}{\Ep_{\mathrm{piv}}}
+\newcommand{\Vtwo}{\binom{V}{2}}
+\newcommand{\Ipair}[2]{I^{#1}_{#2}}
+\newcommand{\bigOt}{\widetilde{O}}
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+
+\title{Near Linear Offline Consensus Clustering Algorithm with below 2-Approximation}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+Consensus clustering is the problem of aggregating a collection of (possibly conflicting) clusterings of the same data set into a single clustering that best represents the input as a whole. It is also referred to as \emph{cluster ensembles} or \emph{aggregation of clusterings}: for instance, given several input clusterings of a particular data set obtained from different clustering algorithms, different parameter settings of the same algorithm, or different runs of a randomized algorithm, the goal is to compute a single \emph{consensus clustering} that minimizes the total disagreement with the inputs and is, in a precise combinatorial sense, closest on average to all of them.
+
+
+\paragraph{Prior work.}
+Consensus clustering is NP-complete~\cite{FilkovSkiena2003}, and remains so even when the number of input clusterings is restricted to three~\cite{FilkovSkiena2003}; it is in fact APX-hard already on three input partitions~\cite{BDDJ2008}. On the other hand, returning one of the input clusterings uniformly at random is a folklore $2$-approximation in expectation.
+
+The problem is most often approached through its reduction to weighted \textsc{Correlation-Clustering}: setting the weight of a pair to the fraction of input clusterings that co-cluster it yields an instance satisfying the probability and triangle-inequality constraints~\cite{ACN2008}. Ailon, Charikar, and Newman~\cite{ACN2008} gave an $11/7$-approximation by running their combinatorial \textsc{Pivot} algorithm on the majority instance, and a $4/3$-approximation by LP rounding followed by \textsc{Pivot}; the latter remains the best approximation ratio known for consensus clustering. Neither is subquadratic: \textsc{Pivot} on a consensus instance takes $\Theta(n^2)$ time, and and the LP has a variable for every one of the $\binom{n}{2}$ pairs.
+
+Correlation clustering on unweighted $\pm 1$ complete graphs, by contrast, now admits fast algorithms with ratio well below $2$. Cohen-Addad et al.~\cite{CALP2024} gave a combinatorial $\approx 1.847$-approximation in $\tilde{O}(n)$ time, and Cao et al.~\cite{CCL2025} solve the cluster LP to within a $(1+\varepsilon)$ factor and round it in $\tilde{O}(2^{\mathrm{poly}(1/\varepsilon)} n)$ time, giving a $(1.437+\varepsilon)$-approximation. Earlier work trades ratio for efficiency: Assadi and Wang~\cite{AW2022} give an $O(n\,\mathrm{polylog}\,n)$-time algorithm via a sparse--dense decomposition, and agreement-based methods~\cite{CLMNPT2021} give constant-round and streaming guarantees, both at a large constant factor.
+
+The unweighted $\pm 1$ results do not settle consensus clustering. One can pass to an unweighted instance by taking the majority graph over all $m$ inputs, as \textsc{Pivot} does in~\cite{ACN2008}, but that graph has $\Theta(n^2)$ edges in general and building it is already quadratic. A near-linear-time algorithm must therefore avoid constructing any such graph. Consequently, no algorithm for consensus clustering is known to beat the trivial factor of $2$ in $o(n^2)$ time, and whether a ratio strictly below $2$ is achievable in near-linear time was open.
+
+Our approach follows a different framework. Chakraborty, Das, and Krauthgamer~\cite{CDK2021} first broke the $2$-approximation barrier for the Ulam $1$-median; a later work~\cite{CDK2023} constructs candidate medians from a constant number of inputs. Carmel, Das, and Nguyen~\cite{carmel2026scalable} abstract this into a framework for $1$-median problems and instantiate it for Hamming, Kendall-tau, Spearman's footrule, and Ulam. We instantiate it for partitions under the symmetric-difference metric, where a constant-size subsample has an unweighted majority graph that never has to be built.
+
+\paragraph{Our contribution.}
+We give the first near-linear-time algorithm for consensus clustering with an approximation ratio bounded away from $2$.
+
+\begin{theorem}[Main]
+\label{thm:main}
+For every constant $\delta>0$ there is a randomized algorithm that, given $m$ clusterings of an $n$-element ground set, runs in $\tilde{O}(n)$ time, reads only $\mathrm{polylog}(n)$ of the input clusterings, and returns with high probability a consensus clustering of cost at most $\bigl(2-\tfrac{1}{13}+O(\delta)\bigr)\cdot\mathrm{OPT}$.
+\end{theorem}
+
+Our algorithm follows the local-vs-global sampling framework for the $1$-median problem of~\cite{carmel2026scalable}, which reduces median computation in any metric space to two parts: a universal averaging bound, and a \emph{local solver} that, on a constant-size random subsample $Q$ of the inputs, builds a solution that is provably close to the optimal median. The quality of the local solver translates directly into the final approximation ratio; the better it approximates the median of the subsample, the further below $2$ the overall guarantee falls.
+
+\emph{A linear-time local solver.} To instantiate the framework we need a local solver: an algorithm that runs in linear time on the majority graph of a constant number of inputs. Our solver is \textsc{Pivot}, a simple randomized algorithm that repeatedly picks a random unclustered vertex, emits that vertex together with its still-unclustered neighbors as a cluster, and recurses. The obstacle is the graph itself: the majority graph can have $\binom{n}{2}$ edges, so writing it down already costs $\Theta(n^2)$. We instead compress it into an oracle of linear size, built in linear time and space, and run \textsc{Pivot} on that representation.
+
+Section~\ref{sec:algorithm} shows how to do this in $O(n)$ time without ever building $G_Q$. The key observation is that a vertex's neighbors can be read off directly from the cluster labels the constantly many inputs assign to it. Grouping the vertices by these labels in advance yields an implicit representation of $G_Q$ that answers adjacency queries in $O(1)$ time, reports a vertex's degree in $O(1)$ time, and enumerates its neighborhood in time proportional to the degree, so non-neighbors are never touched. All three remain available as vertices are deleted. \textsc{Pivot} is then one client of this oracle among others: any correlation-clustering algorithm that accesses its input through such queries can be run on $G_Q$ in the same way. For \textsc{Pivot} in particular, every vertex is handled exactly once over the whole run; either as a pivot or as a neighbor absorbed into some cluster. So, the total work is $O(n)$.
+
+The approximation analysis (Section~\ref{sec:analysis}) establishes the two framework properties for the symmetric difference metric. The averaging bound holds in any metric space and is inherited from~\cite{carmel2026scalable}. The metric-specific part is our main technical contribution: we show that \textsc{Pivot} on the majority graph is a good local solver, in the sense that its output $y$ satisfies $\mathbb{E}[d(x^*,y)] \le C\Delta^*$ for $C=4$, where $x^*$ is an optimal median and $\Delta^*$ is the total slack of $x^*$ on the subsample. The framework converts a local solver with constant $C$ on a subsample of size $r$ into an approximation ratio of $2 - 1/(C\binom{r}{2}+1)$; at $r=3$ and $C=4$ this gives $2-\tfrac{1}{13}$. The factor $4$ is $1+3$, where the $3$ is \textsc{Pivot}'s approximation ratio for correlation clustering on $G_Q$, so any local solver with a better guarantee on $G_Q$ improves the constant directly.
+
+
+\section{The Algorithm}
+\label{sec:algorithm}
+
+\subsection{Preliminaries}\label{sec:prelim}
+ 
+Throughout, $V = [n]$ is the ground set and a \emph{clustering} is a partition of $V$. Clusterings are represented by their \emph{label arrays}: for a clustering $x$ we write $c^{x}(v) \in [n]$ for the identifier of the block of $x$ containing $v$, so that a clustering occupies $O(n)$ space and is read in $O(n)$ time.
+ 
+Call an unordered pair $\{u,v\}$ \emph{co-clustered} in $x$ if $u$ and $v$ lie in the same block of $x$, and let
+
+\[
+  E^{+}(x) \;=\; \bigl\{\, \{u,v\} : u,v \text{ co-clustered in } x \,\bigr\}, \qquad E^{-}(x) \;=\; \Vtwo \setminus E^{+}(x).
+\]
+
+The \emph{consensus distance} between two clusterings is the number of pairs on which they disagree, i.e.\ the symmetric difference
+
+\begin{equation}\label{eq:d-def}
+  d(x,z) \;=\; \bigl| E^{+}(x) \,\triangle\, E^{+}(z) \bigr|
+  \;=\; \#\bigl\{\, \{u,v\} : \{u,v\} \text{ co-clustered in exactly one of } x,z \,\bigr\}.
+\end{equation}
+
+Sending each clustering $x$ to the indicator vector $\mathbf{1}_{E^{+}(x)} \in \{0,1\}^{\binom{V}{2}}$ realizes $d$ as the induced $\ell_1$ (Hamming) distance; hence $d$ is a metric, and the triangle inequality holds not only between clusterings but between any two subsets of $\Vtwo$. We use this last point in Section~\ref{sec:analysis}.
+ 
+The input is a collection $\mathcal{P} = \{C_1,\dots,C_m\}$ of clusterings of $V$. For a clustering $x$ we write
+
+\[
+  \cost(x) \;=\; \frac{1}{m}\sum_{i=1}^{m} d(x,C_i),
+  \qquad\text{and}\qquad
+  \cost(x,S) \;=\; \frac{1}{|S|}\sum_{C \in S} d(x,C)
+  \ \ \text{ for } S \subseteq \mathcal{P}.
+\]
+
+The goal is to find a clustering of small $\cost$; we fix an optimal median $x^{*} = \arg\min_x \cost(x)$ and write $\OPT = \cost(x^{*})$.
+
+\subsection{Overview}
+
+The algorithm instantiates the sampling framework of~\cite{carmel2026scalable} and is stated as Algorithm~\ref{alg:main}. It assembles a set $\mathcal{Y}$ of candidate clusterings from two sources. The first is the input itself: a random sample of $O(\log n/\delta)$ clusterings drawn from $P$. This source suffices when a substantial fraction of the inputs are already good medians. The second source covers the complementary case: for each of $O(\log n/\delta)$ independent random subsamples $Q\subseteq P$ of constant size $r$, we compute a \emph{local solution} that is an approximate median of the clusterings in $Q$ and add it to $\mathcal{Y}$. Finally, rather than evaluating candidates against all of $P$, we draw an evaluation sample $S$ of $O(\log n/\delta^2)$ inputs and return the candidate of least cost on $S$.
+
+\begin{algorithm}
+\caption{Consensus clustering in near-linear time}
+\label{alg:main}
+\begin{algorithmic}[1]
+\Procedure{ConsensusMedian}{$P,\delta$}
+  \State $\mathcal{Y}\leftarrow$ a set of $O(\log n/\delta)$ clusterings drawn uniformly at random from $P$
+  \For{$i=1,\dots,O(\log n/\delta)$}
+    \State $Q_i\leftarrow$ a set of $r=3$ clusterings drawn uniformly at random from $P$
+    \State $y_i\leftarrow\textsc{LocalSolve}(Q_i)$ \Comment{Algorithm~\ref{alg:pivot}}
+    \State $\mathcal{Y}\leftarrow\mathcal{Y}\cup\{y_i\}$
+  \EndFor
+  \State $S\leftarrow$ a set of $O(\log n/\delta^2)$ clusterings drawn uniformly at random from $P$
+  \State \Return $\arg\min_{x\in\mathcal{Y}}\mathrm{cost}(x,S)$
+  \Comment{Corollary \ref{cor:dist-alg}}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Only $\mathrm{polylog}(n)$ of the $m$ input clusterings are ever read. Two subroutines must therefore run in linear time for the whole algorithm to be near-linear: the local solver (Section~\ref{sec:local}) and the cost evaluation on line~9. The local solver is developed and proved correct in this section; for the cost evaluation we recall a folklore linear-time computation of the symmetric-difference distance (Corollary \ref{cor:dist-alg}). The approximation guarantee is deferred to Section~\ref{sec:analysis}.
+
+\subsection{The local solver: \textsc{Pivot} on the majority graph}
+\label{sec:local}
+
+Write $N(u)$ for the neighborhood of $u$ and $N[u]=N(u)\cup\{u\}$ for its closed neighborhood. The \textsc{Pivot} algorithm repeatedly selects a uniformly random unclustered vertex $p$, emits $N[p]$ (restricted to the still-unclustered vertices) as one cluster, deletes those vertices, and recurses. Two quantities govern its running time: the number of pivots, which can be $\Theta(n)$, and the time to compute a single pivot's neighborhood in the current graph, which a naive scan makes $\Theta(n)$; their product gives a naive bound of $\Theta(n^2)$. For a linear-time algorithm it is enough to compute each neighborhood in time proportional to its size in the current graph. Since emitting $N[p]$ deletes all of $N[p]$, every vertex lies in exactly one emitted neighborhood throughout the run. Charging the work of a step to its pivot and to the neighbors it absorbs, each vertex is then handled only once, either as a pivot or as an absorbed neighbor, and the total is $O(n)$.
+
+Fix a subsample $Q=\{\mathcal{A}_1,\dots,\mathcal{A}_r\}$ of constant size $r$. Its \emph{majority graph} $G_Q=(V,E_Q)$ places an edge between two elements exactly when a strict majority of the clusterings in $Q$ co-cluster them:
+\[
+  \{u,v\}\in E_Q \iff \bigl|\{\,i\in[r]\;:\;u,v \text{ are co-clustered in } \mathcal{A}_i\,\}\bigr|\;\ge\;t,
+  \qquad t=\lfloor r/2\rfloor+1 .
+\]
+(The threshold $t$ is a strict majority for either parity of $r$; when $r$ is even a tie leaves the pair non-adjacent, so no tie-breaking rule is needed. We use $r=3$, hence $t=2$.)
+
+\paragraph{A compressed neighborhood oracle.}
+Each clustering in $Q$ assigns a label to every vertex: for $u\in V$ we let $c_i(u)$ denote the identifier of the block containing $u$ in $\mathcal{A}_i$, and we write $c(u)=(c_1(u),\dots,c_r(u))$ for its \emph{label tuple}. For a $t$-element subset $S\subseteq[r]$ and a vertex $u$, define the \emph{bucket}
+\[
+  B_S(u) \;=\; \{\, v\in V : c_i(v)=c_i(u)\ \text{for all } i\in S \,\},
+\]
+the set of vertices that match $u$ on every coordinate in $S$. Buckets are keyed by value tuples, so two vertices share the bucket for $S$ iff $c(u)|_S=c(v)|_S$. Since two vertices are co-clustered in $\mathcal{A}_i$ precisely when they carry the same label under $c_i$, the vertices of a single bucket are exactly those co-clustered in every clustering indexed by $S$. In particular, every $v\in B_S(u)$ is co-clustered with $u$ in $|S|=t$ of the $r$ clusterings, a strict majority, so $\{u,v\}\in E_Q$. There are $\binom{r}{t}=O(1)$ subsets $S$, and each vertex belongs to exactly one bucket per subset, namely the one keyed by its own restriction $c(u)|_S$.
+
+\begin{observation}
+\label{obs:buckets}
+For every $u\in V$, $\;N[u]=\bigcup_{S\subseteq[r],\,|S|=t} B_S(u)$. Moreover, if $u$ and $v$ agree on exactly $j\ge t$ coordinates, then $v$ lies in exactly $\binom{j}{t}\le\binom{r}{t}$ of these buckets.
+\end{observation}
+
+\begin{proof}
+A vertex $v$ lies in some $B_S(u)$ iff it agrees with $u$ on the $t$ coordinates of $S$, hence on at least $t$ coordinates in total; that is, $u$ and $v$ are co-clustered in at least $t$ of the inputs, which is exactly the majority condition defining $N[u]$. Conversely, if they agree on $j\ge t$ coordinates, then any $t$-subset of those coordinates is such an $S$. The multiplicity is therefore the number of $t$-subsets of the $j$ agreeing coordinates, namely $\binom{j}{t}$.
+\end{proof}
+
+So a pivot's neighborhood is the union of $O(1)$ buckets, and by the second part of Observation~\ref{obs:buckets} enumerating those buckets costs $O(|N[p]|)$: each neighbor is met at most $\binom{r}{t}=O(1)$ times, and no non-neighbor is ever met.
+
+\paragraph{Data structures}
+Two structures support the run.
+\begin{itemize}
+  \item \textbf{Buckets.} Each nonempty bucket $B_S$ is stored as a doubly linked list of its currently \emph{active} (unclustered) vertices. For a fixed $S$, these lists partition the active vertices into groups that are co-clustered in every input indexed by $S$. Every vertex $u$ stores an array of $\binom{r}{t}$ back-pointers, one to its node in each bucket it inhabits, so it can be spliced out of all of its buckets in $O(1)$ total time.
+
+  The lists are built in $O(n)$ time. Fix a $t$-subset $S$: each vertex $u$ has key $c(u)|_S=(c_i(u))_{i\in S}$, a $t$-tuple of cluster identifiers, which we lie in $[n]$. Radix-sorting the vertices on this key, $t=O(1)$ passes of counting sort, one per coordinate, each $O(n)$ because the alphabet is $[n]$, places equal-key vertices in contiguous runs, and a single scan splits the runs into the buckets for $S$, linking each list and filling in its back-pointers. This costs $O(tn)=O(n)$ per subset, hence $O(n)$ over all $\binom{r}{t}=O(1)$ subsets.
+
+  \item \textbf{Pivot pool (swap array).} The active vertices are held in a \emph{swap array}: an array $A[0..n-1]$ together with an inverse map $\mathrm{pos}[\cdot]$ recording each vertex's position in $A$, and a live-count $k$, maintaining the invariant that $A[0..k-1]$ are exactly the active vertices and $\mathrm{pos}[A[i]]=i$. A uniform random pivot is drawn as $A[\textsc{Rand}(0,k-1)]$ in $O(1)$; a vertex is deleted by overwriting its slot with $A[k-1]$ and decrementing $k$ (procedure \textsc{Absorb} in Algorithm~\ref{alg:pivot}). This deletes from the middle of the pool in $O(1)$ while keeping the live vertices contiguous. The order of the live vertices is permuted in the process, which does not affect correctness, since pivots are chosen uniformly at random.
+\end{itemize}
+
+\begin{algorithm}
+\caption{Linear-time \textsc{Pivot} algorithm on the majority graph of $r$ clusterings}
+\label{alg:pivot}
+\begin{algorithmic}[1]
+\Procedure{Build}{$C_1,\dots,C_r$}
+  \ForAll{$t$-subsets $S\subseteq[r]$}
+    \State sort the vertices of $V$ by their key $c(x)|_S$
+\Comment{radix sort: $t$ counting-sort passes, $O(n)$}
+    \State partition the sorted vertices into buckets (maximal runs of equal key), each stored as a doubly linked list; for every vertex $x$, record in $\mathrm{node}_S[x]$ a handle to its own node in the bucket list for $S$
+  \EndFor
+  \State initialize the swap array $A$ with all of $V$;\ \ $k\gets n$
+  \State $\mathrm{stamp}[x]\gets 0$ for every $x\in V$
+\EndProcedure
+\Statex
+\Procedure{Pivot}{}
+  \State $s\gets 0$
+  \While{$k>0$}
+    \State $s\gets s+1$
+    \State $p\gets A[\,\textsc{Rand}(0,k-1)\,]$ \Comment{uniform active pivot}
+    \State $C\gets\{p\}$;\ \ $\mathrm{stamp}[p]\gets s$
+    \ForAll{$t$-subsets $S\subseteq[m]$} \Comment{lists hold active vertices only}
+      \For{each $y\in B_S(p)$}
+        \If{$\mathrm{stamp}[y]\neq s$}
+          \State $\mathrm{stamp}[y]\gets s$;\ \ add $y$ to $C$
+        \EndIf
+      \EndFor
+    \EndFor
+    \State \textbf{output} cluster $C$
+    \ForAll{$z\in C$}
+      \State \Call{Absorb}{$z$}
+    \EndFor
+  \EndWhile
+\EndProcedure
+\Statex
+\Procedure{Absorb}{$z$} \Comment{remove $z$ from the instance; $O(1)$}
+  \ForAll{$t$-subsets $S\subseteq[r]$}
+    \State splice $z$ out of its bucket list for $S$ via the handle $\mathrm{node}_S[z]$
+  \EndFor
+  \State $i\gets\mathrm{pos}[z]$;\ \ $u\gets A[k-1]$
+  \State $A[i]\gets u$;\ \ $\mathrm{pos}[u]\gets i$;\ \ $k\gets k-1$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}
+\label{lem:pivot-linear}
+Algorithm~\ref{alg:pivot} simulates \textsc{Pivot} on $G_Q$ without constructing it: it emits the same clusters that \textsc{Pivot} would emit under the same sequence of pivots, and its pivots are uniformly distributed over the currently unclustered vertices. It runs in $O(n)$ time and $O(n)$ space.
+\end{lemma}
+
+\begin{proof}
+\emph{Correctness.} \textsc{Absorb} splices a vertex out of every bucket containing it, so the bucket lists always hold exactly the active vertices. Hence at a step with pivot $p$ the inner loops enumerate $\bigcup_{S\subseteq[r],\,|S|=t}B_S(p)$ restricted to the active vertices, which by Observation~\ref{obs:buckets} is $N[p]$ restricted to the active vertices; the timestamp $s$ ensures each such vertex is added to $C$ once. For the pivots, the swap array invariant guarantees that $A[0..k-1]$ contains precisely the active vertices, in some order. Since the draw $A[\textsc{Rand}(0,k-1)]$ ignores that order, each pivot is uniform on the set of vertices still unclustered at its step.
+
+\emph{Running time.} \textsc{Build} costs $O(n)$, as argued above. Consider a single pivot step. Drawing the pivot is $O(1)$. The enumeration costs $\sum_{|S|=t}|B_S(p)|\le\binom{r}{t}\,|N[p]|=O(|C|)$ by Observation~\ref{obs:buckets}, since every enumerated vertex belongs to $N[p]$ and is met at most $\binom{r}{t}$ times. Absorption costs $O(1)$ per vertex of $C$, hence $O(|C|)$, so the step costs $O(|C|)$ in total. Every vertex of $C$ is deleted at the end of the step and the emitted clusters partition $V$. Summing over the run, $\sum_C O(|C|)=O\bigl(\sum_C|C|\bigr)=O(n)$. The buckets, back-pointers, swap array, and timestamps occupy $O(n)$ space, as $\binom{r}{t}=O(1)$.
+\end{proof}
+
+\paragraph{Evaluating the cost.}
+Although computing the symmetric difference of two subsets of $\binom{V}{2}$ takes $\Theta(n^2)$ time in general, the distance between two clusterings can be evaluated in linear time. Let $x$ and $y$ be clusterings, and for $i\in[n]$ let $A^x_i$ be the cluster of $x$ with identifier $i$, so that $E^{+}(x)=\bigcup_i\binom{A^x_i}{2}$. Let $z$ denote the meet of $x$ and $y$: the clustering in which $u$ and $v$ are co-clustered iff they are co-clustered in both $x$ and $y$, so that each cluster $A^z_k$ equals $A^x_i\cap A^y_j$ for some $i$ and $j$. Since the clusters of $z$ are disjoint and cover $V$, there are at most $n$ of them. Applying $|X\triangle Y|=|X|+|Y|-2|X\cap Y|$ to $E^{+}(x)$ and $E^{+}(y)$, and counting the pairs inside each cluster, gives the classical identity (see, e.g.,~\cite{Meila2007})
+\begin{equation}\label{eq:contingency}
+  d(x,y)\;=\;\sum_i\binom{|A^x_i|}{2}+\sum_j\binom{|A^y_j|}{2}-2\sum_{k}\binom{|A^z_k|}{2}.
+\end{equation}
+
+The cluster sizes $|A^x_i|$ and $|A^y_j|$ are obtained by sorting $V$ on the cluster identifiers $c^x$ and $c^y$, which is a counting sort in $O(n)$ since the identifiers are in $[n]$; each cluster is then a maximal run of equal key. The sizes $|A^z_k|$ are obtained in the same way, sorting the pair key $\bigl(c^x(v),c^y(v)\bigr)$ by two counting-sort passes. Hence, the following.
+
+\begin{corollary}\label{cor:dist-alg}
+$d(x,y)$ is computable in $O(n)$ time and space; hence $\cost(x,\mathcal{S})$ is computable in $O(|\mathcal{S}|\,n)$ time.
+\end{corollary}
+
+\section{Approximation Guarantee}
+\label{sec:analysis}
+
+We now analyze the algorithm of Section~\ref{sec:algorithm} and show that it returns a $\bigl(2 - \tfrac{1}{13} + O(\delta)\bigr)$-approximate $1$-median for consensus clustering. We keep the notation of Section~\ref{sec:prelim} with some additional definitions.
+
+\paragraph{Slack.} For $x$ and inputs $C_i, C_j$,
+\[
+  \Delta_{i,j}(x) \;=\; d(x,C_i) + d(x,C_j) - d(C_i,C_j) \;\ge\; 0,
+\]
+where non-negativity is the triangle inequality. For a subset $Q \subseteq \mathcal{P}$ define the total slack $\Delta(x,Q) = \sum_{i<j,\, C_i,C_j \in Q} \Delta_{i,j}(x)$, and abbreviate $\Delta^{*} = \Delta(x^{*},Q)$.
+
+\paragraph{The algorithm, restated.} Fix a constant $\delta > 0$ and set $r = 3$. Following the sampling framework of~\cite{carmel2026scalable}, Algorithm~\ref{alg:main} builds a candidate set $\mathcal{C}$ consisting of $O(\log n/\delta)$ inputs drawn uniformly from $\mathcal{P}$, together with $O(\log n/\delta)$ local solutions: for each of $O(\log n/\delta)$ uniformly random size-$3$ samples $Q \subseteq \mathcal{P}$ it runs \textsc{Pivot} (Algorithm~\ref{alg:pivot}) on the majority graph $G_Q$ and adds the output to $\mathcal{C}$. It then draws an evaluation sample $S$ of $O(\log n/\delta^2)$ inputs and returns $\arg\min_{x \in \mathcal{C}} \cost(x,S)$ (Corollary~\ref{cor:dist-alg}).
+
+The guarantee reduces to two properties: a universal averaging bound (Lemma~\ref{lem:averaging}) and a metric-specific bound on the local solutions (Lemma~\ref{lem:property2}). Throughout, $y$ denotes the output of \textsc{Pivot} on the majority graph $G_Q$ of a size-$3$ sample $Q$, and $\Epivot$ the expectation over its pivot choices with $Q$ fixed.
+
+\paragraph{Property 1: a universal averaging bound}
+\begin{lemma}\label{lem:averaging}
+Suppose $\bigl|\{p \in \mathcal{P} : \cost(p) \le (2-\alpha)\OPT\}\bigr| \le \delta m$ with $\delta \le 1 - \alpha$. Then for a uniformly random $Q \subseteq \mathcal{P}$ of size $r$,
+\[
+  \Ep_Q[\Delta^{*}] \;\le\; \binom{r}{2}\,(\alpha + 2\delta)\,\OPT .
+\] For $r = 3$ this reads $\Ep_Q[\Delta^{*}] \le 3(\alpha + 2\delta)\OPT$.
+\end{lemma}
+
+The proof of this lemma is stated in~\cite{carmel2026scalable}.
+
+\paragraph{Property 2: the pivot local solution}
+\begin{lemma}[Property 2, $C = 4$]\label{lem:property2}
+$\Epivot\bigl[d(x^{*},y) \mid Q\bigr] \le 4\,\Delta^{*}$.
+\end{lemma}
+
+The proof of this is deferred to later of this section. Combining the two lemmas, we prove the main theorem. 
+
+\begin{proof}[Proof of the theorem \ref{thm:main}]
+Set $r = 3$, $C = 4$, and
+\[
+  \alpha \;=\; \frac{1}{C\binom{r}{2} + 1} \;=\; \frac{1}{4\cdot 3 + 1} \;=\; \frac{1}{13}.
+\]
+Let $G = \{p \in \mathcal{P} : \cost(p) \le (2-\alpha)\OPT\}$; we may assume $\delta \le \alpha$ (so $\delta \le 1 - \alpha$).
+
+\emph{Case 1: $|G| \ge \delta m$.} A single uniform input misses $G$ with probability $\le 1 - \delta$, so over the $O(\log n/\delta)$ inputs placed in $\mathcal{C}$ the probability of missing $G$ entirely is $\le (1-\delta)^{O(\log n/\delta)} = n^{-\Omega(1)}$. Hence w.h.p. $\mathcal{C}$ contains a $(2-\alpha)$-approximate median.
+
+\emph{Case 2: $|G| < \delta m$.} Then Lemma~\ref{lem:averaging} applies. For one loop iteration, with $y$ its local solution, combining Lemma~\ref{lem:property2} (over pivots) with Lemma~\ref{lem:averaging} (over $Q$, using $\binom{3}{2} = 3$),
+\[
+  \Ep[d(x^{*},y)] = \Ep_Q\,\Epivot[d(x^{*},y) \mid Q] \le 4\,\Ep_Q[\Delta^{*}] \le 12(\alpha + 2\delta)\OPT .
+\]
+By Markov's inequality, $d(x^{*},y) \le 12(\alpha + 3\delta)\OPT$ with probability $\ge \frac{\delta}{\alpha + 3\delta} = \Theta(\delta)$. On this event, the triangle inequality gives
+\[
+  \cost(y) \le \OPT + d(x^{*},y) \le \bigl(1 + 12\alpha + 36\delta\bigr)\OPT
+  = \Bigl(2 - \tfrac{1}{13} + 36\delta\Bigr)\OPT,
+\] 
+using the identity $1 + 12\alpha = 2 - \alpha$ at $\alpha = \tfrac{1}{13}$. Each of the $O(\log n/\delta)$ iterations produces such a $y$ independently with probability $\Theta(\delta)$, so w.h.p.\ at least one candidate in $\mathcal{C}$ has cost $\le (2 - \tfrac{1}{13} + 36\delta)\OPT$.
+
+In both cases $\mathcal{C}$ contains, w.h.p., a clustering of cost $\le (2 - \tfrac{1}{13} + O(\delta))\OPT$. The evaluation step selects $\hat{x} = \arg\min_{x \in \mathcal{C}} \cost(x,S)$; since $|\mathcal{C}| = \mathrm{polylog}(n)$ and $|S| = O(\log n/\delta^2)$, Indyk's sampling bound~\cite{Indyk1999} guarantees w.h.p.\ that $\cost(\hat{x}) \le (1+\delta)\min_{x \in \mathcal{C}} \cost(x)$. Composing the two guarantees,
+\[
+  \cost(\hat{x}) \le (1+\delta)\Bigl(2 - \tfrac{1}{13} + O(\delta)\Bigr)\OPT
+  = \Bigl(2 - \tfrac{1}{13} + O(\delta)\Bigr)\OPT .
+\]
+For the running time, each of the $O(\log n/\delta)$ local solves is $O(n)$ by Lemma~\ref{lem:pivot-linear}, and the evaluation makes $|\mathcal{C}|\cdot|S| = \mathrm{polylog}(n)$ calls to distance calculation, each $O(n)$ by Corollary~\ref{cor:dist-alg}; the total is $\bigOt(n)$.
+\end{proof}
+
+It remains to prove Lemma~\ref{lem:property2}. We begin with some definitions. Fix a size-$3$ sample $Q = \{W_1, W_2, W_3\}$. Its majority graph $G_Q = (V,E_Q)$ has edge set
+\[
+  E_Q = \bigl\{ \{u,v\} : \{u,v\} \in E^{+}(W) \text{ for a strict majority of } W \in Q \bigr\}.
+\]
+Because $|Q|=3$ is odd, a strict majority of $Q$ co-clusters every pair or a strict majority separates it, so no tie-breaking is needed. For a clustering $x$, its correlation-clustering cost on $G_Q$ is the number of pairs that are co-clustered in exactly one of $x$ and $G_Q$:
+\[
+  \costCC(x;G_Q) = \bigl| E^{+}(x) \triangle E_Q \bigr|,
+  \qquad \OPTCC(G_Q) = \min_x \costCC(x;G_Q).
+\]
+For clusterings $x$ and $W$, write $\Ipair{x}{W} = E^{+}(x) \triangle E^{+}(W)$ for the set of pairs on which $x$ and $W$ disagree, so that $|\Ipair{x}{W}| = d(x,W)$; Finally, let $D_x$ be the set of pairs on which $x$ disagrees with at least two of $W_1,W_2,W_3$:
+\[
+  D_x = (\Ipair{x}{W_1} \cap \Ipair{x}{W_2}) \cup (\Ipair{x}{W_1} \cap \Ipair{x}{W_3}) \cup (\Ipair{x}{W_2} \cap \Ipair{x}{W_3}).
+\]
+
+\begin{lemma}[cost identity]\label{lem:cost-id}
+For every clustering $x$, $D_x = E^{+}(x) \triangle E_Q$, and hence $\costCC(x;G_Q) = |D_x|$.
+\end{lemma}
+\begin{proof}
+We show the two inclusions.
+
+Let $e \in E^{+}(x) \triangle E_Q$, and suppose first that $x$ co-clusters $e$, so that $e \notin E_Q$. Then fewer than two of $W_1,W_2,W_3$ co-cluster $e$, so at least two of them separate it; without loss of generality $W_1$ and $W_2$ do. Each therefore disagrees with $x$ on $e$, giving $e \in \Ipair{x}{W_1} \cap \Ipair{x}{W_2} \subseteq D_x$. The case in which $x$ separates $e$ is symmetric: then $e \in E_Q$, so at least two of the $W_i$ co-cluster $e$ and again disagree with $x$. Hence $E^{+}(x) \triangle E_Q \subseteq D_x$.
+
+Conversely, let $e \in D_x$; without loss of generality $e \in \Ipair{x}{W_1} \cap \Ipair{x}{W_2}$, so both $W_1$ and $W_2$ disagree with $x$ on $e$. If $x$ co-clusters $e$, then $W_1$ and $W_2$ separate it, so at most one of the three clusterings co-clusters $e$ and thus $e \notin E_Q$. If $x$ separates $e$, then $W_1$ and $W_2$ co-cluster it, so $e \in E_Q$. Either way $x$ and $G_Q$ differ on $e$, i.e.\ $e \in E^{+}(x) \triangle E_Q$. Hence $D_x \subseteq E^{+}(x) \triangle E_Q$.
+
+The two sets therefore coincide, and taking cardinalities gives the identity.
+\end{proof}
+
+\begin{lemma}[slack bound]\label{lem:slack}
+For every clustering $x$ and all distinct $W,W' \in Q$, $|\Ipair{x}{W} \cap \Ipair{x}{W'}| \le \Delta_{W,W'}(x)$. Consequently $|D_x| \le \Delta(x,Q)$, and in particular $\OPTCC(G_Q) \le |D_{x^{*}}| \le \Delta^{*}$.
+\end{lemma}
+\begin{proof}
+By inclusion--exclusion, $|\Ipair{x}{W} \cap \Ipair{x}{W'}| = |\Ipair{x}{W}| + |\Ipair{x}{W'}| - |\Ipair{x}{W} \cup \Ipair{x}{W'}|$. We claim $\Ipair{W}{W'} \subseteq \Ipair{x}{W} \cup \Ipair{x}{W'}$: if $W$ and $W'$ disagree on a pair $e$, then one places it in $E^{+}$ and the other in $E^{-}$, so whether $x$ co-clusters $e$ or separates it, $x$ differs from at least one of them, i.e.\ $e \in \Ipair{x}{W}$ or $e \in \Ipair{x}{W'}$. Hence $|\Ipair{x}{W} \cup \Ipair{x}{W'}| \ge |\Ipair{W}{W'}| = d(W,W')$, and substituting,
+\[
+  |\Ipair{x}{W} \cap \Ipair{x}{W'}| \le d(x,W) + d(x,W') - d(W,W') = \Delta_{W,W'}(x).
+\]
+Summing over the three pairs of $Q$ and using the union bound gives $|D_x| \le \Delta(x,Q)$. Specializing $x = x^{*}$ yields $|D_{x^{*}}| \le \Delta^{*}$; and since $x^{*}$ is a feasible clustering of $G_Q$, Lemma~\ref{lem:cost-id} gives
+\[
+  \OPTCC(G_Q) = \min_x |E^{+}(x) \triangle E_Q| \le |E^{+}(x^{*}) \triangle E_Q| = |D_{x^{*}}| \le \Delta^{*}.
+\]
+\end{proof}
+
+The correlation-clustering cost of the local solution $y$ is in turn controlled by the \textsc{Pivot} guarantee for unweighted correlation clustering.
+
+\begin{lemma}[\textsc{Pivot},~\cite{ACN2008}]\label{lem:pivot3}
+$\Epivot\bigl[\costCC(y;G_Q) \mid Q\bigr] \le 3\,\OPTCC(G_Q)$.
+\end{lemma}
+
+We can now prove Property 2.
+
+\begin{proof}[Proof of Lemma~\ref{lem:property2}]
+The distance $d$ was realized in Section~\ref{sec:prelim} as the Hamming distance on $\{0,1\}^{\Vtwo}$ via $x \mapsto \mathbf{1}_{E^{+}(x)}$. In particular the triangle inequality holds between \emph{any} two subsets of $\Vtwo$, not only between those of the form $E^{+}(\cdot)$. This lets us use the majority edge set $E_Q$ as an intermediate point, even though $E_Q$ need not be the co-clustering set of any clustering: the majority of three partitions need not be transitive.
+
+Fix the sample $Q$ and condition on it throughout. For every realization of the pivots,
+\begin{equation}\label{eq:bridge}
+d(x^{*},y) = \bigl| E^{+}(x^{*}) \triangle E^{+}(y) \bigr| \;\le\; \bigl| E^{+}(x^{*}) \triangle E_Q \bigr| + \bigl| E_Q \triangle E^{+}(y) \bigr| \;=\; |D_{x^{*}}| + |D_y|,
+\end{equation}
+where the inequality is the triangle inequality with $E_Q$ as the intermediate point and the last equality is Lemma~\ref{lem:cost-id}, applied once to $x^{*}$ and once to $y$.
+
+We bound the two terms separately. The first involves no pivot randomness: $D_{x^{*}}$ is determined by $x^{*}$ and $Q$ alone, and Lemma~\ref{lem:slack} gives $|D_{x^{*}}| \le \Delta^{*}$ deterministically. For the second, Lemma~\ref{lem:cost-id} identifies $|D_y|$ with $\costCC(y;G_Q)$, so the \textsc{Pivot} guarantee of Lemma~\ref{lem:pivot3} applies to it:
+\[
+  \Epivot\bigl[\,|D_y| \;\bigm|\; Q\,\bigr]
+  \;=\; \Epivot\bigl[\,\costCC(y;G_Q) \;\bigm|\; Q\,\bigr]
+  \;\le\; 3\,\OPTCC(G_Q)
+  \;\le\; 3\,\Delta^{*},
+\]
+the last step because $x^{*}$ is itself a feasible clustering of $G_Q$, so $\OPTCC(G_Q) \le \costCC(x^{*};G_Q) = |D_{x^{*}}| \le \Delta^{*}$ by Lemmas~\ref{lem:cost-id} and~\ref{lem:slack}.
+
+Taking $\Epivot[\,\cdot \mid Q\,]$ of~\eqref{eq:bridge} and adding the two bounds,
+\[
+  \Epivot\bigl[\,d(x^{*},y) \bigm| Q\,\bigr] \;\le\; \Delta^{*} + 3\Delta^{*} \;=\; 4\Delta^{*},
+\]
+which is Property 2 with $C = 4$.
+\end{proof}
+\bibliographystyle{siam}
+\bibliography{ref}
+
+\end{document}

@@ -1,0 +1,431 @@
+\section{Toy Example for the Merge Case}
+
+In this section, we formally define the $\mcase$. We first illustrate the main ideas through a simple toy example of the $\mcase$, and then generalize the result to the full setting.
+
+In the $\mcase$, we assume that every cluster in the optimal solution at time step $t+1$, denoted by $\m{C}^{(t+1)^*}$, is either identical to a cluster in $\m{C}^{t^*}$ or is obtained by taking the union of a collection of clusters from $\m{C}^{t^*}$. We define it below formally.
+
+\begin{definition}[$\mcase$]
+We say that the sequence of optimal clusterings satisfies the $\mcase$ if for every cluster
+$C^{t + 1} \in \m{C}^{(t+1)^*}$, one of the following holds:
+\begin{enumerate}
+    \item $C^{t + 1} \in \m{C}^{t^*}$, or
+    \item there exists a collection of clusters
+    \[
+    C_1^{t}, C_2^{t}, \ldots, C_k^{t} \in \m{C}^{t^*}
+    \]
+    such that
+    \[
+    C = \bigcup_{i=1}^k C_i^{t} \cup \{v_{t+1}\}.
+    \]
+\end{enumerate}
+\tienlong{"such that ... or $C = \bigcup_{i=1}^k C_i^{t} \cup \{v_{t+1}\}$"}
+\end{definition}
+
+Now, let us consider a toy example of the $\mcase$. Suppose that at time step $t_0$, the optimal solution $\optcls{0}$ consists of exactly two clusters, denoted by $S_1$ and $S_2$. Further, for every time step $t_k$, where $k \in \{1,\ldots,n\}$, suppose that the optimal solution $\optcls{k}$ consists of a single cluster
+\[
+    S = S_1 \cup S_2 \cup \{v_1,\ldots,v_k\},
+\]
+where $\{v_1,\ldots,v_k\}$ denotes the set of vertices that arrive at time steps $t_1,\ldots,t_k$, respectively.
+
+We now describe the algorithm $\oncon$, which maintains a clustering $\solclsw$ at time step $t$. To define the algorithm, we first introduce the cost of assigning a vertex $v$ to an arbitrary subset $P \subseteq V$:
+\[
+    \cost(P,v)
+    =
+    \sum_{u \in P} w^{-}(u,v)
+    +
+    \sum_{u \in V \setminus P} w^{+}(u,v),
+\]
+where $w^{-}(u,v)$ denotes the number of input clusterings in which $u$ and $v$ are separated, and $w^{+}(u,v)$ denotes the number of input clusterings in which $u$ and $v$ are clustered together.
+
+For every time step $t_k$, let $S_1^{t_k}$ and $S_2^{t_k}$ denote the current states of the clusters $S_1$ and $S_2$, respectively. We are now ready to describe the algorithm $\oncon$.
+
+\paragraph{Algorithm $\oncon$.}
+At time step $t_{k+1}$, upon the arrival of the vertex $v_{k+1}$, the algorithm performs the following update:
+\begin{enumerate}[(i)]
+    \item If $\cost(S_1^{t_k},v_{k+1}) \le \cost(S_2^{t_k},v_{k+1})$, then set
+    \[
+        \solcls{k+1}
+        =
+        \left\{
+        S_1^{t_k} \cup \{v_{k+1}\},
+        \,
+        S_2^{t_k}
+        \right\}.
+    \]
+
+    \item Otherwise, set
+    \[
+        \solcls{k+1}
+        =
+        \left\{
+        S_1^{t_k},
+        \,
+        S_2^{t_k} \cup \{v_{k+1}\}
+        \right\}.
+    \]
+\end{enumerate}
+\tienlong{So we are not considering singleton cases.}
+\kushagra{No}
+
+We now prove the following lemma.
+
+\begin{lemma}\label{lem:toy.example.merge.case}
+If $\obj(\solcls{k}) \ge 2\,\obj(\optcls{0})$, then $\obj(\optcls{k}) \ge (1+\epsilon)\,\obj(\optcls{0})$ for some $\epsilon \in (0,1)$.
+\end{lemma}
+
+\begin{lemma}[Alternative charging proof for $s(N_1,N_2)$]\label{lem:charging.s.N1.N2}
+Let
+\[
+    A=C_1,\qquad B=C_2,\qquad X=N_1,\qquad Y=N_2.
+\]
+Let
+\[
+    d(u,v)=\frac{w^-(u,v)}{m},
+    \qquad
+    s(u,v)=\frac{w^+(u,v)}{m}=1-d(u,v).
+\]
+where $w^-(u,v)$ is the number of clusterings where $u$ and $v$ are separated and $w^+(u,v)$ is the number of clusterings where $u$ and $v$ are together.
+Assume that the vertices in $X\cup Y$ are assigned online and greedily to one
+of the two current sides
+\[
+    A\cup X
+    \qquad\text{and}\qquad
+    B\cup Y.
+\]
+Assume also that
+\[
+    |X|+|Y|\le |A|+|B|.
+\]
+Define
+\[
+    I^{\OPT}
+    =
+    d(X,A)+d(X,B)+d(Y,A)+d(Y,B)+d(X,Y)+d(X)+d(Y).
+\]
+Suppose that for some constant $c>0$,
+\[
+    s(X,B)+d(X,A)+d(Y,B)+s(Y,A)
+    \le
+    c\,I^{\OPT}.
+\]
+Then
+\[
+    s(X,Y)\le K I^{\OPT},
+\]
+where $K$ is an absolute constant depending only on $c$. More precisely, for
+any fixed $\alpha>2$,
+\[
+    s(X,Y)
+    \le
+    \left(
+        \alpha+\frac{\alpha}{\alpha-1}+2c
+    \right)I^{\OPT}.
+\]
+\end{lemma}
+
+\begin{proof}
+Let
+\[
+    a=|A|,
+    \qquad
+    b=|B|.
+\]
+For a vertex $v$ arriving online, let $X_{<v}$ and $Y_{<v}$ denote the vertices
+of $X$ and $Y$, respectively, that arrived before $v$.
+
+We split the arrivals into two cases. Fix a constant $\alpha>2$.
+
+\paragraph{Low case.}
+Suppose first that a vertex $v\in X$ is assigned to the $A$-side and satisfies
+\[
+    s(v,Y_{<v})
+    \le
+    \alpha\, d(v,B\cup Y_{<v}).
+\]
+Then
+\[
+    s(v,Y_{<v})
+    \le
+    \alpha d(v,B)+\alpha d(v,Y_{<v}).
+\]
+Similarly, if a vertex $v\in Y$ is assigned to the $B$-side and satisfies
+\[
+    s(v,X_{<v})
+    \le
+    \alpha\, d(v,A\cup X_{<v}),
+\]
+then
+\[
+    s(v,X_{<v})
+    \le
+    \alpha d(v,A)+\alpha d(v,X_{<v}).
+\]
+
+Summing over all low-case arrivals gives
+\[
+    \sum_{\text{low arrivals}} s(v,\text{opposite previous side})
+    \le
+    \alpha\bigl(d(X,B)+d(Y,A)+d(X,Y)\bigr).
+\]
+Since all three terms on the right are contained in $I^{\OPT}$, we obtain
+\[
+    \sum_{\text{low arrivals}} s(v,\text{opposite previous side})
+    \le
+    \alpha I^{\OPT}.
+\]
+
+\paragraph{High case into $X$.}
+Now consider a vertex $v\in X$ assigned to the $A$-side. We call it high if
+\[
+    s(v,Y_{<v})
+    >
+    \alpha\, d(v,B\cup Y_{<v}).
+\]
+We first show that high arrivals into $X$ can occur only $O(|A|)$ times.
+
+Let
+\[
+    x=|X_{<v}|,
+    \qquad
+    y=|Y_{<v}|.
+\]
+Define the gain of assigning $v$ to a set $S$ by
+\[
+    G(v,S)=s(v,S)-d(v,S).
+\]
+Since $s(u,v)+d(u,v)=1$ for every pair,
+\[
+    G(v,S)=|S|-2d(v,S).
+\]
+Because the algorithm assigns $v$ greedily to $A\cup X_{<v}$ instead of
+$B\cup Y_{<v}$, we have
+\[
+    G(v,A\cup X_{<v})
+    \ge
+    G(v,B\cup Y_{<v}).
+\]
+Also,
+\[
+    G(v,A\cup X_{<v})\le a+x.
+\]
+Since $v$ is high,
+\[
+    s(v,Y_{<v})>\alpha\,d(v,B\cup Y_{<v}).
+\]
+Using the trivial bound $s(v,Y_{<v})\le y$, we get
+\[
+    d(v,B\cup Y_{<v})<\frac{y}{\alpha}.
+\]
+Therefore,
+\[
+    G(v,B\cup Y_{<v})
+    =
+    b+y-2d(v,B\cup Y_{<v})
+    >
+    b+\left(1-\frac{2}{\alpha}\right)y.
+\]
+Combining the last inequalities gives
+\[
+    a+x
+    >
+    b+\left(1-\frac{2}{\alpha}\right)y.
+\]
+Thus every high arrival into $X$ satisfies
+\[
+    x
+    >
+    b-a+\left(1-\frac{2}{\alpha}\right)y.
+\]
+
+Let $v^*$ be the first high arrival into $X$, and let
+\[
+    x^*=|X_{<v^*}|,
+    \qquad
+    y^*=|Y_{<v^*}|.
+\]
+Then
+\[
+    x^*
+    >
+    b-a+\left(1-\frac{2}{\alpha}\right)y^*.
+\]
+Let $H_X$ denote the number of high arrivals into $X$. Since all high arrivals
+into $X$ occur from time $v^*$ onward,
+\[
+    H_X\le |X|-x^*.
+\]
+Using the size condition
+\[
+    |X|+|Y|\le a+b,
+\]
+we have
+\[
+    |X|\le a+b-|Y|.
+\]
+Hence
+\[
+\begin{aligned}
+    H_X
+    &\le |X|-x^*\\
+    &<
+    a+b-|Y|
+    -
+    \left(
+        b-a+\left(1-\frac{2}{\alpha}\right)y^*
+    \right)\\
+    &=
+    2a-|Y|-\left(1-\frac{2}{\alpha}\right)y^*\\
+    &\le 2a.
+\end{aligned}
+\]
+Thus
+\[
+    H_X\le 2|A|.
+\]
+
+We now bound the contribution of high arrivals into $X$. For any high
+$v\in X$ and any $y\in Y_{<v}$, by triangle inequality, for every $a'\in A$,
+\[
+    d(y,a')\le d(y,v)+d(v,a').
+\]
+Rearranging gives
+\[
+    s(v,y)\le s(y,a')+d(v,a').
+\]
+Averaging over $a'\in A$ gives
+\[
+    s(v,y)
+    \le
+    \frac{s(y,A)}{|A|}
+    +
+    \frac{d(v,A)}{|A|}.
+\]
+Summing over $y\in Y_{<v}$,
+\[
+    s(v,Y_{<v})
+    \le
+    \frac{s(Y_{<v},A)}{|A|}
+    +
+    \frac{|Y_{<v}|}{|A|}d(v,A).
+\]
+
+For a high arrival into $X$, the previous argument also implies
+\[
+    |Y_{<v}|
+    \le
+    \frac{\alpha}{\alpha-1}|A|.
+\]
+Indeed, from
+\[
+    a+x
+    >
+    b+\left(1-\frac{2}{\alpha}\right)y
+\]
+and
+\[
+    x+y\le a+b,
+\]
+we get
+\[
+    \left(2-\frac{2}{\alpha}\right)y<2a,
+\]
+and therefore
+\[
+    y<\frac{\alpha}{\alpha-1}a.
+\]
+Thus, for every high arrival $v\in X$,
+\[
+    s(v,Y_{<v})
+    \le
+    \frac{s(Y,A)}{|A|}
+    +
+    \frac{\alpha}{\alpha-1}d(v,A).
+\]
+Summing over all high arrivals into $X$, and using $H_X\le 2|A|$, gives
+\[
+\begin{aligned}
+    \sum_{\substack{v\in X\\ v\text{ high}}} s(v,Y_{<v})
+    &\le
+    \frac{H_X}{|A|}s(Y,A)
+    +
+    \frac{\alpha}{\alpha-1}d(X,A)\\
+    &\le
+    2s(Y,A)
+    +
+    \frac{\alpha}{\alpha-1}d(X,A).
+\end{aligned}
+\]
+
+\paragraph{High case into $Y$.}
+The argument is symmetric. A high arrival into $Y$ is a vertex $v\in Y$ such
+that
+\[
+    s(v,X_{<v})
+    >
+    \alpha\,d(v,A\cup X_{<v}).
+\]
+By the same reasoning, the number of high arrivals into $Y$ is at most
+$2|B|$, and
+\[
+    \sum_{\substack{v\in Y\\ v\text{ high}}} s(v,X_{<v})
+    \le
+    2s(X,B)
+    +
+    \frac{\alpha}{\alpha-1}d(Y,B).
+\]
+
+\paragraph{Putting the bounds together.}
+Every pair in $X\times Y$ is counted exactly once, namely when the later of
+the two endpoints arrives. Therefore,
+\[
+    s(X,Y)
+\]
+is the sum of the low-case and high-case contributions above. Combining the
+three bounds, we get
+\[
+\begin{aligned}
+    s(X,Y)
+    &\le
+    \alpha\bigl(d(X,B)+d(Y,A)+d(X,Y)\bigr)\\
+    &\quad
+    +\frac{\alpha}{\alpha-1}\bigl(d(X,A)+d(Y,B)\bigr)
+    +2s(Y,A)+2s(X,B).
+\end{aligned}
+\]
+The first two groups of terms are contained in $I^{\OPT}$, so
+\[
+    \alpha\bigl(d(X,B)+d(Y,A)+d(X,Y)\bigr)
+    \le
+    \alpha I^{\OPT},
+\]
+and
+\[
+    \frac{\alpha}{\alpha-1}\bigl(d(X,A)+d(Y,B)\bigr)
+    \le
+    \frac{\alpha}{\alpha-1}I^{\OPT}.
+\]
+\tienlong{The above two terms can be combined and bounded from above by $ \max(\alpha, \alpha/(\alpha-1)) I^{\OPT} $}
+By assumption,
+\[
+    s(X,B)+d(X,A)+d(Y,B)+s(Y,A)
+    \le
+    cI^{\OPT}.
+\]
+In particular,
+\[
+    s(X,B)+s(Y,A)\le cI^{\OPT}.
+\]
+Therefore,
+\[
+    2s(X,B)+2s(Y,A)\le 2cI^{\OPT}.
+\]
+Combining these inequalities yields
+\[
+    s(X,Y)
+    \le
+    \left(
+        \alpha+\frac{\alpha}{\alpha-1}+2c
+    \right)I^{\OPT}.
+\]
+This completes the proof.
+\end{proof}

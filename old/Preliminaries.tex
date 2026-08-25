@@ -1,0 +1,53 @@
+\section{Preliminaries}
+
+In this section, we introduce the notation and terminology required for our analysis.
+
+\paragraph{Online Model.}
+Following the framework of Cohen-Addad et al.~\cite{cohen2022online}, we consider an online variant of the consensus clustering problem.
+Vertices arrive sequentially over time.
+Let $V^t \subseteq V$ denote the set of vertices that have arrived by time step $t$.
+
+The collection of input clusterings $\m{I} = \{\m{C}_1, \ldots, \m{C}_m\}$ is defined on the full vertex set $V$, but is not fully revealed initially.
+At time step $t$, for each input clustering $\m{C}_i \in \m{I}$, the algorithm is only given its restriction to the arrived vertices,
+\[
+    \m{C}_i^t = \m{C}_i[V^t].
+\]
+That is, $\m{C}_i^t$ consists of the clusters obtained by intersecting each cluster of $\m{C}_i$ with $V^t$.
+
+\paragraph{Objective of the \(\occ\) problem.}
+At every time step \(t\), the algorithm must maintain a clustering \(S_t\) of the currently arrived vertices \(V^t\). For two clusterings \(\m{A}\) and \(\m{B}\) of \(V^t\), we write
+\[
+    \dist_t(\m{A},\m{B})
+    :=
+    \dist_{V^t}(\m{A},\m{B})
+\]
+to denote their pairwise disagreement distance restricted to the vertex set \(V^t\).
+
+For any clustering \(\m{C}\) of \(V^t\), we define its online consensus objective at time \(t\) as
+\[
+    \obj_t(\m{C})
+    :=
+    \sum_{i=1}^m
+    \dist_t(\m{C}_i^t,\m{C}).
+\]
+Let
+\[
+    \OPT_t
+    \in
+    \arg\min_{\m{C}\text{ clustering of }V^t}
+    \obj_t(\m{C})
+\]
+denote an optimal offline consensus clustering of the arrived vertices at time \(t\). Thus,
+\[
+    \obj_t(\OPT_t)
+    =
+    \min_{\m{C}\text{ clustering of }V^t}
+    \obj_t(\m{C}).
+\]
+
+An online algorithm is said to be \(\alpha\)-competitive if, for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    \alpha \cdot \obj_t(\OPT_t).
+\]

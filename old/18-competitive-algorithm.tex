@@ -1,0 +1,953 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\cost}{\operatorname{cost}}
+\newcommand{\OPT}{\operatorname{OPT}}
+\newcommand{\ALG}{\operatorname{ALG}}
+
+\allowdisplaybreaks
+
+\hypersetup{
+  pdftitle={A Deterministic 18-Competitive Algorithm for Online Consensus Clustering},
+  pdfsubject={Online consensus clustering with logarithmic per-vertex recourse}
+}
+
+\begin{document}
+
+\section{A Deterministic 18-Competitive Algorithm for Online Consensus Clustering}
+
+\subsection{Problem definition and notation}
+
+Let $V=\{v_1,\ldots,v_n\}$ be the vertex set, where the vertices arrive
+online in the order $v_1,v_2,\ldots,v_n$.  At time $t$, the set of vertices
+that have arrived is
+\[
+  V_t=\{v_1,\ldots,v_t\}.
+\]
+We are given $m$ input clusterings (equivalently, partitions)
+\[
+  \mathcal P^{(1)},\mathcal P^{(2)},\ldots,\mathcal P^{(m)}
+\]
+of $V$.  When a vertex arrives, its cluster in each of the $m$ input
+clusterings is revealed.
+
+For a statement $E$, let
+\[
+  \ind[E]=
+  \begin{cases}
+    1,&\text{if $E$ is true},\\
+    0,&\text{if $E$ is false}
+  \end{cases}
+\]
+denote its indicator.  For two distinct vertices $u,v\in V$, define
+\[
+ d_{uv}
+ =\frac{1}{m}\sum_{i=1}^m
+   \ind[\mathcal P^{(i)}\text{ separates }u\text{ and }v].
+\]
+Thus, $d_{uv}$ is the fraction of input clusterings that place $u$ and $v$
+in different clusters, and $1-d_{uv}$ is the fraction that place them in the
+same cluster.  Notice that $0\le d_{uv}\le1$.  Moreover, $d$ is a
+semimetric: it is symmetric, $d_{uu}=0$, and
+\[
+  d_{uv}\le d_{uw}+d_{wv}
+\]
+for all vertices $u,v,w$.  Indeed, the separation indicator of every input
+partition satisfies the triangle inequality, and averaging preserves it.
+
+For an output clustering $\mathcal C$ of $V_t$, write
+$u\sim_{\mathcal C}v$ when $u$ and $v$ belong to the same output cluster,
+and write $u\not\sim_{\mathcal C}v$ otherwise.  The normalized consensus
+cost of $\mathcal C$ at time $t$ is
+\[
+ \cost_t(\mathcal C)
+ =\sum_{\{u,v\}\subseteq V_t}
+   \left(
+     d_{uv}\ind[u\sim_{\mathcal C}v]
+     +(1-d_{uv})\ind[u\not\sim_{\mathcal C}v]
+   \right).
+\]
+Every sum indexed by $\{u,v\}\subseteq V_t$ is over unordered pairs of
+distinct vertices.  Define the pair-disagreement distance between two
+clusterings $\mathcal C$ and $\mathcal P$ of $V_t$ by
+\[
+ \operatorname{dist}_t(\mathcal C,\mathcal P)
+ =\sum_{\{u,v\}\subseteq V_t}
+   \ind\!\left[
+     \ind[u\sim_{\mathcal C}v]
+     \ne
+     \ind[u\sim_{\mathcal P}v]
+   \right].
+\]
+The usual consensus objective
+$\sum_{i=1}^m \operatorname{dist}_t(\mathcal C,\mathcal P^{(i)})$
+equals $m\cost_t(\mathcal C)$, so normalization does not change any
+approximation or competitive ratio.  Let
+\[
+  \OPT_t=\min_{\mathcal C}\cost_t(\mathcal C),
+\]
+where the minimum is over all clusterings of $V_t$.
+
+For a real number $x$, its \emph{positive part} is
+\[
+  (x)_+ := \max\{x,0\}.
+\]
+In particular,
+\[
+ (1-2d_{uv})_+
+ =
+ \begin{cases}
+  1-2d_{uv},&\text{if }d_{uv}\le \tfrac12,\\
+  0,&\text{if }d_{uv}>\tfrac12.
+ \end{cases}
+\]
+The subscript ``$+$'' therefore does not denote addition; it means that a
+negative value is replaced by zero.
+
+For every unordered pair $\{u,v\}$, define
+\begin{align*}
+ \ell_{uv}&=\min\{d_{uv},1-d_{uv}\},\\
+ p_{uv}&=(1-2d_{uv})_+,\\
+ n_{uv}&=(2d_{uv}-1)_+.
+\end{align*}
+Here $p_{uv}$ is the confidence in joining $u$ and $v$, $n_{uv}$ is the
+confidence in separating them, and $\ell_{uv}$ is the unavoidable
+pairwise ambiguity.  Directly from the definitions,
+\begin{equation}
+ d_{uv}=\ell_{uv}+n_{uv},
+ \qquad
+ 1-d_{uv}=\ell_{uv}+p_{uv},
+ \qquad
+ p_{uv}+n_{uv}+2\ell_{uv}=1.
+ \label{eq:pair-identities}
+\end{equation}
+
+For a finite set $A$, $|A|$ denotes its number of elements.  For two
+disjoint nonempty vertex sets $A,B$, define
+\begin{align*}
+ D(A,B)&=\sum_{u\in A}\sum_{v\in B}d_{uv},\\
+ L(A,B)&=\sum_{u\in A}\sum_{v\in B}\ell_{uv},\\
+ P(A,B)&=\sum_{u\in A}\sum_{v\in B}p_{uv},\\
+ N(A,B)&=\sum_{u\in A}\sum_{v\in B}n_{uv}.
+\end{align*}
+The average distance between $A$ and $B$ is
+\[
+  \overline d(A,B)=\frac{D(A,B)}{|A||B|}.
+\]
+For a vertex $z\notin C$, the notation $D(z,C)$ means
+$D(\{z\},C)$, and similarly for $L(z,C),P(z,C)$, and $N(z,C)$.
+Summing~\eqref{eq:pair-identities} over $A\times B$ gives
+\begin{equation}
+ D(A,B)=L(A,B)+N(A,B),
+ \qquad
+ P(A,B)-N(A,B)=|A||B|-2D(A,B).
+ \label{eq:set-identities}
+\end{equation}
+
+Finally, define
+\[
+ L_t=\sum_{\{u,v\}\subseteq V_t}\ell_{uv}.
+\]
+Every clustering pays either $d_{uv}$ or $1-d_{uv}$ on pair $\{u,v\}$,
+and both quantities are at least $\ell_{uv}$.  Consequently,
+\begin{equation}
+  L_t\le \OPT_t.
+  \label{eq:ambiguity-lower-bound}
+\end{equation}
+
+\paragraph{Recourse convention.}
+Every output cluster carries a persistent identifier.  An old vertex incurs
+one unit of recourse whenever its cluster identifier changes between two
+consecutive time steps.  The initial identifier assigned to a newly arriving
+vertex is not counted as recourse.  This is the standard cluster-identifier
+definition of per-vertex recourse.
+
+\subsection{The algorithm}
+
+At every time $t$, the algorithm maintains a clustering of $V_t$.
+
+\begin{enumerate}
+ \item When $v_t$ arrives, create the singleton cluster $\{v_t\}$ with a
+       fresh identifier.
+ \item While there are two current clusters $A,B$ satisfying
+       \begin{equation}
+         \overline d(A,B)=\frac{D(A,B)}{|A||B|}<\frac14,
+         \label{eq:merge-rule}
+       \end{equation}
+       merge $A$ and $B$.
+ \item If several pairs satisfy~\eqref{eq:merge-rule}, choose one using any
+       fixed deterministic tie-breaking rule.
+ \item The merged cluster inherits the identifier of its larger child.  If
+       $|A|=|B|$, use a fixed deterministic tie-breaking rule to choose the
+       inherited identifier.
+\end{enumerate}
+
+A cluster is called \emph{reachable} if it can be constructed from singleton
+clusters through a sequence of merges satisfying~\eqref{eq:merge-rule}.
+Every cluster maintained by the algorithm is reachable.  The sequence of
+merges constructing a reachable cluster can be represented by a binary
+\emph{merge tree}: its leaves are singleton vertices, and every internal node
+is the union of its two children.
+
+\begin{theorem}[Main theorem]
+For every time $t$ and every arrival order, the above deterministic algorithm
+satisfies
+\[
+  \cost_t(\mathcal C_t)\le18\OPT_t,
+\]
+where $\mathcal C_t$ is the clustering output at time $t$.  Moreover, every
+vertex changes its cluster identifier at most $\lfloor\log_2 n\rfloor$ times.
+The competitive ratio and recourse bound are independent of $m$.
+\end{theorem}
+
+Here $\log_2 n$ is the base-$2$ logarithm, and $\lfloor x\rfloor$ denotes
+the greatest integer at most $x$.
+
+\subsection{Analysis of the algorithm}
+
+\paragraph{High-level idea of the analysis.}
+We first give an informal overview of the proof.  Recall that
+\[
+    \ell_{uv}=\min\{d_{uv},1-d_{uv}\}.
+\]
+Regardless of whether a clustering joins or separates $u$ and $v$, it pays
+at least $\ell_{uv}$ on this pair.  Therefore,
+\[
+    L_t=\sum_{\{u,v\}\subseteq V_t}\ell_{uv}\le \OPT_t.
+\]
+Our goal is to prove that the cost of the algorithm is at most a constant
+times $L_t$.
+
+The quantities
+\[
+    p_{uv}=(1-2d_{uv})_+
+    \qquad\text{and}\qquad
+    n_{uv}=(2d_{uv}-1)_+
+\]
+measure the majority margins in favor of joining and separating $u$ and
+$v$, respectively.  In particular,
+\[
+    d_{uv}=\ell_{uv}+n_{uv},
+    \qquad
+    1-d_{uv}=\ell_{uv}+p_{uv}.
+\]
+Thus, if the algorithm joins $u$ and $v$, then the additional cost above
+the unavoidable ambiguity $\ell_{uv}$ is $n_{uv}$.  If the algorithm
+separates them, then the additional cost is $p_{uv}$.
+
+The main structural goal is to prove that, for any two clusters $A$ and
+$B$ that can be produced by the algorithm,
+\begin{equation}
+    \min\{P(A,B),N(A,B)\}\le 5L(A,B).
+    \label{eq:informal-pair-coherence}
+\end{equation}
+In words, between two reachable clusters, the smaller of the total joining
+confidence and the total separating confidence is bounded by five times the
+total ambiguity.
+
+We establish~\eqref{eq:informal-pair-coherence} in three steps.
+
+\begin{enumerate}
+    \item
+    Lemma~2, called \emph{radial coherence}, considers one vertex $z$ and
+    one reachable cluster $C$.  It proves
+    \[
+        \min\{P(z,C),N(z,C)\}\le 2L(z,C).
+    \]
+    Thus, when a reachable cluster is viewed from any external vertex, it
+    cannot simultaneously contain a large amount of evidence for joining
+    and a large amount of evidence for separating, unless there is also a
+    sufficiently large amount of ambiguity.
+
+    The proof is by induction on the merge tree of $C$.  The only difficult
+    case is when one child of a merge is predominantly close to $z$, while
+    the other child is predominantly far from $z$.  We show that such two
+    children cannot have average distance less than $1/4$, and therefore the
+    algorithm could not have merged them.
+
+    \item
+    Lemma~3, called the \emph{polarization matrix lemma}, is an algebraic
+    local-to-global statement.  Consider a matrix $(q_{ij})$ with
+    \[
+        p_{ij}=(q_{ij})_+,\qquad
+        n_{ij}=(-q_{ij})_+,\qquad
+        u_{ij}=1-|q_{ij}|.
+    \]
+    If every row and every column satisfies
+    \[
+        \min\{P_\lambda,N_\lambda\}\le U_\lambda,
+    \]
+    then the whole matrix satisfies
+    \[
+        \min\left\{\sum_{i,j}p_{ij},\sum_{i,j}n_{ij}\right\}
+        \le \frac52\sum_{i,j}u_{ij}.
+    \]
+    Thus, row-wise and column-wise coherence imply coherence for the entire
+    matrix.
+
+    \item
+    Corollary~4 applies Lemma~3 to the matrix
+    \[
+        q_{uv}=1-2d_{uv},
+        \qquad u\in A,\ v\in B.
+    \]
+    Lemma~2 verifies the required inequality for every row because $B$ is
+    reachable, and for every column because $A$ is reachable.  Since
+    \[
+        1-|q_{uv}|=1-|1-2d_{uv}|=2\ell_{uv},
+    \]
+    Lemma~3 yields
+    \[
+        \min\{P(A,B),N(A,B)\}
+        \le \frac52\cdot 2L(A,B)
+        =5L(A,B),
+    \]
+    which is exactly~\eqref{eq:informal-pair-coherence}.
+\end{enumerate}
+
+We then use Corollary~4 to analyze the cost of the algorithm.  There are two
+types of pairs.
+
+First, suppose that $A$ and $B$ are the two children of an internal node of
+a merge tree.  Since the algorithm merged them,
+\[
+    D(A,B)<\frac{|A||B|}{4}.
+\]
+Consequently,
+\[
+    P(A,B)-N(A,B)
+    =|A||B|-2D(A,B)
+    >0.
+\]
+Hence $N(A,B)$ is the smaller quantity in
+$\{P(A,B),N(A,B)\}$.  Corollary~4 gives
+\[
+    N(A,B)\le 5L(A,B).
+\]
+The algorithm joins all pairs in $A\times B$, and therefore pays
+\[
+    D(A,B)=L(A,B)+N(A,B)\le 6L(A,B).
+\]
+
+Second, suppose that $A$ and $B$ are two distinct terminal clusters.  Since
+the merge loop has terminated,
+\[
+    D(A,B)\ge\frac{|A||B|}{4}.
+\]
+The algorithm separates all pairs in $A\times B$.  If
+$P(A,B)\le N(A,B)$, Corollary~4 immediately gives
+\[
+    L(A,B)+P(A,B)\le 6L(A,B).
+\]
+Otherwise, Corollary~4 gives $N(A,B)\le 5L(A,B)$, and hence
+\[
+    D(A,B)=L(A,B)+N(A,B)\le 6L(A,B).
+\]
+Terminality gives $|A||B|\le 4D(A,B)$, so the separated cost is
+\[
+    |A||B|-D(A,B)
+    \le 3D(A,B)
+    \le 18L(A,B).
+\]
+
+The internal merge-tree cuts and the pairs of distinct terminal clusters
+partition all unordered pairs of vertices.  Therefore,
+\[
+    \cost_t(\mathcal C_t)
+    \le 18L_t
+    \le 18\OPT_t.
+\]
+Finally, whenever an old vertex changes its cluster identifier, its current
+cluster is the smaller child of a merge, and hence its cluster size at least
+doubles.  Therefore, every vertex changes its identifier at most
+$\lfloor\log_2 n\rfloor$ times.
+
+We now prove the three structural statements used above.
+
+\begin{lemma}[Radial coherence]
+\label{lem:radial-coherence}
+Let $C$ be a reachable cluster and let $z\notin C$.  Then
+\[
+    \min\{P(z,C),N(z,C)\}\le 2L(z,C).
+\]
+\end{lemma}
+
+\begin{proof}
+The proof is by induction on the merge tree of $C$.  We begin by introducing
+normalized notation that will make the induction easier to follow.
+
+For every nonempty set $S$ not containing $z$, define
+\begin{align*}
+    \widehat P(S)
+    &=\frac{P(z,S)}{|S|},\\
+    \widehat N(S)
+    &=\frac{N(z,S)}{|S|},\\
+    \widehat U(S)
+    &=\frac{2L(z,S)}{|S|}.
+\end{align*}
+Thus, the desired inequality for $S$ is equivalent to
+\begin{equation}
+    \min\{\widehat P(S),\widehat N(S)\}
+    \le \widehat U(S).
+    \label{eq:normalized-radial-goal}
+\end{equation}
+
+It is useful to understand these three quantities probabilistically.  Choose
+a vertex $v$ uniformly at random from $S$, and define
+\[
+    Q=1-2d_{zv}.
+\]
+Since $0\le d_{zv}\le 1$, we have $Q\in[-1,1]$.  Moreover,
+\[
+    (Q)_+=(1-2d_{zv})_+=p_{zv},
+\]
+and
+\[
+    (-Q)_+=(2d_{zv}-1)_+=n_{zv}.
+\]
+Also,
+\[
+    1-|Q|
+    =1-|1-2d_{zv}|
+    =2\min\{d_{zv},1-d_{zv}\}
+    =2\ell_{zv}.
+\]
+Consequently,
+\begin{align}
+    \widehat P(S)&=\mathbb E[(Q)_+],\label{eq:normalized-P}\\
+    \widehat N(S)&=\mathbb E[(-Q)_+],\label{eq:normalized-N}\\
+    \widehat U(S)&=\mathbb E[1-|Q|].\label{eq:normalized-U}
+\end{align}
+Here the expectation is over the uniformly random choice of $v\in S$.
+
+We say that $S$ admits the \emph{positive orientation} if
+\[
+    \widehat N(S)\le \widehat U(S),
+\]
+and that it admits the \emph{negative orientation} if
+\[
+    \widehat P(S)\le \widehat U(S).
+\]
+Therefore,~\eqref{eq:normalized-radial-goal} says precisely that $S$ admits
+at least one of these two orientations.
+
+\paragraph{Base case.}
+Suppose that $C=\{v\}$ is a singleton.  At most one of
+$p_{zv}$ and $n_{zv}$ is nonzero.  Hence
+\[
+    \min\{P(z,C),N(z,C)\}=0\le 2L(z,C).
+\]
+Thus, the lemma holds for every leaf of the merge tree.
+
+\paragraph{Inductive step.}
+Suppose that $C$ was obtained by merging two reachable clusters $A$ and
+$B$, and assume inductively that the lemma holds for both children.
+
+The normalized quantities for $C=A\cup B$ are size-weighted averages:
+\begin{align*}
+    \widehat P(C)
+    &=
+    \frac{|A|\widehat P(A)+|B|\widehat P(B)}
+         {|A|+|B|},\\
+    \widehat N(C)
+    &=
+    \frac{|A|\widehat N(A)+|B|\widehat N(B)}
+         {|A|+|B|},\\
+    \widehat U(C)
+    &=
+    \frac{|A|\widehat U(A)+|B|\widehat U(B)}
+         {|A|+|B|}.
+\end{align*}
+
+If both $A$ and $B$ admit the positive orientation, then
+\[
+    \widehat N(A)\le\widehat U(A)
+    \qquad\text{and}\qquad
+    \widehat N(B)\le\widehat U(B).
+\]
+Taking their size-weighted average gives
+\[
+    \widehat N(C)\le\widehat U(C).
+\]
+Hence $C$ also admits the positive orientation.
+
+Similarly, if both children admit the negative orientation, then
+\[
+    \widehat P(C)\le\widehat U(C).
+\]
+Therefore, the only potentially difficult situation is when the two children
+do not admit any common orientation.
+
+After exchanging the names of $A$ and $B$ if necessary, this difficult case
+has the form
+\begin{equation}
+    \widehat N(A)\le\widehat U(A)<\widehat P(A),
+    \qquad
+    \widehat P(B)\le\widehat U(B)<\widehat N(B).
+    \label{eq:opposite-orientations}
+\end{equation}
+Indeed, $A$ admits only the positive orientation, while $B$ admits only the
+negative orientation.  We shall prove that two clusters satisfying
+\eqref{eq:opposite-orientations} cannot satisfy the algorithm's merge rule.
+
+Choose $a$ uniformly from $A$ and $b$ uniformly from $B$, independently.
+Thus, every ordered pair $(a,b)\in A\times B$ is selected with probability
+$1/(|A||B|)$.  Define the random variables
+\[
+    X=1-2d_{za},
+    \qquad
+    Y=2d_{zb}-1.
+\]
+The sign in the definition of $Y$ is deliberately reversed.  Cluster $A$ is
+positively oriented relative to $z$, whereas $B$ is negatively oriented.
+The reversal makes both $X$ and $Y$ positively oriented random variables.
+
+For a random variable $Z\in[-1,1]$, define
+\[
+    P_Z=\mathbb E[(Z)_+],
+    \qquad
+    N_Z=\mathbb E[(-Z)_+],
+    \qquad
+    U_Z=\mathbb E[1-|Z|].
+\]
+Using~\eqref{eq:normalized-P}--\eqref{eq:normalized-U}, we have
+\begin{align*}
+    P_X&=\widehat P(A),
+    &
+    N_X&=\widehat N(A),
+    &
+    U_X&=\widehat U(A),\\
+    P_Y&=\widehat N(B),
+    &
+    N_Y&=\widehat P(B),
+    &
+    U_Y&=\widehat U(B).
+\end{align*}
+The exchange of $P$ and $N$ in the second line is caused by the sign reversal
+in $Y$.  It follows from~\eqref{eq:opposite-orientations} that
+\begin{equation}
+    N_X\le U_X<P_X,
+    \qquad
+    N_Y\le U_Y<P_Y.
+    \label{eq:X-Y-orientations}
+\end{equation}
+
+We next prove the following scalar claim.
+
+\paragraph{Scalar claim.}
+If $X,Y\in[-1,1]$ are independent random variables and both satisfy
+\[
+    N_Z\le U_Z\le P_Z,
+\]
+then
+\begin{equation}
+    \mathbb E|X+Y|\ge\frac12.
+    \label{eq:scalar-claim}
+\end{equation}
+
+To prove the claim, first observe that, pointwise,
+\[
+    (Z)_++(-Z)_++1-|Z|=1.
+\]
+Taking expectations gives
+\begin{equation}
+    P_Z+N_Z+U_Z=1.
+    \label{eq:PNU-sum}
+\end{equation}
+Therefore, the inequalities $N_Z\le U_Z\le P_Z$ are equivalent to
+\[
+    P_Z+2N_Z\le1
+    \qquad\text{and}\qquad
+    2P_Z+N_Z\ge1.
+\]
+Together with $P_Z,N_Z\ge0$, these inequalities imply that the point
+$(P_Z,N_Z)$ belongs to the triangle
+\[
+    \mathcal T
+    =
+    \operatorname{conv}
+    \left\{
+        \left(\frac12,0\right),
+        (1,0),
+        \left(\frac13,\frac13\right)
+    \right\},
+\]
+where $\operatorname{conv}$ denotes the convex hull.
+
+Let
+\[
+    \alpha=\Pr[X\ge0],
+    \qquad
+    \beta=\Pr[Y\ge0].
+\]
+For every $x,y\in[-1,1]$, we have
+\begin{equation}
+    |x+y|
+    \ge
+    (-x)_++(-y)_+
+    +x\ind[y\ge0]
+    +y\ind[x\ge0].
+    \label{eq:pointwise-scalar}
+\end{equation}
+To see this, consider the signs of $x$ and $y$.
+
+\begin{itemize}
+    \item If $x,y\ge0$, then the right-hand side equals $x+y=|x+y|$.
+    \item If $x,y<0$, then the right-hand side equals
+          $-x-y=|x+y|$.
+    \item If $x$ and $y$ have opposite signs, then the right-hand side is
+          zero, and hence is at most $|x+y|$.
+\end{itemize}
+
+Taking expectations in~\eqref{eq:pointwise-scalar} and using independence,
+we obtain
+\begin{align}
+    \mathbb E|X+Y|
+    &\ge
+    N_X+N_Y
+    +\mathbb E[X]\Pr[Y\ge0]
+    +\mathbb E[Y]\Pr[X\ge0]\notag\\
+    &=
+    N_X+N_Y
+    +\beta(P_X-N_X)
+    +\alpha(P_Y-N_Y).
+    \label{eq:scalar-expectation-one}
+\end{align}
+Since $N_X\le P_X$ and $N_Y\le P_Y$, both
+$P_X-N_X$ and $P_Y-N_Y$ are nonnegative.  Furthermore,
+\[
+    (X)_+\le\ind[X\ge0]
+    \qquad\text{and}\qquad
+    (Y)_+\le\ind[Y\ge0],
+\]
+because $X,Y\le1$.  Therefore,
+\[
+    \alpha\ge P_X,
+    \qquad
+    \beta\ge P_Y.
+\]
+Substituting these lower bounds into
+\eqref{eq:scalar-expectation-one} gives
+\begin{align}
+    \mathbb E|X+Y|
+    &\ge
+    N_X+N_Y
+    +P_Y(P_X-N_X)
+    +P_X(P_Y-N_Y)\notag\\
+    &=
+    N_X+N_Y+2P_XP_Y-P_YN_X-P_XN_Y.
+    \label{eq:bilinear-lower-bound}
+\end{align}
+
+The right-hand side of~\eqref{eq:bilinear-lower-bound} is bilinear in
+$(P_X,N_X)$ and $(P_Y,N_Y)$.  If one pair is fixed, the expression is linear
+in the other pair, so its minimum over a triangle occurs at a vertex.
+Applying this argument to both pairs shows that it is enough to check the
+nine pairs of vertices of $\mathcal T$.  The values are
+\[
+\begin{array}{c|ccc}
+ &(\tfrac12,0)&(1,0)&(\tfrac13,\tfrac13)\\ \hline
+(\tfrac12,0)&\tfrac12&1&\tfrac12\\
+(1,0)&1&2&\tfrac23\\
+(\tfrac13,\tfrac13)&\tfrac12&\tfrac23&\tfrac23
+\end{array}
+\]
+and the smallest value is $1/2$.  This proves the scalar claim.
+
+We now return to the clusters $A$ and $B$.  By the definitions of $X$ and
+$Y$,
+\begin{align*}
+    |X+Y|
+    &=
+    |1-2d_{za}+2d_{zb}-1|\\
+    &=
+    2|d_{zb}-d_{za}|.
+\end{align*}
+The reverse triangle inequality for the semimetric $d$ gives
+\[
+    |d_{zb}-d_{za}|\le d_{ab}.
+\]
+Therefore,
+\[
+    |X+Y|\le2d_{ab}.
+\]
+Taking expectations over the independent uniform choices of $a$ and $b$,
+we obtain
+\[
+    \mathbb E|X+Y|
+    \le
+    2\mathbb E[d_{ab}]
+    =
+    2\frac{D(A,B)}{|A||B|}.
+\]
+Since the algorithm merged $A$ and $B$, its merge rule gives
+\[
+    \frac{D(A,B)}{|A||B|}<\frac14.
+\]
+Consequently,
+\[
+    \mathbb E|X+Y|<\frac12,
+\]
+contradicting the scalar claim.
+
+Thus, the difficult opposite-orientation case cannot occur in a valid merge.
+The two children must admit a common orientation, and that orientation is
+preserved by taking their size-weighted average.  Hence
+\[
+    \min\{\widehat P(C),\widehat N(C)\}\le\widehat U(C).
+\]
+Multiplying by $|C|$ gives
+\[
+    \min\{P(z,C),N(z,C)\}\le2L(z,C),
+\]
+as required.
+\end{proof}
+The next lemma converts radial coherence for every row and column of a matrix
+into a global inequality.
+
+\begin{lemma}[Polarization matrix lemma]
+Let $(q_{ij})$ be a finite matrix with entries in $[-1,1]$.  For every entry,
+define
+\[
+ p_{ij}=(q_{ij})_+,
+ \qquad
+ n_{ij}=(-q_{ij})_+,
+ \qquad
+ u_{ij}=1-|q_{ij}|.
+\]
+For a row or column $\lambda$, let $P_\lambda,N_\lambda,U_\lambda$ denote
+the sums of $p_{ij},n_{ij},u_{ij}$ over that row or column.  Suppose that
+every row and every column satisfies
+\[
+  \min\{P_\lambda,N_\lambda\}\le U_\lambda.
+\]
+If
+\[
+ P=\sum_{i,j}p_{ij},
+ \qquad
+ N=\sum_{i,j}n_{ij},
+ \qquad
+ U=\sum_{i,j}u_{ij},
+\]
+then
+\[
+  \min\{P,N\}\le\frac52U.
+\]
+\end{lemma}
+
+\begin{proof}
+Choose an admissible orientation for every row and column.  The orientation
+``$+$'' is admissible when $N_\lambda\le U_\lambda$, and ``$-$'' is
+admissible when $P_\lambda\le U_\lambda$.  At least one orientation is
+admissible; if both are admissible, choose either one.
+
+Let $R_+,R_-$ be the sets of positively and negatively oriented rows, and
+let $C_+,C_-$ be the corresponding sets of columns.  Partition the matrix
+into four rectangular blocks
+\[
+ \mathcal A=R_+\times C_+,
+ \quad
+ \mathcal B=R_+\times C_-,
+ \quad
+ \mathcal C=R_-\times C_+,
+ \quad
+ \mathcal D=R_-\times C_-.
+\]
+Let $a,b,c,d$ be the numbers of entries in these four blocks.  For
+$\mathcal X\in\{\mathcal A,\mathcal B,\mathcal C,\mathcal D\}$, define
+\[
+ P_{\mathcal X}=\sum_{(i,j)\in\mathcal X}p_{ij},
+ \quad
+ N_{\mathcal X}=\sum_{(i,j)\in\mathcal X}n_{ij},
+ \quad
+ U_{\mathcal X}=\sum_{(i,j)\in\mathcal X}u_{ij}.
+\]
+Because $p_{ij}+n_{ij}+u_{ij}=1$, we have
+\[
+ P_{\mathcal A}+N_{\mathcal A}+U_{\mathcal A}=a,
+\]
+and analogous identities for the other three blocks.
+
+Put $T=\min\{P,N\}$.  Aggregating the row and column hypotheses gives
+\begin{align*}
+ g_1&=N_{\mathcal A}+N_{\mathcal B}
+      -U_{\mathcal A}-U_{\mathcal B}\le0,\\
+ g_2&=P_{\mathcal C}+P_{\mathcal D}
+      -U_{\mathcal C}-U_{\mathcal D}\le0,\\
+ g_3&=N_{\mathcal A}+N_{\mathcal C}
+      -U_{\mathcal A}-U_{\mathcal C}\le0,\\
+ g_4&=P_{\mathcal B}+P_{\mathcal D}
+      -U_{\mathcal B}-U_{\mathcal D}\le0.
+\end{align*}
+Furthermore,
+\[
+ g_5=T-P\le0,
+ \qquad
+ g_6=T-N\le0.
+\]
+Direct expansion, using the four block-size identities, gives
+\begin{align}
+ \frac52U-T
+ &=\frac b2-d
+   -\left(\frac32g_1+g_3+\frac12g_4+g_6\right)
+   +\frac32N_{\mathcal A}+\frac32U_{\mathcal C}
+   +\frac32P_{\mathcal D}+3U_{\mathcal D},
+ \label{eq:certificate-one}\\
+ \frac52U-T
+ &=\frac{-a+3b+3c-5d}{6}
+   -\left(\frac43g_1+\frac23g_2+\frac43g_3+\frac23g_4
+          +\frac16g_5+\frac56g_6\right)
+   +2N_{\mathcal A}+2P_{\mathcal D}+2U_{\mathcal D}.
+ \label{eq:certificate-two}
+\end{align}
+Every term following the first term on the right-hand side of either
+identity is nonnegative, because $g_1,\ldots,g_6\le0$ and
+$P_{\mathcal X},N_{\mathcal X},U_{\mathcal X}\ge0$.
+
+Let $M$ be the total number of matrix entries, and define
+\[
+ \rho=\frac{|R_+|}{|R_+|+|R_-|},
+ \qquad
+ \gamma=\frac{|C_+|}{|C_+|+|C_-|}.
+\]
+Transposing the matrix exchanges $\rho$ and $\gamma$.  Replacing every
+$q_{ij}$ by $-q_{ij}$ and reversing every chosen orientation sends
+$(\rho,\gamma)$ to $(1-\rho,1-\gamma)$ without changing $T$ or $U$.
+Therefore, we may assume
+\[
+  \rho\ge\gamma,
+  \qquad
+  \rho+\gamma\ge1.
+\]
+
+If $\rho\ge2/3$, then
+\[
+ \frac b2-d
+ =(1-\gamma)\left(\frac{3\rho}{2}-1\right)M\ge0.
+\]
+Equation~\eqref{eq:certificate-one} now implies $T\le(5/2)U$.
+
+Otherwise, $\rho<2/3$.  Set $s=\rho+\gamma$.  Since
+$\rho\ge\gamma$ and $\rho+\gamma\ge1$, we have $1\le s<4/3$.  Also,
+\begin{align*}
+ \frac{-a+3b+3c-5d}{M}
+ &=8s-12\rho\gamma-5\\
+ &\ge8s-3s^2-5\\
+ &=(s-1)(5-3s)\ge0,
+\end{align*}
+where we used $\rho\gamma\le s^2/4$.  Equation
+~\eqref{eq:certificate-two} again gives $T\le(5/2)U$.
+\end{proof}
+
+\begin{corollary}[Pair coherence]
+For any two disjoint reachable clusters $A,B$,
+\[
+  \min\{P(A,B),N(A,B)\}\le5L(A,B).
+\]
+\end{corollary}
+
+\begin{proof}
+Form the $|A|\times|B|$ matrix
+\[
+  q_{uv}=1-2d_{uv},
+  \qquad u\in A,\ v\in B.
+\]
+Fixing $u\in A$ and applying radial coherence to the reachable cluster $B$
+shows that the corresponding row satisfies the hypothesis of the
+polarization matrix lemma.  Fixing $v\in B$ and applying radial coherence to
+$A$ proves the same for every column.  The total matrix ambiguity is
+\[
+ \sum_{u\in A}\sum_{v\in B}(1-|q_{uv}|)
+ =2L(A,B).
+\]
+The polarization matrix lemma therefore gives
+\[
+ \min\{P(A,B),N(A,B)\}
+ \le\frac52\cdot2L(A,B)=5L(A,B).
+\]
+\end{proof}
+
+\begin{proof}[Proof of the main theorem]
+Fix a time $t$.  Consider an internal node of the merge tree of an output
+cluster, and let $A,B$ be its two children.  When they were merged,
+\[
+  D(A,B)<\frac{|A||B|}{4}.
+\]
+By~\eqref{eq:set-identities},
+\[
+ P(A,B)-N(A,B)
+ =|A||B|-2D(A,B)
+ >\frac{|A||B|}{2}>0.
+\]
+Thus $N(A,B)$ is the smaller of $P(A,B)$ and $N(A,B)$.  Pair coherence gives
+$N(A,B)\le5L(A,B)$, and the cost paid by joining all pairs in $A\times B$ is
+\[
+ D(A,B)=L(A,B)+N(A,B)\le6L(A,B).
+\]
+Every pair of vertices lying in the same output cluster appears in exactly
+one such merge-tree cut: the cut corresponding to the lowest common ancestor
+of its two leaves.
+
+Now let $A,B$ be two distinct output clusters at the end of time $t$.  Since
+the merge loop has terminated,
+\[
+  D(A,B)\ge\frac{|A||B|}{4}.
+\]
+The algorithm separates all pairs in $A\times B$, so its cost on these pairs
+is
+\[
+ |A||B|-D(A,B)=L(A,B)+P(A,B).
+\]
+If $P(A,B)\le N(A,B)$, pair coherence gives $P(A,B)\le5L(A,B)$, and hence
+the separated cost is at most $6L(A,B)$.
+
+Otherwise, $N(A,B)<P(A,B)$.  Pair coherence gives
+$N(A,B)\le5L(A,B)$, and therefore
+\[
+  D(A,B)=L(A,B)+N(A,B)\le6L(A,B).
+\]
+Terminality implies $|A||B|\le4D(A,B)$, and hence
+\[
+ |A||B|-D(A,B)
+ \le3D(A,B)
+ \le18L(A,B).
+\]
+
+The internal merge-tree cuts together with the pairs of distinct terminal
+clusters partition all unordered pairs of $V_t$.  Summing the preceding
+bounds and using~\eqref{eq:ambiguity-lower-bound}, we obtain
+\[
+ \cost_t(\mathcal C_t)
+ \le18L_t
+ \le18\OPT_t.
+\]
+
+It remains to bound recourse.  A vertex changes its cluster identifier only
+when its current cluster is the smaller child, or the non-inheriting child in
+a tie, of a merge.  If that child's size is $s$, the merged cluster has size
+at least $2s$.  Thus, whenever a vertex incurs one unit of recourse, the size
+of its current cluster at least doubles.  Since cluster sizes are at most
+$n$, every vertex incurs at most $\lfloor\log_2 n\rfloor$ units of recourse.
+This bound contains no dependence on $m$.
+\end{proof}
+
+\begin{remark}[Metric weighted correlation clustering]
+The analysis uses only that $d_{uv}\in[0,1]$ and that $d$ satisfies the
+triangle inequality.  Therefore, the same algorithm and proof apply to the
+online metric weighted correlation clustering model in which joining
+$u,v$ costs $d_{uv}$ and separating them costs $1-d_{uv}$.
+\end{remark}
+
+\end{document}

@@ -1,0 +1,1128 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\A}{\mathcal A}
+\newcommand{\C}{\mathcal C}
+\newcommand{\F}{\mathcal F}
+\newcommand{\Hh}{\mathcal H}
+\newcommand{\I}{\mathcal I}
+\newcommand{\N}{\mathcal N}
+\newcommand{\Pp}{\mathcal P}
+\newcommand{\Sset}{\mathcal S}
+\newcommand{\OPT}{\operatorname{OPT}}
+\newcommand{\Obj}{\operatorname{Obj}}
+\newcommand{\err}{\operatorname{err}}
+\newcommand{\dist}{\operatorname{dist}}
+\newcommand{\Agree}{\mathsf{Agree}}
+\newcommand{\maj}{\operatorname{maj}}
+\newcommand{\rec}{\operatorname{rec}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\1}{\mathbf 1}
+
+\allowdisplaybreaks
+
+\hypersetup{
+  pdftitle={A Strictly Better-than-Two Competitive Algorithm for Online Consensus Clustering},
+  pdfsubject={Online consensus clustering with polylogarithmic per-vertex recourse}
+}
+
+\title{A Strictly Better-than-Two Competitive Algorithm\\
+for Online Consensus Clustering}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{A better-than-two competitive algorithm for Online Consensus Clustering}
+
+In this section, we give a randomized online algorithm for consensus
+clustering whose competitive ratio is strictly smaller than $2$ with high
+probability.  The algorithm has polylogarithmic recourse per vertex.  The
+result combines two ingredients.  The first ingredient is the sampled
+cluster-fitting framework of Chakraborty, Chatterjee, Das, and
+Nguyen~\cite{ChakrabortyEtAl2026}.  The second ingredient is a rebuilding
+strategy based on monotone history scores.  The history score of a candidate
+is the maximum consensus cost that the candidate has incurred so far.  This
+maximum, rather than the current cost, is used to decide when the maintained
+solution must be rebuilt.
+
+The cluster-fitting framework is crucial.  Sampling only input clusterings
+cannot give a competitive ratio bounded away from $2$ when the number $m$ of
+input clusterings is arbitrary.  In contrast, cluster fitting also generates
+candidates from triples of sampled input clusterings.  A suitable triple
+candidate has cost at most $3\OPT/2$.  We prove that this candidate remains
+good, relative to the optimum at the end of the current prefix, throughout
+its entire history.  This is precisely the stability property needed by the
+rebuilding argument.
+
+We use the deterministic Online Agreement algorithm of Cohen-Addad,
+Lattanzi, Maggiori, and Parotsidis~\cite{CohenAddadEtAl2022} as a black box.
+Their result gives absolute constants $\eta\ge1$ and $q_{\mathrm A}>0$ with
+the following property.
+
+\begin{theorem}[Online Agreement; black-box form]\label{thm:online-agreement}
+There is a deterministic algorithm $\Agree$ for unweighted complete signed
+correlation clustering under vertex arrivals such that, at every prefix,
+\[
+  \err_H(\Agree(H))\le \eta\min_{\C}\err_H(\C).
+\]
+where $\err_H$ represents the number of correlation clustering disagreements made on the signed graph $H$.
+
+Moreover, every vertex changes its cluster identifier at most
+\[
+  q_{\mathrm A}\lceil\log_2 n\rceil
+\]
+times during the entire execution.  Here $\eta$ and $q_{\mathrm A}$ are
+absolute constants.
+\end{theorem}
+
+The published analysis states $\eta$ as an unspecified absolute constant.
+Consequently, the improvement below $2$ obtained in this section is an
+absolute constant, although its numerical value may be small.
+
+We now state the main result.  An arrival sequence is called
+\emph{oblivious} if the input clusterings and the vertex-arrival order are
+fixed independently of the random samples used by the algorithm.
+
+\begin{theorem}[Main theorem]\label{thm:main}
+Fix a failure probability $\zeta\in(0,1)$.  Against every oblivious instance
+of online consensus clustering, there is a randomized online algorithm such
+that, with probability at least $1-\zeta$, simultaneously for every prefix
+$t$,
+\begin{equation}\label{eq:main-ratio}
+  \Obj_t(\C_t)
+  \le
+  \left(2-\frac{1}{288(\eta+1)}\right)\OPT_t.
+\end{equation}
+Here $\eta$ is the deterministic competitive ratio in
+Theorem~\ref{thm:online-agreement}.  On every outcome of the random samples,
+every vertex has
+\[
+  O_{\eta,q_{\mathrm A}}\!\left(
+     \log^4\!\frac{mn}{\zeta}
+  \right)
+\]
+recourse.  In particular, the competitive ratio is strictly smaller than
+$2$, and the recourse bound is worst-case rather than merely a
+high-probability bound.
+\end{theorem}
+
+\subsection{Problem definition and notation}
+
+In this subsection, we define the online consensus clustering problem and
+all the notation used in the proof.
+
+Let
+\[
+  V=\{v_1,v_2,\ldots,v_n\}
+\]
+be the ground set of vertices.  The vertices arrive in the fixed order
+$v_1,v_2,\ldots,v_n$, and
+\[
+  V_t:=\{v_1,v_2,\ldots,v_t\}
+\]
+denotes the set of vertices that have arrived by time $t$.  We are given
+$m$ input clusterings
+\[
+  \Pp_1,\Pp_2,\ldots,\Pp_m
+\]
+of $V$.  When $v_t$ arrives, the algorithm learns the cluster containing
+$v_t$ in each input clustering.  Equivalently, for every $u\in V_{t-1}$ and
+every $i\in[m]$, the algorithm learns whether $u$ and $v_t$ are together or
+separated in $\Pp_i$.
+
+For a clustering $\C$ and two vertices $u,v$, write
+$u\sim_{\C}v$ when $u$ and $v$ belong to the same cluster of $\C$, and write
+$u\not\sim_{\C}v$ otherwise.  For two clusterings $\C$ and $\C'$ of the same
+vertex set $W$, define their pair-disagreement distance by
+\begin{equation}\label{eq:partition-distance}
+ \dist_W(\C,\C')
+ :=
+ \left|
+ \left\{
+   \{u,v\}\subseteq W:
+   \1[u\sim_{\C}v]\ne\1[u\sim_{\C'}v]
+ \right\}
+ \right|.
+\end{equation}
+Thus, $\dist_W(\C,\C')$ is the number of unordered vertex pairs on
+which $\C$ and $\C'$ disagree.  This is the Hamming distance between the
+two pair-relation vectors, and therefore it satisfies the triangle
+inequality.
+
+Let
+\[
+  \Pp_i^t:=\Pp_i|_{V_t}
+\]
+be the restriction of the $i$-th input clustering to the arrived vertices.
+For a clustering $\C$ of $V_t$, its unnormalized consensus objective is
+\begin{equation}\label{eq:consensus-objective}
+  \Obj_t(\C)
+  :=\sum_{i=1}^m\dist_{V_t}(\C,\Pp_i^t).
+\end{equation}
+We use the unnormalized objective only to keep all costs integral.  Dividing
+by $m$ gives the normalized metric-correlation-clustering objective and does
+not change any competitive ratio.  Define
+\begin{equation}\label{eq:opt-definition}
+  \OPT_t:=\min_{\C}\Obj_t(\C),
+\end{equation}
+where the minimum is over all clusterings of $V_t$.
+
+The sequence $\OPT_1,\OPT_2,\ldots,\OPT_n$ is nondecreasing.  Indeed, the
+restriction to $V_t$ of any clustering of $V_{t+1}$ has no larger cost than
+the original clustering because all pairs containing $v_{t+1}$ are removed.
+Applying this observation to an optimum at time $t+1$ gives
+\begin{equation}\label{eq:opt-monotone}
+  \OPT_t\le\OPT_{t+1}.
+\end{equation}
+
+\paragraph{Signed correlation clustering.}
+Let $H$ be a complete graph in which every edge is labeled either positive
+or negative.  For a clustering $\C$, define
+\begin{equation}\label{eq:signed-error}
+ \err_H(\C)
+ :=
+ \bigl|
+   \{\{u,v\}:\{u,v\}\text{ is positive and }u\not\sim_{\C}v\}
+ \bigr|
+ +
+ \bigl|
+   \{\{u,v\}:\{u,v\}\text{ is negative and }u\sim_{\C}v\}
+ \bigr|.
+\end{equation}
+
+\paragraph{Recourse.}
+Every output cluster carries a persistent identifier.  An old vertex incurs
+one unit of recourse whenever its cluster identifier changes between two
+consecutive time steps.  The first identifier assigned to a newly arriving
+vertex is not counted.  This is the standard per-vertex recourse convention.
+
+If $m=1$, outputting $\Pp_1^t$ is optimal and has zero recourse.  If $m=2$,
+the triangle inequality gives, for every clustering $\C$,
+\[
+ \dist(\Pp_1^t,\Pp_2^t)
+ \le
+ \dist(\Pp_1^t,\C)+\dist(\C,\Pp_2^t),
+\]
+and $\Pp_1^t$ attains equality.  Thus, outputting $\Pp_1^t$ is again optimal
+and has zero recourse.  In the rest of the proof, we assume $m\ge3$.
+
+\subsection{The candidate clusterings}
+
+In this subsection, we describe the candidate clusterings maintained by the
+algorithm.  There are two types of candidates.
+
+\paragraph{Input candidates.}
+For every sampled index $i\in[m]$, the corresponding input candidate at time
+$t$ is simply
+\[
+  \A_i(t):=\Pp_i^t.
+\]
+This candidate has zero internal recourse because it is the restriction of a
+fixed partition of the final vertex set.
+
+\paragraph{Triple candidates.}
+Fix a triple $\tau=(i,j,k)$ of sampled input indices.  At time $t$, form the
+complete signed graph $H_\tau(t)$ on $V_t$ as follows.  For every pair
+$\{u,v\}\subseteq V_t$, label the edge positive if at least two of
+$\Pp_i^t,\Pp_j^t,\Pp_k^t$ put $u$ and $v$ together, and label it negative if
+at least two of them separate $u$ and $v$.  Thus, the edge label is the
+majority pair relation of the three input clusterings.
+
+The graphs
+\[
+  H_\tau(1),H_\tau(2),\ldots,H_\tau(n)
+\]
+form a valid vertex-arrival instance of signed correlation clustering.  We
+run one deterministic copy of $\Agree$ on this sequence and denote its
+clustering at time $t$ by
+\[
+  \A_\tau(t):=\Agree(H_\tau(t)).
+\]
+Theorem~\ref{thm:online-agreement} gives
+\begin{equation}\label{eq:triple-cc-guarantee}
+  \err_{H_\tau(t)}(\A_\tau(t))
+  \le
+  \eta\min_{\C}\err_{H_\tau(t)}(\C)
+\end{equation}
+at every prefix, deterministically.
+
+For every candidate $a$, where $a$ is either an input index or a triple,
+define its current full consensus cost by
+\begin{equation}\label{eq:current-candidate-score}
+  f_a(t):=\Obj_t(\A_a(t)).
+\end{equation}
+The current cost of a triple candidate need not be nondecreasing because
+$\Agree$ may move old vertices and thereby decrease its cost.  We therefore
+define its \emph{history score}
+\begin{equation}\label{eq:history-score}
+  G_a(t):=\max_{1\le u\le t}f_a(u).
+\end{equation}
+Every $G_a(t)$ is nondecreasing in $t$.  For an input candidate $i$, the
+quantity $f_i(t)$ is itself nondecreasing, because each distance
+$\dist_{V_t}(\Pp_i^t,\Pp_h^t)$ only gains newly revealed pairs.  Hence
+\begin{equation}\label{eq:input-history-current}
+  G_i(t)=f_i(t).
+\end{equation}
+
+\subsection{A sampled cluster-fitting lemma}
+
+In this subsection, we give a self-contained specialization of the sampled
+cluster-fitting argument from~\cite{ChakrabortyEtAl2026}.  The lemma is
+stated for one fixed prefix.  Later, we amplify its probability and apply it
+simultaneously to all prefixes.
+
+Fix a time $t$ and suppress the superscript $t$ throughout this subsection.
+Let $\F^*$ be an optimal consensus clustering, so that
+\[
+  \sum_{i=1}^m\dist(\Pp_i,\F^*)=\OPT.
+\]
+Define
+\begin{equation}\label{eq:avg-definition}
+  \mathsf{AVG}:=\frac{\OPT}{m}.
+\end{equation}
+For each input clustering $\Pp_i$, let
+\begin{equation}\label{eq:error-set}
+  I_i
+  :=
+  \left\{
+    \{u,v\}:\Pp_i\text{ and }\F^*
+    \text{ disagree on the pair }\{u,v\}
+  \right\}.
+\end{equation}
+Then
+\begin{equation}\label{eq:error-size}
+  |I_i|=\dist(\Pp_i,\F^*)
+  \qquad\text{and}\qquad
+  \sum_{i=1}^m|I_i|=\OPT=m\mathsf{AVG}.
+\end{equation}
+
+For any two input clusterings, their disagreement set is the symmetric
+difference $I_i\triangle I_j$.  Consequently,
+\begin{equation}\label{eq:input-distance-error-sets}
+ \dist(\Pp_i,\Pp_j)
+ =|I_i|+|I_j|-2|I_i\cap I_j|.
+\end{equation}
+Summing~\eqref{eq:input-distance-error-sets} over $j$ gives the following
+identity for the cost of an input candidate:
+\begin{equation}\label{eq:input-candidate-cost-identity}
+ \Obj(\Pp_i)
+ =\OPT+m|I_i|-2\sum_{j=1}^m|I_i\cap I_j|.
+\end{equation}
+
+\subsubsection{The sparse-triple candidate}
+
+We first analyze a triple whose three error sets have small pairwise
+intersections.
+
+\begin{lemma}[Sparse-triple fitting]\label{lem:sparse-triple}
+Suppose a triple $\tau=(i,j,k)$ satisfies
+\begin{equation}\label{eq:sparse-triple-condition}
+ |I_i\cap I_j|\le\alpha\mathsf{AVG},\qquad
+ |I_j\cap I_k|\le\alpha\mathsf{AVG},\qquad
+ |I_k\cap I_i|\le\alpha\mathsf{AVG}.
+\end{equation}
+Let $\A_\tau$ be any $\eta$-approximate correlation clustering of the
+majority signed graph $H_\tau$.  Then
+\begin{equation}\label{eq:sparse-triple-cost}
+ \Obj(\A_\tau)
+ \le
+ \bigl(1+3(\eta+1)\alpha\bigr)\OPT.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Let $B$ be the set of pairs on which the majority relation of
+$\Pp_i,\Pp_j,\Pp_k$ disagrees with $\F^*$.  A binary majority differs from
+$\F^*$ exactly when at least two of the three input relations differ from
+$\F^*$.  Therefore,
+\begin{equation}\label{eq:bad-set-union}
+ B=(I_i\cap I_j)\cup(I_j\cap I_k)\cup(I_k\cap I_i).
+\end{equation}
+By~\eqref{eq:sparse-triple-condition},
+\begin{equation}\label{eq:bad-set-bound}
+ |B|\le3\alpha\mathsf{AVG}.
+\end{equation}
+
+The clustering $\F^*$ makes exactly $|B|$ mistakes on the signed graph
+$H_\tau$.  Hence the optimum correlation-clustering error on $H_\tau$ is at
+most $|B|$, and
+\[
+  \err_{H_\tau}(\A_\tau)\le\eta|B|.
+\]
+The pair-relation vectors of $\A_\tau$ and $\F^*$ can be compared through
+the majority sign vector.  The Hamming triangle inequality gives
+\begin{equation}\label{eq:distance-through-majority}
+ \dist(\A_\tau,\F^*)
+ \le
+ \err_{H_\tau}(\A_\tau)+\err_{H_\tau}(\F^*)
+ \le(\eta+1)|B|.
+\end{equation}
+Using the triangle inequality once more, now between each input clustering
+and $\A_\tau$, we obtain
+\begin{align*}
+ \Obj(\A_\tau)
+ &=\sum_{h=1}^m\dist(\Pp_h,\A_\tau)\\
+ &\le\sum_{h=1}^m
+       \bigl(\dist(\Pp_h,\F^*)+\dist(\F^*,\A_\tau)\bigr)\\
+ &\le\OPT+m(\eta+1)|B|\\
+ &\le\bigl(1+3(\eta+1)\alpha\bigr)\OPT,
+\end{align*}
+where the final inequality uses
+$\mathsf{AVG}=\OPT/m$ and~\eqref{eq:bad-set-bound}.
+\end{proof}
+
+\subsubsection{Bounds for ordered input candidates}
+
+Relabel the input clusterings for the analysis so that
+\begin{equation}\label{eq:ordered-errors}
+  |I_1|\le|I_2|\le\cdots\le|I_m|.
+\end{equation}
+The algorithm does not know or use this ordering.
+
+Fix parameters
+\[
+  \alpha>0,\qquad 0<\beta<1,\qquad c>1,\qquad s>1,
+  \qquad g>s,
+\]
+such that $cs-s-2c>0$.  Let $t_0$ be the largest index such that
+\begin{equation}\label{eq:low-inputs}
+  |I_{t_0}|\le(1-\beta)\mathsf{AVG}.
+\end{equation}
+If there is no such index, set $t_0=0$.
+
+\begin{lemma}[Ordered-error bounds]\label{lem:ordered-error-bounds}
+Suppose $t_0<m/g$.
+\begin{enumerate}[label=(\roman*),leftmargin=2.5em]
+\item For every $h$ satisfying $t_0<h\le m/s$,
+\begin{equation}\label{eq:h-error-bound}
+ |I_h|
+ \le
+ \left(
+  1+\frac{\beta(g-s)+s}{g(s-1)}
+ \right)\mathsf{AVG}.
+\end{equation}
+\item For every $k$ satisfying
+\[
+ t_0<k\le\frac{2c+s}{cs}m,
+\]
+we have
+\begin{equation}\label{eq:k-error-bound}
+ |I_k|
+ \le
+ \left(
+ 1+
+ \frac{\beta\bigl(g(2c+s)-sc\bigr)+sc}
+      {g(cs-s-2c)}
+ \right)\mathsf{AVG}.
+\end{equation}
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Fix an index $a>t_0$.  By the ordering and the definition of $t_0$,
+the indices $t_0+1,\ldots,a-1$ have error larger than
+$(1-\beta)\mathsf{AVG}$, while the indices $a,a+1,\ldots,m$ have error at
+least $|I_a|$.  Therefore,
+\begin{align*}
+ m\mathsf{AVG}
+ =\sum_{i=1}^m|I_i|
+ &\ge
+ (a-t_0-1)(1-\beta)\mathsf{AVG}
+ +(m-a+1)|I_a|.
+\end{align*}
+Rearranging gives
+\begin{equation}\label{eq:generic-order-bound}
+ \frac{|I_a|}{\mathsf{AVG}}
+ \le
+ 1+
+ \frac{\beta(a-1)+(1-\beta)t_0}{m-a+1}.
+\end{equation}
+
+If $a=h\le m/s$, then
+\[
+ \frac{h-1}{m-h+1}\le\frac1{s-1}
+ \qquad\text{and}\qquad
+ \frac{t_0}{m-h+1}\le\frac{s}{g(s-1)}.
+\]
+Substituting these two inequalities into
+\eqref{eq:generic-order-bound} proves~\eqref{eq:h-error-bound}.
+
+For the second part, put
+\[
+ \lambda:=\frac{2c+s}{cs}.
+\]
+The assumption $cs-s-2c>0$ is exactly the assertion $\lambda<1$.
+If $a=k\le\lambda m$, then
+\[
+ \frac{k-1}{m-k+1}
+ \le\frac{2c+s}{cs-s-2c}
+\]
+and
+\[
+ \frac{t_0}{m-k+1}
+ \le\frac{sc}{g(cs-s-2c)}.
+\]
+Using these estimates in~\eqref{eq:generic-order-bound} proves
+\eqref{eq:k-error-bound}.
+\end{proof}
+
+For every index $h$, define
+\begin{equation}\label{eq:S-h-definition}
+ \Sset_h
+ :=\{\Pp_j:|I_j\cap I_h|>\alpha\mathsf{AVG}\}.
+\end{equation}
+If $t_0<h\le m/s$ and $|\Sset_h|\ge m/c$, then
+\eqref{eq:input-candidate-cost-identity} and
+Lemma~\ref{lem:ordered-error-bounds}(i) imply
+\begin{equation}\label{eq:R2-bound}
+ \Obj(\Pp_h)
+ \le R_2\OPT,
+ \qquad
+ R_2
+ :=
+ 2+\frac{\beta(g-s)+s}{g(s-1)}-\frac{2\alpha}{c}.
+\end{equation}
+
+Suppose instead that $|\Sset_h|<m/c$.  Define
+\begin{equation}\label{eq:N-h-definition}
+ \N_h
+ :=
+ \left\{
+ \Pp_j:
+ h<j\le h+\frac{m}{c}+\frac{m}{s}
+ \ \text{and}\ 
+ |I_j\cap I_h|\le\alpha\mathsf{AVG}
+ \right\}.
+\end{equation}
+The index interval in~\eqref{eq:N-h-definition} contains
+$m/c+m/s$ input clusterings, and fewer than $m/c$ of them belong to
+$\Sset_h$.  Consequently,
+\begin{equation}\label{eq:N-h-size}
+ |\N_h|\ge\frac{m}{s}.
+\end{equation}
+
+Fix $\Pp_k\in\N_h$ and define
+\begin{equation}\label{eq:F-hk-definition}
+ \F_{h,k}
+ :=
+ \left\{
+ \Pp_j:
+ |I_j\cap I_h|\le\alpha\mathsf{AVG}
+ \ \text{and}\ 
+ |I_j\cap I_k|\le\alpha\mathsf{AVG}
+ \right\}.
+\end{equation}
+If $|\F_{h,k}|<m/s$, then every clustering outside $\F_{h,k}$ belongs to
+$\Sset_h\cup\Sset_k$.  Therefore,
+\begin{equation}\label{eq:S-k-size}
+ |\Sset_k|
+ >m\left(1-\frac1s-\frac1c\right).
+\end{equation}
+Moreover, because $h\le m/s$ and $k\in\N_h$,
+\[
+ k\le\frac{2c+s}{cs}m.
+\]
+Equations~\eqref{eq:input-candidate-cost-identity} and
+\eqref{eq:k-error-bound} now give
+\begin{equation}\label{eq:R3-bound}
+ \Obj(\Pp_k)
+ \le R_3\OPT,
+\end{equation}
+where
+\begin{equation}\label{eq:R3-definition}
+ R_3
+ :=
+ 2+
+ \frac{\beta\bigl(g(2c+s)-sc\bigr)+sc}
+      {g(cs-s-2c)}
+ -2\left(1-\frac1s-\frac1c\right)\alpha.
+\end{equation}
+
+Finally, if $|\F_{h,k}|\ge m/s$, then every
+$\Pp_\ell\in\F_{h,k}$ satisfies
+\[
+ |I_h\cap I_k|\le\alpha\mathsf{AVG},\qquad
+ |I_h\cap I_\ell|\le\alpha\mathsf{AVG},\qquad
+ |I_k\cap I_\ell|\le\alpha\mathsf{AVG}.
+\]
+Hence Lemma~\ref{lem:sparse-triple} applies to the triple
+$(h,k,\ell)$.
+
+\subsubsection{Sampling the four cases}
+
+For ease of exposition, assume that $m/g,m/s$, and $m/c$ are integers.
+This is without loss of generality: one may replace every input clustering
+by $12g$ identical copies.  This multiplies every candidate cost and
+$\OPT$ by the same factor and does not affect any ratio.  Sampling a
+uniformly random copy is equivalent to sampling a uniformly random original
+input.  The replication need not be performed explicitly by the algorithm.
+
+One \emph{macro-pool} consists of three independent multisets
+\[
+  \Sset^{(1)},\Sset^{(2)},\Sset^{(3)},
+\]
+each containing
+\begin{equation}\label{eq:q0-definition}
+  q_0:=\left\lceil8g\ln m\right\rceil
+\end{equation}
+indices sampled independently and uniformly from $[m]$.  The candidate set
+of this macro-pool contains the input candidate for every sampled index and
+the triple candidate for every ordered triple with one index from each of
+$\Sset^{(1)},\Sset^{(2)},\Sset^{(3)}$.  Repetitions are harmless: they can be
+viewed as distinct copies of the same input clustering.
+
+\begin{lemma}[One-pool candidate lemma]\label{lem:one-pool}
+At any fixed prefix, with probability at least $1-m^{-3}$, one macro-pool
+contains a candidate of cost at most
+\begin{equation}\label{eq:r-general}
+ r\OPT,
+ \qquad
+ r:=\max\{R_1,R_2,R_3,R_4\},
+\end{equation}
+where
+\begin{align}
+ R_1&:=2-\beta,\label{eq:R1-definition}\\
+ R_2&:=2+\frac{\beta(g-s)+s}{g(s-1)}-\frac{2\alpha}{c},
+       \label{eq:R2-definition}\\
+ R_3&:=2+
+ \frac{\beta\bigl(g(2c+s)-sc\bigr)+sc}
+      {g(cs-s-2c)}
+ -2\left(1-\frac1s-\frac1c\right)\alpha,
+       \label{eq:R3-definition-again}\\
+ R_4&:=1+3(\eta+1)\alpha.\label{eq:R4-definition}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+Let $t_0$ be defined by~\eqref{eq:low-inputs}.  First suppose
+$t_0\ge m/g$.  Then at least an $1/g$ fraction of the input clusterings
+satisfy $|I_i|\le(1-\beta)\mathsf{AVG}$.  The probability that
+$\Sset^{(1)}$ misses all of them is at most
+\[
+ \left(1-\frac1g\right)^{q_0}
+ \le e^{-q_0/g}
+ \le m^{-8}.
+\]
+If $\Pp_i$ is sampled from this set, then
+\eqref{eq:input-candidate-cost-identity} gives
+\[
+ \Obj(\Pp_i)
+ \le\OPT+m(1-\beta)\mathsf{AVG}
+ =(2-\beta)\OPT
+ =R_1\OPT.
+\]
+
+It remains to consider $t_0<m/g$.  The set of indices
+\[
+ \{t_0+1,t_0+2,\ldots,m/s\}
+\]
+has size at least
+\[
+ \frac{m}{s}-\frac{m}{g}
+ =\frac{g-s}{gs}m.
+\]
+Because $g\ge2s$, the probability that $\Sset^{(1)}$ misses this set is at
+most
+\[
+ \exp\!\left(-q_0\frac{g-s}{gs}\right)
+ \le m^{-8}.
+\]
+Condition on sampling one such index $h$.
+
+If $|\Sset_h|\ge m/c$, then~\eqref{eq:R2-bound} shows that the sampled input
+candidate $\Pp_h$ has cost at most $R_2\OPT$.  Otherwise,
+\eqref{eq:N-h-size} shows that $|\N_h|\ge m/s$.  Conditioned on the already
+chosen $h$, the independent multiset $\Sset^{(2)}$ misses $\N_h$ with
+probability at most
+\[
+ \left(1-\frac1s\right)^{q_0}
+ \le e^{-q_0/s}
+ \le m^{-8}.
+\]
+Condition on sampling an index $k\in\N_h$.
+
+If $|\F_{h,k}|<m/s$, then~\eqref{eq:R3-bound} shows that the sampled input
+candidate $\Pp_k$ has cost at most $R_3\OPT$.  Otherwise,
+$|\F_{h,k}|\ge m/s$, and the independent multiset $\Sset^{(3)}$ misses
+$\F_{h,k}$ with probability at most $m^{-8}$.  If
+$\ell\in\F_{h,k}$ is sampled, Lemma~\ref{lem:sparse-triple} shows that the
+sampled triple candidate $(h,k,\ell)$ has cost at most $R_4\OPT$.
+
+There are at most three relevant sampling failures in any branch of the
+case analysis.  Their total probability is at most
+\[
+ 3m^{-8}\le m^{-3}
+\]
+for $m\ge2$.  This proves the lemma.
+\end{proof}
+
+\subsubsection{Fixing the parameters}
+
+We now fix
+\begin{equation}\label{eq:parameter-choice}
+ \alpha:=\frac{1}{6(\eta+1)},
+ \qquad
+ \beta:=\frac{\alpha}{24},
+ \qquad
+ s:=4,
+ \qquad
+ c:=3,
+ \qquad
+ g:=\left\lceil\frac{48}{\alpha}\right\rceil.
+\end{equation}
+Then $cs-s-2c=2>0$, $g>s$, and
+\begin{equation}\label{eq:delta-definition}
+ \delta:=\beta
+ =\frac{1}{144(\eta+1)}.
+\end{equation}
+
+The four terms in Lemma~\ref{lem:one-pool} satisfy
+\begin{align}
+ R_1&=2-\frac{\alpha}{24}=2-\delta,
+       \label{eq:R1-evaluated}\\
+ R_2
+ &=2+\frac{\beta(g-4)+4}{3g}-\frac{2\alpha}{3}
+ \le2-\frac{5\alpha}{8},
+       \label{eq:R2-evaluated}\\
+ R_3
+ &=2+5\beta+\frac{6-6\beta}{g}-\frac{5\alpha}{6}
+ \le2-\frac{\alpha}{2},
+       \label{eq:R3-evaluated}\\
+ R_4&=1+3(\eta+1)\alpha=\frac32.
+       \label{eq:R4-evaluated}
+\end{align}
+For completeness, the inequality in~\eqref{eq:R2-evaluated} uses
+\[
+ \frac{\beta}{3}=\frac{\alpha}{72}
+ \qquad\text{and}\qquad
+ \frac{4}{3g}\le\frac{\alpha}{36},
+\]
+while~\eqref{eq:R3-evaluated} uses
+\[
+ 5\beta=\frac{5\alpha}{24}
+ \qquad\text{and}\qquad
+ \frac6g\le\frac{\alpha}{8}.
+\]
+Since $\eta\ge1$, $R_1$ is the largest of the four terms.  Therefore,
+\begin{equation}\label{eq:r-subtwo}
+  r=2-\delta.
+\end{equation}
+
+\subsection{The history-stability lemma}
+
+In this subsection, we strengthen the pointwise sampled-candidate lemma to a
+statement about the complete history of a candidate.  This is the central
+new ingredient needed for rebuilding.
+
+Let $\A$ denote the union of all candidate processes maintained by the
+algorithm, and define
+\begin{equation}\label{eq:M-definition}
+  M_t:=\min_{a\in\A}G_a(t).
+\end{equation}
+Because every $G_a(t)$ is nondecreasing, $M_t$ is also nondecreasing.
+
+\begin{lemma}[History stability]\label{lem:history-stability}
+Fix a prefix $t$.  On the sampling-success event of
+Lemma~\ref{lem:one-pool}, the corresponding macro-pool contains a candidate
+$a$ satisfying
+\begin{equation}\label{eq:history-good-candidate}
+  G_a(t)\le(2-\delta)\OPT_t.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Fix an optimal clustering $\F_t^*$ of $V_t$.  Define all error sets at this
+prefix relative to this single clustering $\F_t^*$.  In particular,
+\begin{equation}\label{eq:time-t-error-set}
+ I_i^t
+ :=
+ \left\{
+  \{x,y\}\subseteq V_t:
+  \Pp_i^t\text{ and }\F_t^*
+  \text{ disagree on }\{x,y\}
+ \right\}.
+\end{equation}
+
+In the first three cases of Lemma~\ref{lem:one-pool}, the good candidate is
+an input candidate $i$.  Its score is nondecreasing, and therefore
+\[
+ G_i(t)=f_i(t)\le(2-\delta)\OPT_t.
+\]
+
+It remains to consider the sparse-triple case.  Suppose the sampled triple
+$\tau=(i,j,k)$ satisfies
+\[
+ |I_i^t\cap I_j^t|,
+ |I_j^t\cap I_k^t|,
+ |I_k^t\cap I_i^t|
+ \le\alpha\frac{\OPT_t}{m}.
+\]
+Define
+\begin{equation}\label{eq:Btt-definition}
+ B_{t,t}
+ :=
+ (I_i^t\cap I_j^t)
+ \cup(I_j^t\cap I_k^t)
+ \cup(I_k^t\cap I_i^t).
+\end{equation}
+For an earlier time $u\le t$, let
+\begin{equation}\label{eq:Btu-definition}
+ B_{t,u}:=B_{t,t}\cap\binom{V_u}{2}.
+\end{equation}
+It is important that both $B_{t,t}$ and $B_{t,u}$ are defined relative to
+the same final-prefix optimum $\F_t^*$.  In general, the analogous error
+sets defined using unrelated optima $\F_u^*$ and $\F_t^*$ need not be
+nested.
+
+The majority graph $H_\tau(u)$ is the restriction of $H_\tau(t)$ to $V_u$.
+Consequently, $B_{t,u}$ is exactly the set of edges on which the majority
+sign in $H_\tau(u)$ disagrees with the pair relation of
+$\F_t^*|_{V_u}$.  Therefore,
+\begin{equation}\label{eq:restricted-opt-majority-error}
+ \err_{H_\tau(u)}(\F_t^*|_{V_u})=|B_{t,u}|.
+\end{equation}
+The Online Agreement guarantee gives
+\begin{align}
+ \err_{H_\tau(u)}(\A_\tau(u))
+ &\le\eta\min_{\C}\err_{H_\tau(u)}(\C)\notag\\
+ &\le\eta|B_{t,u}|.                       \label{eq:agreement-history-bound}
+\end{align}
+Using the Hamming triangle inequality through the majority sign vector,
+we get
+\begin{equation}\label{eq:history-distance-bound}
+ \dist_{V_u}(\A_\tau(u),\F_t^*|_{V_u})
+ \le(\eta+1)|B_{t,u}|.
+\end{equation}
+
+We now compare the full consensus cost at time $u$ to the optimum at the
+later time $t$.  By the triangle inequality and restriction monotonicity,
+\begin{align}
+ f_\tau(u)
+ &=\sum_{h=1}^m\dist_{V_u}(\A_\tau(u),\Pp_h^u)\notag\\
+ &\le
+ \sum_{h=1}^m\dist_{V_u}(\Pp_h^u,\F_t^*|_{V_u})
+ +m\dist_{V_u}(\F_t^*|_{V_u},\A_\tau(u))\notag\\
+ &\le
+ \OPT_t+m(\eta+1)|B_{t,u}|\notag\\
+ &\le
+ \OPT_t+m(\eta+1)|B_{t,t}|\notag\\
+ &\le
+ \bigl(1+3(\eta+1)\alpha\bigr)\OPT_t\notag\\
+ &=\frac32\OPT_t.                         \label{eq:history-triple-final}
+\end{align}
+This bound holds for every $u\le t$.  Taking the maximum over $u$ gives
+\[
+ G_\tau(t)\le\frac32\OPT_t\le(2-\delta)\OPT_t.
+\]
+This completes the proof.
+\end{proof}
+
+\subsection{Amplification over all prefixes}
+
+In this subsection, we make the history-stability guarantee simultaneous
+over all $n$ prefixes.  Let
+\begin{equation}\label{eq:Q-definition}
+ Q
+ :=
+ \max\left\{
+  1,
+  \left\lceil\frac{\ln(n/\zeta)}{3\ln m}\right\rceil
+ \right\}.
+\end{equation}
+At initialization, independently construct $Q$ macro-pools.  The final
+candidate family $\A$ is the union of the candidate families generated by
+these macro-pools.  Let
+\begin{equation}\label{eq:K-definition}
+ K:=|\A|.
+\end{equation}
+Since each macro-pool contains at most $3q_0$ input candidates and at most
+$q_0^3$ triple candidates,
+\begin{equation}\label{eq:K-bound}
+ K\le Q(3q_0+q_0^3)
+ =O_\eta\!\left(\log^3\!\frac{mn}{\zeta}\right).
+\end{equation}
+
+For a fixed prefix, one macro-pool fails with probability at most $m^{-3}$.
+Because the $Q$ macro-pools are independent, they all fail at this prefix
+with probability at most
+\[
+ m^{-3Q}\le\frac{\zeta}{n}.
+\]
+A union bound over $t=1,2,\ldots,n$ proves the following event.
+
+\begin{lemma}[Simultaneous history event]\label{lem:simultaneous-event}
+With probability at least $1-\zeta$, simultaneously for every time
+$t\in[n]$,
+\begin{equation}\label{eq:simultaneous-M-bound}
+ M_t\le(2-\delta)\OPT_t.
+\end{equation}
+\end{lemma}
+
+No independence between different prefixes is required for the final union
+bound.  Independence is used only between the $Q$ macro-pools at a fixed
+prefix.
+
+\subsection{The rebuilding algorithm}
+
+In this subsection, we describe the rebuilding rule.  Define the hysteresis
+parameter
+\begin{equation}\label{eq:theta-definition}
+  \theta:=\frac{\delta}{4}.
+\end{equation}
+The algorithm maintains one current candidate.  Its output clustering is
+the current clustering of this candidate.
+
+\begin{figure}[H]
+\centering
+\fbox{\begin{minipage}{0.94\textwidth}
+\textbf{Algorithm 1: Sampled cluster fitting with rebuilding}
+\begin{enumerate}[leftmargin=2em,itemsep=3pt,topsep=5pt]
+\item Before the first arrival, construct the $Q$ independent macro-pools
+      and initialize every input and triple candidate described above.
+\item At time $t$, update every candidate $\A_a(t)$, its current cost
+      $f_a(t)$, its history score $G_a(t)$, and
+      $M_t=\min_aG_a(t)$.
+\item If $M_t=0$, output any candidate with history score zero.  If the
+      current candidate becomes positive while $M_t$ remains zero, switch to
+      another zero-score candidate.
+\item When $M_t$ first becomes positive, or when the preceding positive
+      phase ends, begin a new phase.  Set the phase baseline to $B:=M_t$,
+      clear the phase's discarded-candidate set, and choose a minimizer of
+      $G_a(t)$ as the current candidate.
+\item A positive phase continues while $M_t<(1+\theta)B$.  Within the phase,
+      follow the current candidate while
+      $G_a(t)<(1+\theta)B$.  If this inequality fails, discard $a$ for the
+      remainder of the phase and switch to any undiscarded candidate whose
+      history score is below $(1+\theta)B$.
+\item At the first time $M_t\ge(1+\theta)B$, end the current phase and start
+      a new phase using Step~4.
+\end{enumerate}
+\end{minipage}}
+\caption{The rebuilding algorithm.}\label{alg:rebuilding}
+\end{figure}
+
+The switch in Step~5 is always possible.  Indeed, while the current phase
+continues, the candidate attaining $M_t$ has score strictly smaller than
+$(1+\theta)B$.  A candidate discarded earlier in the phase has score at
+least $(1+\theta)B$ forever because history scores are nondecreasing.  Thus,
+the current minimizer has not been discarded.
+
+\subsection{Analysis of the rebuilding algorithm}
+
+In this subsection, we prove the competitive ratio and the per-vertex
+recourse bound.
+
+\subsubsection{Competitive ratio}
+
+\begin{lemma}[Cost within a phase]\label{lem:phase-cost}
+Assume the simultaneous history event in
+Lemma~\ref{lem:simultaneous-event}.  At every time $t$ in a positive phase,
+the output of Algorithm~\ref{alg:rebuilding} satisfies
+\begin{equation}\label{eq:phase-cost-bound}
+ \Obj_t(\C_t)
+ <(1+\theta)(2-\delta)\OPT_t.
+\end{equation}
+If $M_t=0$, then the output cost is zero.
+\end{lemma}
+
+\begin{proof}
+If $M_t=0$, the algorithm follows a candidate with history score zero.
+Its current cost is at most its history score, so the output cost is zero.
+
+Consider a positive phase beginning at time $t_0$ with baseline
+$B=M_{t_0}$.  Throughout the phase, the maintained candidate $a$ satisfies
+\[
+ f_a(t)\le G_a(t)<(1+\theta)B.
+\]
+By the simultaneous event,
+\[
+ B=M_{t_0}\le(2-\delta)\OPT_{t_0}.
+\]
+The monotonicity of the optimum gives $\OPT_{t_0}\le\OPT_t$.  Consequently,
+\[
+ \Obj_t(\C_t)=f_a(t)
+ <(1+\theta)(2-\delta)\OPT_t.
+\]
+At a phase boundary, the algorithm first starts the new phase and chooses a
+minimizer of $G_a(t)$, so the same bound holds there as well.
+\end{proof}
+
+Using $\theta=\delta/4$, we have
+\begin{align}
+ (1+\theta)(2-\delta)
+ &=\left(1+\frac\delta4\right)(2-\delta)\notag\\
+ &=2-\frac\delta2-\frac{\delta^2}{4}\notag\\
+ &\le2-\frac{1}{288(\eta+1)}.             \label{eq:final-factor-arithmetic}
+\end{align}
+Combining Lemma~\ref{lem:phase-cost},
+Lemma~\ref{lem:simultaneous-event}, and
+\eqref{eq:final-factor-arithmetic} proves the competitive-ratio part of
+Theorem~\ref{thm:main}.
+
+\subsubsection{Number of rebuilds}
+
+Every candidate cost is an integer between zero and
+\begin{equation}\label{eq:Lambda-definition}
+ \Lambda:=m\binom n2.
+\end{equation}
+The same is true of every history score and of $M_t$.  During the zero-score
+stage, a candidate that becomes positive can never again have score zero.
+Hence there are at most $K$ candidate switches while $M_t=0$.
+
+Let $B_1,B_2,\ldots,B_H$ be the baselines of the positive phases.  By the
+phase-ending rule,
+\[
+ B_{h+1}\ge(1+\theta)B_h.
+\]
+Since $1\le B_h\le\Lambda$, the number of positive phases is at most
+\begin{equation}\label{eq:number-phases}
+ H
+ \le
+ 1+\left\lceil\log_{1+\theta}\Lambda\right\rceil
+ =O\!\left(\frac{1}{\delta}\log(mn)\right).
+\end{equation}
+Within one phase, every discarded candidate remains discarded until the
+phase ends.  Therefore there are at most $K$ candidate switches in each
+phase, up to one additional choice at the phase boundary.  The total number
+of outer candidate switches is consequently
+\begin{equation}\label{eq:outer-switches}
+ O\!\left(
+ K\left[1+\frac{1}{\delta}\log(mn)\right]
+ \right).
+\end{equation}
+
+\subsubsection{Per-vertex recourse}
+
+Fix a vertex $v$.  Whenever the outer algorithm switches from one candidate
+to another, the cluster identifier assigned to $v$ changes at most once.
+Thus~\eqref{eq:outer-switches} bounds the recourse caused by outer rebuilding.
+
+While an input candidate is selected, it causes no internal recourse.  For a
+fixed triple candidate $\tau$, Theorem~\ref{thm:online-agreement} bounds the
+number of changes of $v$ inside that candidate by
+$q_{\mathrm A}\lceil\log_2 n\rceil$ over the entire arrival sequence.  If
+the outer algorithm leaves $\tau$ and later returns to it, the re-entry is
+already counted as an outer candidate switch.  Therefore, summing
+conservatively over all $K$ candidates,
+\begin{equation}\label{eq:recourse-explicit}
+ \rec(v)
+ \le
+ O\!\left(
+ K\left[
+   1+\frac{1}{\delta}\log(mn)
+   +q_{\mathrm A}\log n
+ \right]
+ \right).
+\end{equation}
+Using~\eqref{eq:K-bound} and the fact that $\eta,q_{\mathrm A}$ are absolute
+constants gives
+\begin{equation}\label{eq:recourse-polylog}
+ \rec(v)
+ =O_{\eta,q_{\mathrm A}}\!\left(
+    \log^4\!\frac{mn}{\zeta}
+  \right).
+\end{equation}
+This bound holds for every outcome of the random samples.  Together with the
+competitive analysis, it completes the proof of
+Theorem~\ref{thm:main}.
+
+\subsection{Discussion and limitations}
+
+In this subsection, we record the scope of the result and explain why the
+cluster-fitting candidates are necessary.
+
+\begin{remark}[Why the previous sampled-medoid argument stops at $2$]
+For an input candidate $\Pp_i$, define
+\[
+ F_i(t):=\sum_{j=1}^m\dist_{V_t}(\Pp_i^t,\Pp_j^t).
+\]
+A uniformly random input candidate satisfies
+\[
+ \mathbb E_i[F_i(t)]
+ \le2\left(1-\frac1m\right)\OPT_t.
+\]
+For a target ratio $R$, Markov's inequality guarantees an $R$-good fraction
+only when
+\[
+ R>2\left(1-\frac1m\right).
+\]
+Thus, for a fixed constant $R<2$ and arbitrary $m$, sampling input
+clusterings alone gives no useful good-candidate probability.  The sparse
+triple candidate avoids this obstruction by providing the stronger
+$3\OPT/2$ branch.
+\end{remark}
+
+\begin{remark}[Oblivious adversary]
+The probability amplification treats every prefix as a fixed instance and
+then takes a union bound.  Therefore, the input clusterings and arrival order
+must be chosen independently of the initial random samples.  The proof does
+not cover an adversary that observes the algorithm's outputs, infers
+information about the samples, and adaptively chooses future vertices.
+\end{remark}
+
+\begin{remark}[Unknown horizon]
+The proof assumes that an upper bound on $n$ is known when the sample pools
+are chosen.  If the horizon is unknown, one may use geometrically increasing
+horizons and restart the outer rebuilding mechanism when the current horizon
+is exceeded.  Each vertex participates in only logarithmically many such
+restarts, so this changes the recourse by at most another logarithmic factor.
+\end{remark}
+
+\begin{remark}[Deterministic version]
+Enumerating all $m$ input candidates and all $\binom m3$ triple candidates
+removes the sampling failure and gives the same competitive analysis
+deterministically.  However, the rebuilding proof then gives polynomial,
+rather than polylogarithmic, dependence on $m$ in the recourse.  Obtaining a
+polylogarithmic-size deterministic hitting family for the four-case
+cluster-fitting argument remains the missing ingredient for a deterministic
+single-digit, or deterministic sub-$2$, result by this route.
+\end{remark}
+
+\begin{remark}[Computation]
+The algorithm evaluates every maintained candidate against all $m$ input
+clusterings.  This is polynomial time, but the present proof optimizes the
+competitive ratio and recourse rather than update time or memory.  No random
+evaluation sample is needed, and therefore the evaluation loss appearing in
+the streaming-over-input-clusterings algorithm of
+\cite{ChakrabortyEtAl2026} is absent here.
+\end{remark}
+
+\begin{thebibliography}{9}
+
+\bibitem{ChakrabortyEtAl2026}
+Diptarka Chakraborty, Kushagra Chatterjee, Debarati Das, and
+Tien-Long Nguyen.
+\newblock A generic framework for fair consensus clustering in streams.
+\newblock In \emph{Proceedings of the 25th International Conference on
+Autonomous Agents and Multiagent Systems (AAMAS)}, 2026.
+
+\bibitem{CohenAddadEtAl2022}
+Vincent Cohen-Addad, Silvio Lattanzi, Andreas Maggiori, and Nikos Parotsidis.
+\newblock Online and consistent correlation clustering.
+\newblock In \emph{Proceedings of the 39th International Conference on
+Machine Learning (ICML)}, 2022.
+
+\end{thebibliography}
+
+\end{document}

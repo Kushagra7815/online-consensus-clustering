@@ -1,0 +1,123 @@
+\section{Another proof for Toy Example for merge case}\label{sec:another_proof_for_toy_example_for_merge_case} % (fold)
+
+We provide another proof for~\cref{lem:toy.example.merge.case}, which states that, if $ K $ is the first time step where $\obj(\solcls{K}) \ge 2\,\obj(\optcls{0})$, then $\obj(\optcls{K}) \ge (1+\epsilon)\,\obj(\optcls{0})$ for some $\epsilon \in (0,1)$. This proof \textbf{won't} use~\cref{lem:charging.s.N1.N2}
+
+\begin{proof}[Proof of~\cref{lem:toy.example.merge.case}]
+    Let $ n_{0} = \card{C_{1}} + \card{C_{2}} $. Denote $ \OPT_{t_0} = \obj(\optcls{0}) $, and $ \OPT_{t_{K}} = \obj(\optcls{K}) $.
+
+    We want to prove that $ \Delta{\OPT} = \OPT_{t_{K}} - \OPT_{t_{0}} \geq \epsilon \OPT_{t_{0}} $ for some constants $ \epsilon\in (0,1) $.
+
+    We know that at time $ t_{0} $, the optimal clustering separates $ C_{1} $ and $ C_{2} $, hence the optimal cost $ t_{0} $ is $ \OPT_{t_0} = w^{-}(C_1) + w^{-}(C_{2}) + w^{+}(C_{1}, C_{2}) $.
+    Keeping $ C_{1} $ and $ C_{2} $ can not provide a better solution, thus
+    \begin{align}
+        \OPT_{t_0} \le w^{-}(C_1) + w^{-}(C_{2}) + w^{-}(C_{1}, C_{2}). \label{eq.merge.is.not.opt}
+    \end{align}
+
+    $ \bullet $ We first give a lower bound on $ \Delta{\OPT} $.
+
+    Let $ v_{k} $ be the arriving point at time $ t_{k} $.
+    For brevity, let $ x_{k} = w^{-}(v_{k}, C_{1}),\ y_{k} = w^{-}(v_{k}, C_{2}) $.
+    Note that,
+    \begin{align}
+        \Delta\OPT \ge \sum_{k=1}^{K} x_k + y_k. \label{eq.upper.xk.yk}
+    \end{align}
+
+    For any two points $ u,v\in C_{1} $, by triangle inequality, $ w^{-}(u,v) \le w^{-}(v_{k}, u) + w^{-}(v_{k}, v) $. It follows that $ w^{-}(C_{1}) \le \card{C_{1}}w^{-}(v_{k}, C_{1}) = \card{C_{1}}x_{k} $.
+
+    Similarly, we have $ w^{-}(C_{2}) \le \card{C_{2}}y_{k} $, and $ w^{-}(C_{1}, C_{2}) \le \card{C_{2}}x_{k} + \card{C_{1}}y_{k} $.
+
+    Summing up, it follows that
+    \[ w^{-}(C_{1}) + w^{-}(C_{2}) + w^{-}(C_{1}, C_{2})\leq (\card{C_1}+\card{C_2})(x_{k}+y_{k}) = n_{0}(x_{k} + y_{k}) \]
+    Hence
+    \begin{align}
+        \Delta\OPT \geq \sum_{k=1}^{K}x_{k} + y_{k}\ge \dfrac{K}{n_0}(w^{-}(C_{1}) + w^{-}(C_{2}) + w^{-}(C_{1}, C_{2})) 
+    \end{align}
+    Using~\eqref{eq.merge.is.not.opt}, we obtain
+    \begin{align}
+        \Delta\OPT \geq K \dfrac{\OPT_{t_0}}{n_0}.\label{eq.lowerbound.Delta.OPT}
+    \end{align}
+
+    $ \bullet $ We turn to upper bound the increasing cost of our algorithm.
+
+    Let $ \Delta\alg_{t_{k}} = \obj(\solcls{k}) - \obj(\solcls{k-1}) $ be the increasing cost of our algorithm at time step $ t_{k} $, for any $ 1\leq k \leq K $.
+
+    We will show that
+    \begin{align}
+        \sum_{k=1}^{K}\Delta \alg_{t_{k}} \leq \left(2+\dfrac{K}{n_0}\right)\Delta\OPT + \dfrac{3K\OPT_{t_0}}{n_0}.\label{eq.upper.Delta.alg}
+    \end{align}
+
+    From the assumption that $ K $ is the first time step where $ \obj( \solcls{K} )\geq 2\OPT_{t_0} ) $, the following is trivial
+    \begin{align}
+        \sum_{k=1}^{K-1}\Delta\alg_{t_{k}} \leq \OPT_{t_0} ,\label{eq.upper.all.Delta.alg}
+    \end{align}
+    and
+    \begin{align}
+        \sum_{k=1}^{K}\Delta\alg_{t_{k}} > \OPT_{t_0} ,\label{eq.upper.all.Delta.alg}
+    \end{align}
+
+    At time $ t_{k} $, when the new point $ v_{k} $ comes, we are maintaining a clustering consisting of two clusters, $ A_{1}^{k-1} = C_{1}\cup N^{k-1}_{1} $, and $ A_{2}^{k-1} = C_{2}\cup N^{k-1}_{2} $.
+    Point $ v_{k} $ is put into either $ A_{1}^{k-1} $ or $ A_{2}^{k-1} $, whichever minimize the cost.
+
+    The increasing cost of putting $ v_{k} $ into $ A_{1}^{k-1} $ is $ x_{k} + w^{-}(v_{k}, N^{k-1}_{1}) + w^{+}(v_{k}, A_{2}^{k-1}) $, and the increasing cost of putting $ v_{k} $ into $ A_{2}^{k-1} $ is $ y_{k} + w^{-}(v_{k}, N^{k-1}_{2}) + w^{+}(v_{k}, A_{1}^{k-1}) $.
+    Hence,
+    \begin{align}
+        &\>\>\>\Delta \alg_{t_{k}}  \nonumber \\
+        &= \min\left( x_{k} + w^{-}(v_{k}, N^{k-1}_{1}) + w^{+}(v_{k}, A_{2}^{k-1}) ,  y_{k} + w^{-}(v_{k}, N^{k-1}_{2}) + w^{+}(v_{k}, A_{1}^{k-1}) \right) \nonumber \\
+                            &\leq \dfrac{\card{C_{1}}}{n_0}\left(x_{k} + w^{-}(v_{k}, N^{k-1}_{1}) + w^{+}(v_{k}, A_{2}^{k-1})\right) + \dfrac{\card{C_{2}}}{n_0}\left(y_{k} + w^{-}(v_{k}, N^{k-1}_{2}) + w^{+}(v_{k}, A_{1}^{k-1})\right). \label{eq.convex.comb.of.two.choices}
+    \end{align}
+
+    Consider a vertex $ u\in C_{1} $, and $ v \in A_{2}^{k-1} $, by triangle inequality, $ w^{+}(v_{k}, v) \leq w^{-}(v_{k},u) + w^{+}(u,v) $.
+    It follows that $ w^{+}(v_{k}, A_{2}^{k-1}) \leq \dfrac{\card{A_{2}^{k-1}}}{\card{C_{1}}}x_{k} + \dfrac{w^{+}(C_{1}, A_{2}^{k-1})}{\card{C_{1}}} $.
+
+    Similarly, we have $ w^{+}(v_{k}, A_{1}^{k-1}) \leq \dfrac{\card{A_{1}^{k-1}}}{\card{C_{2}}}x_{k} + \dfrac{w^{+}(C_{2}, A_{1}^{k-1})}{\card{C_{2}}} $.
+
+    Substituting these inequalities into~\eqref{eq.convex.comb.of.two.choices}, we obtain
+    \begin{align}
+        \>\>\>&\Delta \alg_{t_{k}} \nonumber \\
+              &\leq \dfrac{\card{C_{1}}}{n_0}\left(x_{k} + w^{-}(v_{k}, N^{k-1}_{1}) + \dfrac{\card{A_{2}^{k-1}}}{\card{C_{1}}}x_{k} + \dfrac{w^{+}(C_{1}, A_{2}^{k-1})}{\card{C_{1}}} \right) \nonumber \\
+              &+ \dfrac{\card{C_{2}}}{n_0}\left(y_{k} + w^{-}(v_{k}, N^{k-1}_{2}) + \dfrac{\card{A_{1}^{k-1}}}{\card{C_{2}}}x_{k} + \dfrac{w^{+}(C_{2}, A_{1}^{k-1})}{\card{C_{2}}}\right) \nonumber \\
+              &\leq \dfrac{\card{C_{1}}+\card{A_{2}^{k-1}}}{n_0}x_{k} + \dfrac{\card{C_{2}}+\card{A_{1}^{k-1}}}{n_0}y_{k} + w^{-}(v_{k}, N^{k-1}) +  \dfrac{w^{+}(C_{1}, A_{2}^{k-1}) + w^{+}(C_2, A_{1}^{k-1})}{n_0}.\label{eq.immediate.bound.Delta.k}
+    \end{align}
+
+    Note that we can decompose $ w^{+}(C_1, A_{2}^{k-1}) = W^{+}(C_{1}, C_{2}) + w^{+}(C_{1}, N_{2}^{k-1}) $, and $ w^{+}(C_2, A_{1}^{k-1}) = W^{+}(C_{2}, C_{1}) + w^{+}(C_{2}, N_{1}^{k-1}) $.
+    Moreover, $ w^{+}(C_1, C_2) \le \OPT_{t_0} $, and
+    \begin{align}
+    w^{+}(C_{1}, N_{2}^{k-1}) + w^{+}(C_{2}, N_{1}^{k-1}) \leq \sum_{\ell=1}^{k-1}\Delta \alg_{t_{\ell}} \leq \OPT_{t_0},\nonumber
+    \end{align}
+    where the last inequality is due to~\eqref{eq.upper.all.Delta.alg}.
+    Hence, $ w^{+}(C_{1}, A_{2}^{k-1}) + w^{+}(C_2, A_{1}^{k-1}) \leq 3\OPT_{t_0} $.
+
+    Replacing this into~\eqref{eq.immediate.bound.Delta.k}, we get
+    \begin{align}
+        \Delta \alg_{t_{k}} \leq \dfrac{n_{0}+K}{n_{0}}(x_{k}+y_{k}) + w^{-}( v_{k}, N^{k-1} ) + \dfrac{3\OPT_{t_0}}{n_0}. \nonumber
+    \end{align}
+
+    Summing this over all $ k $, using~\eqref{eq.upper.xk.yk}, and note that $ \sum_{k=1}^{K}w^{-}(v_{k}, N^{k-1}) \leq \Delta \OPT $, we get
+    \begin{align}
+        \sum_{k=1}^{K}\Delta \alg_{t_{k}} \leq \left(2+\dfrac{K}{n_0}\right)\Delta\OPT + \dfrac{3K\OPT_{t_0}}{n_0}. \nonumber
+    \end{align}
+    This concludes~\eqref{eq.upper.Delta.alg}.
+
+    $ \bullet $ We are ready to prove the lemma.
+
+    From~\eqref{eq.upper.Delta.alg} and~\eqref{eq.upper.all.Delta.alg}, we have
+    \begin{align}
+        \OPT_{t_0} \leq (2+\dfrac{K}{n_0})\Delta\OPT + \dfrac{3K\OPT_{t_0}}{n_0}, \nonumber
+    \end{align}
+    and from~\eqref{eq.lowerbound.Delta.OPT}
+    \begin{align}
+        \Delta\OPT \geq K \dfrac{\OPT_{t_0}}{n_0}.\nonumber
+    \end{align}
+
+    If $ K\ge \frac{n_0}{6} $, then from~\eqref{eq.lowerbound.Delta.OPT}, we get $ \Delta \OPT\geq \OPT_{t_0}/6 $, completing the proof.
+
+    Otherwise, if $ K\le \frac{n_0}{6} $, then
+    \begin{align}
+        \OPT_{t_0} \leq \dfrac{13}{6}\Delta \OPT + \dfrac{1}{2}\OPT_{t_0},\nonumber
+    \end{align}
+    which implies that $ \Delta\OPT \ge \frac{3}{13}\OPT_{t_0} $.
+
+    Hence, in any case, it holds that $ \Delta \OPT \ge \epsilon\OPT_{t_0} $, for some constant $ \epsilon\in (0,1) $.
+\end{proof}
+
+% section Another proof for Toy Example for merge case (end)

@@ -1,0 +1,466 @@
+\section{A better than $2$ competitive in expectation Zero-Recourse Algorithm}
+
+In this section, we present a simple randomized algorithm that achieves a better-than-\(2\) competitive ratio in expectation with zero recourse. The algorithm samples one of the input clusterings uniformly at random before the stream begins and then follows this clustering throughout the entire online process. Since the sampled clustering is fixed once and for all, no previously arrived vertex ever changes its cluster ID.
+
+We prove the following theorem.
+
+\zerorecoupper*
+
+\subsection{Algorithm \texttt{random-input-clustering}}
+
+In this section, we describe the algorithm \(\texttt{random-input-clustering}\). The algorithm is extremely simple: before the stream starts, it samples one of the input clusterings uniformly at random and then always outputs the restriction of this sampled clustering to the vertices that have arrived so far.
+
+Let
+\[
+    \m{I}=\{\m{C}_1,\ldots,\m{C}_m\}
+\]
+be the input clusterings. Before the first vertex arrives, the algorithm samples an index
+\[
+    J\sim \mathrm{Unif}([m]).
+\]
+At every time step \(t\), the algorithm outputs
+\[
+    S_t=\m{C}_J^t,
+\]
+where
+\[
+    \m{C}_J^t=\m{C}_J[V^t]
+\]
+is the restriction of the sampled input clustering to the arrived vertex set \(V^t\).
+
+Equivalently, the algorithm follows the same input clustering \(\m{C}_J\) throughout the entire stream.
+
+\subsection{Expected Competitive Ratio and Recourse of \texttt{random-input-clustering}}
+
+In this section, we prove \cref{thm:random-zero-recourse}. We first prove the expected competitive ratio and then prove the zero-recourse guarantee.
+
+Fix a time step \(t\). Since \(J\) is sampled uniformly from \([m]\), we have
+\[
+    \mathbb{E}\bigl[\obj_t(S_t)\bigr]
+    =
+    \frac1m
+    \sum_{j=1}^m
+    \obj_t(\m{C}_j^t).
+\]
+By the definition of the online consensus objective,
+\[
+    \obj_t(\m{C}_j^t)
+    =
+    \sum_{i=1}^m
+    \dist_t(\m{C}_i^t,\m{C}_j^t).
+\]
+Therefore,
+\[
+\begin{aligned}
+    \mathbb{E}\bigl[\obj_t(S_t)\bigr]
+    &=
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i=1}^m
+    \dist_t(\m{C}_i^t,\m{C}_j^t).
+\end{aligned}
+\]
+The terms with \(i=j\) are zero. Hence,
+\[
+    \mathbb{E}\bigl[\obj_t(S_t)\bigr]
+    =
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i\neq j}
+    \dist_t(\m{C}_i^t,\m{C}_j^t).
+\]
+
+Now we use the triangle inequality for the pairwise disagreement distance. For every pair \(i,j\),
+\[
+    \dist_t(\m{C}_i^t,\m{C}_j^t)
+    \le
+    \dist_t(\m{C}_i^t,\OPT_t)
+    +
+    \dist_t(\OPT_t,\m{C}_j^t).
+\]
+Summing this inequality over all ordered pairs \(i\neq j\), we get
+\[
+\begin{aligned}
+    \sum_{j=1}^m
+    \sum_{i\neq j}
+    \dist_t(\m{C}_i^t,\m{C}_j^t)
+    &\le
+    \sum_{j=1}^m
+    \sum_{i\neq j}
+    \left(
+        \dist_t(\m{C}_i^t,\OPT_t)
+        +
+        \dist_t(\OPT_t,\m{C}_j^t)
+    \right).
+\end{aligned}
+\]
+Each term \(\dist_t(\m{C}_i^t,\OPT_t)\) appears exactly \(m-1\) times in the first sum, once for every \(j\neq i\). Similarly, each term \(\dist_t(\OPT_t,\m{C}_j^t)\) appears exactly \(m-1\) times in the second sum. Therefore,
+\[
+\begin{aligned}
+    \sum_{j=1}^m
+    \sum_{i\neq j}
+    \dist_t(\m{C}_i^t,\m{C}_j^t)
+    &\le
+    2(m-1)
+    \sum_{i=1}^m
+    \dist_t(\m{C}_i^t,\OPT_t)\\
+    &=
+    2(m-1)\obj_t(\OPT_t).
+\end{aligned}
+\]
+Dividing by \(m\), we obtain
+\[
+    \mathbb{E}\bigl[\obj_t(S_t)\bigr]
+    \le
+    2\left(1-\frac1m\right)\obj_t(\OPT_t).
+\]
+This proves the expected competitive ratio.
+
+It remains to prove the recourse bound. The algorithm samples the index \(J\) once before the stream begins and never changes this choice. At every time \(t\), it outputs the restriction \(\m{C}_J^t\). Thus, for any two vertices that have already arrived, their co-clustering relation in the maintained solution never changes: it is always exactly their co-clustering relation in the fixed input clustering \(\m{C}_J\).
+
+We can assign a permanent cluster ID to each cluster of \(\m{C}_J\) when the first vertex from that cluster arrives. Every later vertex from the same cluster receives the same ID, and no previously arrived vertex ever changes its ID. Hence every vertex has recourse zero.
+
+Therefore, \(\texttt{random-input-clustering}\) is \(2(1-1/m)\)-competitive in expectation and has zero recourse. This completes the proof of \cref{thm:random-zero-recourse}.
+
+\section{Zero-Recourse Lower Bounds}
+
+In this section, we prove lower bounds for online consensus clustering algorithms with zero recourse. The lower bounds show that zero recourse is a strong restriction: deterministically, no zero-recourse algorithm can beat a \(2-o(1)\) approximation, and even randomized zero-recourse algorithms cannot beat \(3/2-o(1)\) in expectation.
+
+We prove both lower bounds using the same hard instance. The construction first reveals two vertices \(a,b\). Since the algorithm has zero recourse, it must irrevocably decide whether \(a\) and \(b\) are placed together or separated. We then complete the instance in one of two ways: one continuation makes it optimal to keep \(a,b\) together, while the other makes it optimal to separate them.
+
+\detzerorecourselb*
+
+\randzerorecourselb*
+
+\subsection{The Hard Instance}
+
+We first describe the common construction used in both lower bounds.
+
+The instance has four input clusterings. It is convenient to describe them using threshold cuts on the line. Each vertex \(v\) is assigned a position \(p(v)\in[0,1]\). Let the four thresholds be
+\[
+    \theta_1=\frac18,\qquad
+    \theta_2=\frac38,\qquad
+    \theta_3=\frac58,\qquad
+    \theta_4=\frac78.
+\]
+For each threshold \(\theta_r\), define an input clustering \(\m{C}_r\) by cutting the line at \(\theta_r\): two vertices are co-clustered in \(\m{C}_r\) if and only if they lie on the same side of \(\theta_r\).
+
+For a pair of vertices \(u,v\), let
+\[
+    d(u,v)
+    =
+    \left|
+    \left\{
+        r\in[4]:
+        \theta_r
+        \text{ lies between }p(u)\text{ and }p(v)
+    \right\}
+    \right|
+\]
+be the number of input clusterings that separate \(u\) and \(v\). Let
+\[
+    s(u,v)=4-d(u,v)
+\]
+be the number of input clusterings that co-cluster \(u\) and \(v\).
+
+Thus, in the consensus objective, the pair \(\{u,v\}\) contributes
+\[
+    d(u,v)
+\]
+if the output clustering puts \(u,v\) together, and contributes
+\[
+    s(u,v)
+\]
+if the output clustering separates \(u,v\).
+
+The common prefix of the two hard instances consists of two vertices
+\[
+    a,b
+\]
+with positions
+\[
+    p(a)=0,
+    \qquad
+    p(b)=\frac12.
+\]
+Then exactly two thresholds lie between \(a\) and \(b\), so
+\[
+    d(a,b)=2,
+    \qquad
+    s(a,b)=2.
+\]
+
+After seeing this prefix, a zero-recourse algorithm must irrevocably decide whether \(a\) and \(b\) are together or separated.
+
+We now define two possible continuations.
+
+\paragraph{Continuation I.}
+Add vertices
+\[
+    x_1,\ldots,x_q
+\]
+all at position
+\[
+    p(x_i)=\frac14.
+\]
+Then, for every \(i\),
+\[
+    d(a,x_i)=1,
+    \qquad
+    d(b,x_i)=1,
+\]
+and hence
+\[
+    s(a,x_i)=3,
+    \qquad
+    s(b,x_i)=3.
+\]
+Also,
+\[
+    d(x_i,x_j)=0
+\]
+for all \(i,j\), since all \(x_i\)'s have the same position.
+
+\paragraph{Continuation II.}
+Instead add vertices
+\[
+    y_1,\ldots,y_q
+\]
+all at position
+\[
+    p(y_i)=\frac34.
+\]
+Then, for every \(i\),
+\[
+    d(a,y_i)=3,
+    \qquad
+    d(b,y_i)=1,
+\]
+and hence
+\[
+    s(a,y_i)=1,
+    \qquad
+    s(b,y_i)=3.
+\]
+Also,
+\[
+    d(y_i,y_j)=0
+\]
+for all \(i,j\).
+
+\subsection{Deterministic Zero-Recourse Lower Bound}
+
+In this section, we prove \cref{thm:det-zero-recourse-lb}.
+
+Fix a deterministic zero-recourse online algorithm. After the first two vertices \(a,b\) arrive, the algorithm either places \(a,b\) in the same cluster or in different clusters. Since the algorithm has zero recourse, this decision can never be changed.
+
+We consider the two cases separately.
+
+\paragraph{Case 1: the algorithm separates \(a,b\).}
+If the algorithm separates \(a,b\) after the common prefix, we choose Continuation I.
+
+Consider the feasible clustering that puts all vertices together:
+\[
+    \{a,b,x_1,\ldots,x_q\}.
+\]
+Its cost is
+\[
+\begin{aligned}
+    d(a,b)
+    +
+    \sum_{i=1}^q d(a,x_i)
+    +
+    \sum_{i=1}^q d(b,x_i)
+    +
+    \sum_{1\le i<j\le q} d(x_i,x_j)
+    &=
+    2+q+q+0\\
+    &=
+    2q+2.
+\end{aligned}
+\]
+Therefore,
+\[
+    \obj_T(\OPT_T)\le 2q+2.
+\]
+
+Now consider the algorithm's cost. Since \(a\) and \(b\) are separated forever, the pair \(\{a,b\}\) contributes
+\[
+    s(a,b)=2.
+\]
+For each \(x_i\), no matter how the algorithm clusters \(x_i\), the total contribution of the two pairs \(\{a,x_i\}\) and \(\{b,x_i\}\) is at least \(4\). Indeed:
+\[
+    d(a,x_i)+s(b,x_i)=1+3=4
+\]
+if \(x_i\) is clustered with \(a\),
+\[
+    s(a,x_i)+d(b,x_i)=3+1=4
+\]
+if \(x_i\) is clustered with \(b\), and
+\[
+    s(a,x_i)+s(b,x_i)=3+3\ge 4
+\]
+if \(x_i\) is clustered with neither \(a\) nor \(b\).
+
+Thus the algorithm's final cost is at least
+\[
+    2+4q.
+\]
+Therefore,
+\[
+    \frac{\obj_T(S_T)}{\obj_T(\OPT_T)}
+    \ge
+    \frac{4q+2}{2q+2}
+    =
+    2-\frac{1}{q+1}.
+\]
+
+\paragraph{Case 2: the algorithm clusters \(a,b\) together.}
+If the algorithm puts \(a,b\) in the same cluster after the common prefix, we choose Continuation II.
+
+Consider the feasible clustering
+\[
+    \{a\},
+    \qquad
+    \{b,y_1,\ldots,y_q\}.
+\]
+Its cost is
+\[
+\begin{aligned}
+    s(a,b)
+    +
+    \sum_{i=1}^q s(a,y_i)
+    +
+    \sum_{i=1}^q d(b,y_i)
+    +
+    \sum_{1\le i<j\le q} d(y_i,y_j)
+    &=
+    2+q+q+0\\
+    &=
+    2q+2.
+\end{aligned}
+\]
+Hence,
+\[
+    \obj_T(\OPT_T)\le 2q+2.
+\]
+
+Now consider the algorithm's cost. Since \(a\) and \(b\) are clustered together forever, the pair \(\{a,b\}\) contributes
+\[
+    d(a,b)=2.
+\]
+For each \(y_i\), no matter whether \(y_i\) is placed with the cluster containing \(a,b\) or separated from it, the total contribution of the two pairs \(\{a,y_i\}\) and \(\{b,y_i\}\) is at least \(4\). If \(y_i\) is placed with \(a,b\), then the contribution is
+\[
+    d(a,y_i)+d(b,y_i)=3+1=4.
+\]
+If \(y_i\) is separated from the cluster containing \(a,b\), then the contribution is
+\[
+    s(a,y_i)+s(b,y_i)=1+3=4.
+\]
+Thus the algorithm's final cost is at least
+\[
+    2+4q.
+\]
+Therefore,
+\[
+    \frac{\obj_T(S_T)}{\obj_T(\OPT_T)}
+    \ge
+    \frac{4q+2}{2q+2}
+    =
+    2-\frac{1}{q+1}.
+\]
+
+In both cases, the deterministic zero-recourse algorithm has competitive ratio at least
+\[
+    2-\frac{1}{q+1}.
+\]
+Letting \(q\to\infty\), we obtain the lower bound
+\[
+    2-o(1).
+\]
+This proves \cref{thm:det-zero-recourse-lb}.
+
+\subsection{Randomized Zero-Recourse Lower Bound}
+
+In this section, we prove \cref{thm:rand-zero-recourse-lb}. The proof uses the same two continuations, but instead of choosing the continuation adaptively after seeing a deterministic decision, we argue that for every randomized zero-recourse algorithm, one of the two continuations gives expected ratio at least \(3/2-o(1)\).
+
+Fix a randomized zero-recourse online algorithm. After the common prefix consisting of \(a,b\), let
+\[
+    p
+\]
+be the probability that the algorithm clusters \(a,b\) together. Thus, with probability \(1-p\), it separates \(a,b\). Because the algorithm has zero recourse, this decision is irrevocable.
+
+Let
+\[
+    R_q
+    =
+    \frac{4q+2}{2q+2}
+    =
+    2-\frac{1}{q+1}.
+\]
+
+Consider Continuation I. If the algorithm clusters \(a,b\) together, then its cost is at least the optimum cost, so its ratio is at least \(1\). If it separates \(a,b\), then by the argument in the deterministic lower bound, its ratio is at least \(R_q\). Therefore, on Continuation I,
+\[
+    \frac{\mathbb E[\obj_T(S_T)]}{\obj_T(\OPT_T)}
+    \ge
+    p\cdot 1+(1-p)R_q.
+\]
+
+Now consider Continuation II. If the algorithm separates \(a,b\), then its cost is at least the optimum cost, so its ratio is at least \(1\). If it clusters \(a,b\) together, then by the deterministic lower-bound argument, its ratio is at least \(R_q\). Therefore, on Continuation II,
+\[
+    \frac{\mathbb E[\obj_T(S_T)]}{\obj_T(\OPT_T)}
+    \ge
+    pR_q+(1-p)\cdot 1.
+\]
+
+Hence, the worse of the two continuations gives expected ratio at least the average of these two lower bounds:
+\[
+\begin{aligned}
+    \max\left\{
+        p+(1-p)R_q,\;
+        pR_q+(1-p)
+    \right\}
+    &\ge
+    \frac12
+    \left(
+        p+(1-p)R_q
+        +
+        pR_q+(1-p)
+    \right)\\
+    &=
+    \frac12(1+R_q).
+\end{aligned}
+\]
+Substituting
+\[
+    R_q=2-\frac{1}{q+1},
+\]
+we get
+\[
+    \frac12(1+R_q)
+    =
+    \frac12
+    \left(
+        1+2-\frac{1}{q+1}
+    \right)
+    =
+    \frac32-\frac{1}{2(q+1)}.
+\]
+
+Thus, for every randomized zero-recourse algorithm, at least one of the two fixed continuations satisfies
+\[
+    \mathbb E[\obj_T(S_T)]
+    \ge
+    \left(
+        \frac32-\frac{1}{2(q+1)}
+    \right)\obj_T(\OPT_T).
+\]
+Letting \(q\to\infty\), we obtain the lower bound
+\[
+    \frac32-o(1).
+\]
+This proves \cref{thm:rand-zero-recourse-lb}.
+
+\begin{remark}
+The lower-bound construction above uses \(4\) input clusterings. Hence it already rules out better zero-recourse guarantees for algorithms that must work for arbitrary \(m\). If one wants the same construction for any \(m\) divisible by \(4\), one can duplicate each of the four threshold clusterings exactly \(m/4\) times. This multiplies all costs by \(m/4\) and therefore preserves all approximation ratios.
+\end{remark}

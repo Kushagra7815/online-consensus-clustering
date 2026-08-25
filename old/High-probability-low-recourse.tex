@@ -1,0 +1,476 @@
+\section{A $(2 + o(1))$ competitive algorithm with $O(\log^4 mn)$ recourse}
+
+In this section, we present the algorithm \(\texttt{sampled-lazy-medoid}\), which achieves a \((2+o(1))\)-competitive ratio with \(O(\log^4(mn))\) recourse. We also provide an analysis of \(\texttt{sampled-lazy-medoid}\) in this section. In particular, we prove that, for any parameters \(\varepsilon,\eta\in(0,1]\) and failure probability \(\delta\in(0,1)\), the algorithm is \((2+\varepsilon)(1+\eta)\)-competitive for all time steps simultaneously with probability at least \(1-\delta\), and has recourse
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+Hence, for \(\varepsilon,\eta = 1/\log mn\) and \(\delta=(mn)^{-\Theta(1)}\), the algorithm is $(2 + o(1))$-competitive with \(O(\log^4(mn))\) recourse with high probability.
+
+\lazymedoid*
+
+\subsection{Algorithm \texttt{sampled-lazy-medoid}}
+
+In this section, we describe the algorithm \texttt{sampled-lazy-medoid}. The algorithm first samples a small set of input clusterings. It then maintains one clustering from this sampled set, switching only when the currently maintained clustering becomes noticeably worse than the best sampled clustering.
+
+Let
+\[
+    \mathcal I=\{\mathcal C_1,\ldots,\mathcal C_m\}
+\]
+be the input clusterings on the final vertex set \(V\). Vertices arrive online. At time \(t\), let
+\[
+    V^t=\{v_1,\ldots,v_t\}
+\]
+be the arrived vertex set, and let
+\[
+    \mathcal C_i^t=\mathcal C_i[V^t]
+\]
+be the restriction of input clustering \(\mathcal C_i\) to \(V^t\).
+
+For a clustering \(\mathcal S\) of \(V^t\), define
+\[
+    \obj_t(\mathcal S)
+    =
+    \sum_{i=1}^m
+    \dist_{V^t}(\mathcal C_i^t,\mathcal S).
+\]
+Let
+\[
+    \OPT_t
+    \in
+    \arg\min_{\mathcal S\text{ clustering of }V^t}
+    \obj_t(\mathcal S)
+\]
+be an optimal offline consensus clustering at time \(t\).
+
+Before the stream starts, sample
+\[
+    q
+    =
+    \left\lceil
+        \frac{2+\varepsilon}{\varepsilon}
+        \ln\frac{n}{\delta}
+    \right\rceil
+\]
+indices independently and uniformly from \([m]\). Let \(K\) be the resulting sampled multiset of indices.
+
+For every sampled index \(j\in K\), define its cost at time \(t\) by
+\[
+    c_j(t)
+    =
+    \obj_t(\mathcal C_j^t)
+    =
+    \sum_{i=1}^m
+    \dist_{V^t}(\mathcal C_i^t,\mathcal C_j^t).
+\]
+Define
+\[
+    M_K(t)
+    =
+    \min_{j\in K} c_j(t).
+\]
+
+The algorithm maintains an index \(a_t\in K\). At every time \(t\), it outputs
+\[
+    S_t=\mathcal C_{a_t}^t.
+\]
+
+At the first time step, the algorithm chooses
+\[
+    a_1\in \arg\min_{j\in K} c_j(1),
+\]
+breaking ties lexicographically.
+
+At every later time \(t\), after vertex \(v_t\) arrives, the algorithm computes \(c_j(t)\) for every \(j\in K\). If the previously maintained sampled clustering still satisfies
+\[
+    c_{a_{t-1}}(t)
+    \le
+    (1+\eta)M_K(t),
+\]
+then the algorithm keeps the same index:
+\[
+    a_t=a_{t-1}.
+\]
+Otherwise, it switches to a sampled minimizer:
+\[
+    a_t\in \arg\min_{j\in K} c_j(t),
+\]
+again breaking ties lexicographically.
+
+The output clustering is
+\[
+    S_t=\mathcal C_{a_t}^t.
+\]
+
+\subsection{Competitive Ratio and Recourse of \texttt{sampled-lazy-medoid}}
+
+In this section, we prove \cref{thm:sampled-lazy-medoid}. The proof has two parts. First, we show that with high probability, the sampled set contains a near-best input clustering at every time step. Then we prove that the lazy switching rule gives low recourse.
+
+\begin{lemma}
+\label{lem:sample-hits-good}
+With probability at least \(1-\delta\), for every time step \(t\),
+\[
+    M_K(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+\end{lemma}
+
+\begin{proof}
+Fix a time step \(t\). For every input clustering \(\mathcal C_j^t\), define
+\[
+    c_j(t)=\obj_t(\mathcal C_j^t).
+\]
+We first upper-bound the average of the \(c_j(t)\)'s.
+
+By definition,
+\[
+\begin{aligned}
+    \frac1m\sum_{j=1}^m c_j(t)
+    &=
+    \frac1m
+    \sum_{j=1}^m
+    \sum_{i=1}^m
+    \dist_{V^t}(\mathcal C_i^t,\mathcal C_j^t).
+\end{aligned}
+\]
+The terms with \(i=j\) are zero. Since \(\dist_{V^t}\) is a metric on clusterings of \(V^t\), for every \(i,j\),
+\[
+    \dist_{V^t}(\mathcal C_i^t,\mathcal C_j^t)
+    \le
+    \dist_{V^t}(\mathcal C_i^t,\OPT_t)
+    +
+    \dist_{V^t}(\OPT_t,\mathcal C_j^t).
+\]
+Summing over all ordered pairs \(i\neq j\), each term
+\[
+    \dist_{V^t}(\mathcal C_i^t,\OPT_t)
+\]
+appears exactly \(m-1\) times in the first part of the sum, and each term
+\[
+    \dist_{V^t}(\OPT_t,\mathcal C_j^t)
+\]
+appears exactly \(m-1\) times in the second part. Therefore,
+\[
+\begin{aligned}
+    \frac1m\sum_{j=1}^m c_j(t)
+    &\le
+    \frac{2(m-1)}{m}
+    \sum_{i=1}^m
+    \dist_{V^t}(\mathcal C_i^t,\OPT_t)\\
+    &=
+    2\left(1-\frac1m\right)\obj_t(\OPT_t)\\
+    &\le
+    2\obj_t(\OPT_t).
+\end{aligned}
+\]
+
+Now define the set of good input clusterings at time \(t\):
+\[
+    G_t
+    =
+    \left\{
+        j\in[m]:
+        c_j(t)\le (2+\varepsilon)\obj_t(\OPT_t)
+    \right\}.
+\]
+We claim that
+\[
+    |G_t|\ge \frac{\varepsilon}{2+\varepsilon}m.
+\]
+Indeed, if more than a \(2/(2+\varepsilon)\)-fraction of the indices had cost strictly larger than
+\[
+    (2+\varepsilon)\obj_t(\OPT_t),
+\]
+then the average cost would be strictly larger than
+\[
+    \frac{2}{2+\varepsilon}
+    \cdot
+    (2+\varepsilon)\obj_t(\OPT_t)
+    =
+    2\obj_t(\OPT_t),
+\]
+contradicting the average bound above. Hence
+\[
+    |G_t|\ge \frac{\varepsilon}{2+\varepsilon}m.
+\]
+
+Since each sampled index is chosen uniformly from \([m]\), the probability that none of the \(q\) sampled indices lies in \(G_t\) is at most
+\[
+    \left(1-\frac{\varepsilon}{2+\varepsilon}\right)^q
+    \le
+    \exp\left(
+        -\frac{\varepsilon}{2+\varepsilon}q
+    \right).
+\]
+By the choice
+\[
+    q
+    =
+    \left\lceil
+        \frac{2+\varepsilon}{\varepsilon}
+        \ln\frac{n}{\delta}
+    \right\rceil,
+\]
+this failure probability is at most
+\[
+    \frac{\delta}{n}.
+\]
+
+Taking a union bound over all \(t=1,\ldots,n\), with probability at least \(1-\delta\), the sample intersects \(G_t\) for every time step \(t\). On this event, for every time \(t\),
+\[
+    M_K(t)
+    =
+    \min_{j\in K} c_j(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+This proves the lemma.
+\end{proof}
+
+\begin{lemma}
+\label{lem:sampled-lazy-competitive}
+On the event of \cref{lem:sample-hits-good}, for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+\end{lemma}
+
+\begin{proof}
+By construction of the algorithm, at every time step \(t\), the maintained index \(a_t\) satisfies
+\[
+    c_{a_t}(t)\le (1+\eta)M_K(t).
+\]
+Indeed, if the previous index satisfies this inequality, the algorithm keeps it. Otherwise, the algorithm switches to an index attaining \(M_K(t)\), and the inequality holds trivially.
+
+Since
+\[
+    S_t=\mathcal C_{a_t}^t,
+\]
+we have
+\[
+    \obj_t(S_t)=c_{a_t}(t).
+\]
+Therefore,
+\[
+    \obj_t(S_t)
+    \le
+    (1+\eta)M_K(t).
+\]
+On the event of \cref{lem:sample-hits-good},
+\[
+    M_K(t)
+    \le
+    (2+\varepsilon)\obj_t(\OPT_t).
+\]
+Combining,
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+\end{proof}
+
+We now bound the recourse. The main observation is that the cost of every sampled input clustering is monotone nondecreasing over time.
+
+\begin{lemma}
+\label{lem:costs-monotone}
+For every sampled index \(j\in K\), the function \(c_j(t)\) is nondecreasing in \(t\). Moreover, \(M_K(t)\) is nondecreasing in \(t\).
+\end{lemma}
+
+\begin{proof}
+When a new vertex arrives, the restriction of every input clustering gains new pairs involving the new vertex. All pairwise disagreement contributions are nonnegative. Therefore, for every fixed \(j\),
+\[
+    c_j(t+1)\ge c_j(t).
+\]
+Since \(M_K(t)\) is the minimum of a collection of nondecreasing functions,
+\[
+    M_K(t)=\min_{j\in K} c_j(t),
+\]
+it is also nondecreasing.
+\end{proof}
+
+\begin{lemma}
+\label{lem:sampled-switches}
+The total number of switches made by \texttt{sampled-lazy-medoid} is at most
+\[
+    O\left(
+        |K|\cdot \frac{1}{\eta}\log(mn)
+    \right).
+\]
+\end{lemma}
+
+\begin{proof}
+Let
+\[
+    \Lambda=m\binom n2.
+\]
+For every \(j\in K\) and every \(t\),
+\[
+    0\le c_j(t)\le \Lambda,
+\]
+because there are at most \(\binom n2\) pairs and each pair contributes at most \(m\) to the consensus objective.
+
+Define the smoothed sampled minimum
+\[
+    \widehat M_K(t)=1+M_K(t).
+\]
+Then
+\[
+    1\le \widehat M_K(t)\le 1+\Lambda.
+\]
+
+Fix a sampled index \(j\in K\). We bound how many times the algorithm can return to \(j\) after switching away from it.
+
+Suppose the algorithm switches away from \(j\) at time \(t\). Then the switching condition implies
+\[
+    c_j(t)>(1+\eta)M_K(t).
+\]
+Suppose later, at some time \(t'>t\), the algorithm switches back to \(j\). At time \(t'\), the algorithm chooses a minimizer, so
+\[
+    c_j(t')=M_K(t').
+\]
+By monotonicity,
+\[
+    c_j(t')\ge c_j(t).
+\]
+Hence
+\[
+    M_K(t')=c_j(t')\ge c_j(t)>(1+\eta)M_K(t).
+\]
+
+We now show that the smoothed minimum grows by a constant factor. If \(M_K(t)=0\), then \(c_j(t)>0\). Since the objective values are integral, this implies
+\[
+    c_j(t)\ge 1.
+\]
+Thus
+\[
+    M_K(t')\ge 1,
+\]
+and therefore
+\[
+    \widehat M_K(t')=1+M_K(t')\ge 2.
+\]
+Since \(\widehat M_K(t)=1\), we have
+\[
+    \widehat M_K(t')\ge 2\widehat M_K(t)
+    \ge
+    \left(1+\frac{\eta}{2}\right)\widehat M_K(t),
+\]
+as \(\eta\le 1\).
+
+Now suppose \(M_K(t)\ge 1\). Then
+\[
+\begin{aligned}
+    \widehat M_K(t')
+    &=1+M_K(t')\\
+    &>1+(1+\eta)M_K(t).
+\end{aligned}
+\]
+Since \(M_K(t)\ge 1\),
+\[
+    1+(1+\eta)M_K(t)
+    \ge
+    \left(1+\frac{\eta}{2}\right)(1+M_K(t)).
+\]
+Therefore,
+\[
+    \widehat M_K(t')
+    \ge
+    \left(1+\frac{\eta}{2}\right)\widehat M_K(t).
+\]
+
+Thus, between two consecutive selections of the same sampled index \(j\), the smoothed sampled minimum \(\widehat M_K(t)\) increases by a factor at least
+\[
+    1+\frac{\eta}{2}.
+\]
+
+Since \(\widehat M_K(t)\le 1+\Lambda\), the number of times a fixed sampled index \(j\) can be reselected is at most
+\[
+    O\left(
+        \log_{1+\eta/2}(1+\Lambda)
+    \right)
+    =
+    O\left(
+        \frac{1}{\eta}\log(mn)
+    \right).
+\]
+There are \(|K|\) sampled indices. Therefore, the total number of switches is at most
+\[
+    O\left(
+        |K|\cdot \frac{1}{\eta}\log(mn)
+    \right).
+\]
+\end{proof}
+
+\begin{lemma}
+\label{lem:sampled-recourse}
+The recourse of every vertex is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+\end{lemma}
+
+\begin{proof}
+If the algorithm keeps the same sampled index \(a_t\), then the maintained clustering is always the restriction of the same input clustering. In that case, no previously arrived vertex changes cluster ID.
+
+A vertex can change cluster ID only when the algorithm switches from one sampled input clustering to another. Therefore, the recourse of every vertex is at most the total number of switches.
+
+By \cref{lem:sampled-switches}, the number of switches is at most
+\[
+    O\left(
+        |K|\cdot \frac{1}{\eta}\log(mn)
+    \right).
+\]
+By the sample size,
+\[
+    |K|
+    =
+    q
+    =
+    O\left(
+        \frac{1}{\varepsilon}\log\frac{n}{\delta}
+    \right).
+\]
+Hence the recourse of every vertex is at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:sampled-lazy-medoid}]
+By \cref{lem:sample-hits-good}, with probability at least \(1-\delta\), for every time step \(t\),
+\[
+    M_K(t)\le (2+\varepsilon)\obj_t(\OPT_t).
+\]
+Condition on this event.
+
+By \cref{lem:sampled-lazy-competitive}, for every time step \(t\),
+\[
+    \obj_t(S_t)
+    \le
+    (2+\varepsilon)(1+\eta)\obj_t(\OPT_t).
+\]
+By \cref{lem:sampled-recourse}, every vertex has recourse at most
+\[
+    O\left(
+        \frac{1}{\varepsilon\eta}
+        \log\frac{n}{\delta}
+        \log(mn)
+    \right).
+\]
+Thus, with probability at least \(1-\delta\), the algorithm is \((2+\varepsilon)(1+\eta)\)-competitive at every time step and has the claimed recourse bound.
+\end{proof}
