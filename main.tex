@@ -7,6 +7,7 @@
 \usepackage{fullpage}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{lmodern} % Scalable fonts for the compiled conference manuscript.
 \usepackage{xcolor}
 \definecolor{red}{HTML}{F88379}
 \usepackage[colorlinks=true]{hyperref}
@@ -17,8 +18,8 @@
   urlcolor=orange,
   menucolor=purple,
   runcolor=purple,
-  pdftitle={Breaking the Factor-Two Barrier for Consensus Clustering},
-  pdfsubject={Online consensus clustering with recourse and near-linear-time offline consensus clustering}
+  pdftitle={Consensus Clustering below Two: Online Recourse and Fully Dynamic Algorithms},
+  pdfsubject={Online consensus clustering with recourse and fully dynamic consensus clustering under vertex insertions and deletions}
 }
 \usepackage{amsmath,amssymb,amsthm,amsfonts,graphicx,color,subcaption,
   enumerate,bm,array,mathtools}
@@ -118,8 +119,8 @@
 \newcommand{\sep}{\mathsf{sep}}
 \allowdisplaybreaks
 
-\title{Breaking the Factor-Two Barrier for Consensus Clustering:\\
-Online with Recourse and Offline in Near-Linear Time}
+\title{Consensus Clustering below Two:\\
+Online Recourse and Fully Dynamic Algorithms}
 \author{Anonymous Authors}
 \date{}
 
@@ -129,16 +130,12 @@ Online with Recourse and Offline in Near-Linear Time}
 \thispagestyle{empty}
 
 \begin{abstract}
-Consensus clustering asks for a partition that minimizes its total pairwise
-disagreement with a collection of input partitions.  Equivalently, it is the
-$1$-median problem in the metric space of partitions and a structured form of
-weighted correlation clustering.  Selecting a random input partition gives a
-factor approaching $2$, while stronger classical guarantees require either
-processing all input partitions or solving a dense pairwise formulation.  This
-leaves two complementary questions: can one cross the factor-$2$ barrier while
-inspecting only a tiny fraction of the input, and can one retain such a
-guarantee at every prefix of a vertex-arrival stream without repeatedly
-reorganizing the entire solution?
+Consensus clustering asks for a partition minimizing its average pairwise
+disagreement with $m$ input partitions.  We study this metric-median problem
+when the ground set changes over time, with two objectives: limiting changes
+to previously assigned vertices and limiting the time needed to maintain a
+solution.  We obtain approximation guarantees strictly below $2$ in both
+settings.
 
 We answer both questions through a common sampled-triple principle.  For three
 input partitions, let $H$ be their majority signed graph.  If $F$ is any
@@ -162,18 +159,31 @@ every realization of the initial samples.  Monotone history scores and a
 multiplicative rebuilding rule convert the pointwise sampled-triple phenomenon
 into a guarantee stable over the entire arrival history.
 
-In the offline setting, we run \Pivot{} on majority graphs of sampled triples.
-We give an $O(n)$-time implicit implementation that represents every vertex by
-its three cluster labels and enumerates a pivot neighborhood through three
-families of pair-label buckets.  Combined with a local-to-global median
-framework, this yields, for every constant $\eps>0$, a randomized
-$(13/7+\eps)$-approximation in $\wtO_{\eps}(n)$ time with high probability,
-while reading only $O_{\eps}(\log n)$ of the $m$ input partitions.
+For fully dynamic consensus clustering, we maintain a
+$(13/7+\eps)$-approximation under arbitrary vertex insertions and deletions.
+For an oblivious sequence of at most $T$ updates and at most $N$ active
+vertices, the guarantee holds simultaneously after every update with
+probability $1-\zeta$.  Writing
+$\delta=\min\{1/14,\eps/40\}$ and
+$L=\log(8(N+1)(T+1)/(\delta\zeta))$, the worst-case time per update is
+$O(\delta^{-3}(n_t+1)L^2)$ and the maintained space is
+$O(\delta^{-2}(n_t+1)L)$ words, where $n_t$ is the current number of
+vertices.  These bounds assume access to sampled coordinates of an arriving
+vertex's input-label vector; scanning the full vector adds $O(m)$ insertion
+time.  A variant withstands an adaptive adversary by using fresh samples and
+random access to the full current input collection.
+
+The dynamic algorithm rebuilds from a near-linear-time offline sampler.  Its
+local routine runs \Pivot{} implicitly on a triple-majority graph by grouping
+vertices according to pairs of cluster labels, avoiding its potentially
+quadratic edge set.  A separate evaluation sample selects a good candidate.
+The dynamic result makes no low-recourse claim; the online result makes no
+near-linear update-time claim.
 \end{abstract}
 
 \newpage
 \bigskip
-\tableofcontents
+{\small\tableofcontents}
 \bigskip
 \thispagestyle{empty}
 
@@ -262,10 +272,10 @@ We measure stability by \emph{per-vertex recourse}: the number of times an old
 vertex changes its persistent cluster identifier.  For ordinary unweighted
 correlation clustering, Cohen-Addad, Lattanzi, Maggiori, and
 Parotsidis~\cite{cohen2022online} gave a deterministic constant-competitive
-algorithm with $O(\log n)$ worst-case recourse per vertex.  Applying that
-algorithm to a single majority graph yields only an unspecified constant for
-consensus clustering.  It does not explain how to obtain a guarantee below
-$2$.  The online question is thus:
+algorithm with $O(\log n)$ worst-case recourse per vertex.  Its guarantee
+concerns the unweighted disagreement objective on a signed graph; it does not
+directly provide a sub-$2$ approximation to the weighted consensus objective.
+The online question is thus:
 
 \begin{quote}
 Can a fixed gap below $2$ hold simultaneously at every prefix, with high
@@ -273,11 +283,32 @@ probability, while every vertex changes clusters only polylogarithmically many
 times?
 \end{quote}
 
+\paragraph{The dynamic frontier.}
+When vertices may also be deleted, the active data set need not grow and its
+optimum cost need not be monotone.  A deletion can remove precisely the pairs
+responsible for a previously large objective value.  A history-based
+certificate suitable for arrivals can therefore become arbitrarily larger
+than the current optimum.  For this model, we ask for a different guarantee:
+
+\begin{quote}
+Can a sub-$2$ approximation be maintained after arbitrary vertex insertions
+and deletions in $n_t\polylog(NT)$ time per update, where $n_t$ is the current
+number of active vertices, while inspecting only polylogarithmically many
+input partitions?
+\end{quote}
+
+An explicit answer already contains $n_t$ cluster labels, so a near-linear
+bound is a natural target when the full current clustering is to be produced.
+Here recourse and update time are separate resources: writing all labels is
+affordable within the target time, but their changes need not be infrequent.
+Our solution to this question uses a fast snapshot algorithm and a sampling
+argument that remains valid when the active vertex set shrinks.
+
 \subsection{Our results}
 \label{subsec:intro-results}
 
-We answer both questions affirmatively.  The two algorithms operate in
-different computational models, but their approximation analyses have the same
+We obtain affirmative answers in the models stated below.  The online and
+dynamic algorithms optimize different resources, but their analyses share a
 combinatorial core: if sampled inputs themselves do not contain a good median,
 then a random triple has small triangle-inequality slack with nonnegligible
 probability, and the majority relation of that triple is close to the unknown
@@ -328,7 +359,86 @@ constant gap below $2$ and polylogarithmic per-vertex recourse.  The result
 optimizes competitive ratio and recourse; it does not claim a near-linear
 update-time implementation.
 
-Our offline result assumes random access to an indexed collection of input
+\paragraph{Fully dynamic maintenance.}
+There are $m$ indexed input partitions on a changing active set $V_t$.
+Inserting a vertex supplies its cluster label in each input; deleting a vertex
+restricts every input to the surviving vertices.  Existing labels and pair
+relations among survivors are unchanged.  Let $n_t=|V_t|$, and assume known
+bounds $N\ge1$ on $n_t$ and $T\ge1$ on the number of updates.  The normalized
+objective $\cost_t$ and optimum $\OPT_t$ are defined on the current set.
+The sampled-coordinate model permits querying selected entries of an arriving
+vertex's label vector in constant time per entry.  An oblivious update
+sequence, including the labels supplied on insertions and the vertices chosen
+for deletion, is fixed independently of the algorithm's randomness.
+
+\begin{theorem}[Fully dynamic consensus clustering: oblivious updates]
+\label{thm:dynamic-main}
+Let $\eps>0$ and $\zeta\in(0,1)$, and define
+\begin{equation}
+  \delta:=\min\{1/14,\eps/40\},\qquad
+  L:=\log\frac{8(N+1)(T+1)}{\delta\zeta}.
+  \label{eq:dynamic-parameters}
+\end{equation}
+There is a randomized algorithm in the sampled-coordinate model such that,
+for every oblivious sequence of at most $T$ vertex insertions and deletions,
+with probability at least $1-\zeta$, simultaneously after every update,
+\[
+  \cost_t(C_t)\le\left(\frac{13}{7}+\eps\right)\OPT_t.
+\]
+After an update leaving $n_t$ active vertices, it takes worst-case time
+$O(\delta^{-3}(n_t+1)L^2)$, including materializing the output, and uses
+$O(\delta^{-2}(n_t+1)L)$ words of maintained space.  It retains labels only
+for a fixed sample of $O(\delta^{-2}L)$ input indices.  These resource bounds
+hold for every execution.  If reading the entire incoming label vector is
+charged, an insertion incurs an additional $O(m)$ time.
+\end{theorem}
+
+For constant $\eps$, a polynomial update horizon $T=N^{O(1)}$, and inverse
+polynomial failure probability, the bounds become
+$O_{\eps}((n_t+1)\log^2(N+1))$ update time and
+$O_{\eps}((n_t+1)\log(N+1))$ space.  Deletions may be chosen adversarially
+in advance; no distributional assumption on which vertex is deleted is needed.
+The $+1$ accounts for empty and singleton snapshots and the stored samples.
+The theorem imposes no recourse bound on surviving vertices.
+
+\paragraph{Adaptive updates with full input access.}
+An adaptive adversary may select the next update after seeing the previous
+outputs, but before seeing the fresh private randomness for that update.
+To handle this stronger adversary, we change the access model: after each
+update, the algorithm can read any selected input partition on the entire
+current active set.  This requires a database containing all current inputs;
+storing only a fixed set of sampled coordinates does not provide this access.
+
+\begin{theorem}[Fully dynamic consensus clustering: adaptive updates]
+\label{thm:adaptive-main}
+With the parameters in \eqref{eq:dynamic-parameters}, suppose the full current
+collection of $m$ input-label arrays is available for random access after
+every update.  There is a randomized algorithm against the adaptive adversary
+described above that, with probability at least $1-\zeta$, simultaneously
+after at most $T$ vertex insertions and deletions satisfies
+\[
+  \cost_t(C_t)\le\left(\frac{13}{7}+\eps\right)\OPT_t.
+\]
+Its worst-case clustering computation per update is
+$O(\delta^{-3}(n_t+1)L^2)$, using
+$O(\delta^{-2}(n_t+1)L)$ words of working space in addition to the input
+database.  These bounds exclude maintaining the full input database.  If it
+is stored locally with one length-$m$ label vector per active vertex, it uses
+$O(m(n_t+1))$ words and can be
+maintained with an additional $O(m+\log(N+1))$ time per insertion or deletion.
+\end{theorem}
+
+Fresh samples are necessary for our adaptive proof: conditioning on the past
+may correlate a previously fixed sample with the next instance.  By contrast,
+the oblivious algorithm samples its input indices once and stores only those
+coordinates.  Thus the adversary distinction has a concrete space and
+input-access consequence, even though the clustering computation has the same
+asymptotic bound in the two theorems.
+
+\paragraph{The snapshot algorithm.}
+Both dynamic theorems follow by rebuilding with an offline algorithm whose
+running time is already near-linear.  We state this supporting result
+separately.  It assumes random access to an indexed collection of input
 partitions, each represented by an $n$-entry label array.  Sampling one input
 index costs $O(1)$, and reading the corresponding partition costs $O(n)$.
 
@@ -359,8 +469,8 @@ near-linear in the number of vertices even when $m$ is very large.
 \subsection{Technical overview}
 \label{subsec:techniques}
 
-We next explain the ideas behind the two theorems.  The discussion is detailed
-because the same three identities are responsible for both results.
+We next explain the common approximation argument, the history control needed
+online, and the probability and access accounting needed for dynamic updates.
 
 \paragraph{Why sampled inputs alone stop at two.}
 Fix an optimal median $F^*$.  The random-input argument gives
@@ -373,6 +483,15 @@ This expectation does not imply that a constant fraction of the inputs has
 cost at most $(2-\gamma)\OPT$ for any fixed $\gamma>0$.  Indeed, the fraction
 can vanish as $m$ grows.  Therefore, sampling more input medoids, by itself,
 cannot provide a fixed gap below $2$.
+
+For an explicit example, take $m\ge3$ disjoint vertex pairs and let $F^*$
+cluster each pair separately.  Let $P_i$ be obtained from $F^*$ by splitting
+only pair $i$.  The optimum normalized cost is $1$: each of the $m$ pairs
+contributes $1/m$, and joining any vertices from different pairs only increases
+the cost.  Every input has cost $2-2/m$.  Thus even inspecting all input
+partitions and returning their best member cannot yield a fixed gap below
+$2$ for this family.  A successful algorithm must be able to synthesize a new
+partition.
 
 \paragraph{Slack and majority fitting.}
 For each input $P_i$, let
@@ -480,6 +599,38 @@ and the discretization of the objective gives only
 $O(\theta^{-1}\log(mn))$ phases.  Combining outer switches with the logarithmic
 internal recourse of Online Agreement proves \cref{thm:online-main}.
 
+\paragraph{Deletions through snapshot rebuilding.}
+For the dynamic algorithm, we use the linear-time primitives directly.
+At initialization, we select candidate input indices, candidate triples, and
+an independent evaluation sample.  After every insertion or deletion, we
+restrict these samples to the active set, run fresh implicit \Pivot{}
+executions, and recompute every candidate's empirical cost.  With
+$q=O(\delta^{-1}L)$ candidates of each type and an evaluation sample of size
+$s=O(\delta^{-2}L)$, the total work is $O(qs(n_t+1))$.  Persistent input
+labels can have large values; comparison sorting first compacts the sampled
+labels to ranks, after which the linear-time primitives apply.
+
+For an oblivious stream, each current instance is fixed independently of the
+samples.  Its failure probability can be made at most $\zeta/(T+1)$.
+Reusing the evaluation sample across different times causes no problem:
+at each fixed time it remains independent of that time's candidate family,
+and a union bound does not require independence between times.  The proof
+never compares the current optimum with an earlier optimum.  This is why
+arbitrary deletions are compatible with snapshot rebuilding although they
+invalidate the monotone-history argument used for low recourse.
+
+\paragraph{Adaptivity and the cost of fresh samples.}
+If the next active instance is chosen using past outputs, it may depend on a
+fixed hidden sample through those outputs.  We therefore draw all candidate
+and evaluation samples anew after the adaptive adversary commits its update.
+Conditioned on the past and the chosen update, the current instance is fixed
+and the snapshot guarantee applies.  A conditional probability bound followed
+by a union bound proves \cref{thm:adaptive-main}.  Fresh input indices can name
+partitions that have never been stored, however.  The adaptive construction
+therefore needs access to all current input arrays, and its small working
+space is additional to that database.  This access requirement is part of the
+theorem, rather than an uncharged reconstruction step.
+
 \subsection{Further related work}
 \label{subsec:related}
 
@@ -496,7 +647,7 @@ Our local-to-global argument builds on Indyk's sublinear metric-median
 sampling~\cite{Indyk1999,Indyk2001}, its development for permutation medians by
 Chakraborty, Das, and Krauthgamer~\cite{CDK2021,CDK2023} and, in a unified
 rank-aggregation framework, by Carmel, Das, and
-Nguyen~\cite{carmel2026scalable}.  The new ingredient for partitions is the
+Nguyen~\cite{carmel2026scalable}.  The partition-specific ingredient is the
 exact overlap identity and resulting half-slack bound, together with an
 output-sensitive implementation of the resulting majority graph.
 
@@ -508,15 +659,32 @@ algorithm as a persistent local solver, but the sub-$2$ consensus guarantee and
 the history-score rebuilding analysis are specific to the structured family of
 triple-majority instances.
 
+Dynamic unweighted correlation clustering has also been studied under vertex
+and edge updates.  Cohen-Addad et al.~\cite{CLMP2024Dynamic} maintain a
+constant approximation in a graph-query model; their expected amortized
+polylogarithmic update-time analysis uses adversarial vertex insertions and
+uniformly random vertex deletions.  Cao et al.~\cite{CaoEtAl2026Dynamic}
+give an adaptive-adversary transformation with a $1.485$-approximation and
+$O(\log(1/\beta))$ worst-case time per edge update, with failure probability
+at most $\beta$ at any specified update.  These results concern unweighted
+signed graphs.  Our dynamic construction operates directly on the label
+representation of consensus inputs and accounts for sampled input access and
+materializing the current consensus partition.  Its update bound follows by
+recomputing the near-linear snapshot algorithm after each update; it does not
+constitute a faster general algorithm for dynamic unweighted correlation
+clustering.
+
 \paragraph{Organization.}
 \Cref{sec:preliminaries} introduces the partition metric, the weighted
 correlation-clustering formulation, the offline access model, and the online
 vertex-arrival model.  \Cref{sec:shared} proves the slack, majority, and
-universal sampling lemmas used by both results.  \Cref{sec:online} presents
+universal sampling lemmas used throughout.  \Cref{sec:online} presents
 the sub-$2$ online algorithm, including history stability, rebuilding, and the
 recourse analysis.  \Cref{sec:offline} gives the near-linear offline algorithm,
 its implicit majority-graph implementation, and its approximation analysis.
-We conclude in \cref{sec:conclusion}.
+\Cref{sec:dynamic} proves the fully dynamic theorems, including the
+arbitrary-confidence snapshot bound, the update and space accounting, and
+the adaptive extension.  We conclude in \cref{sec:conclusion}.
 
 \clearpage
 % =============================================================================
@@ -616,6 +784,25 @@ The contribution of $e$ to \eqref{eq:consensus-cost} is $p_e$ if a solution
 co-clusters the pair and $1-p_e$ if it separates the pair.  Thus consensus
 clustering is metric-weighted correlation clustering on a complete graph.
 
+More explicitly, fix any convention for the sign of a tied pair and let $H$
+be the majority-signed graph of all $m$ inputs.  Put
+$B_0:=\sum_{e\in\binom V2}\min\{p_e,1-p_e\}$.  A pairwise calculation gives
+\begin{equation}
+  \cost_{\Pp}(C)
+  =B_0+
+   \sum_{e\in E^+(C)\mathbin{\triangle}E^+(H)}|1-2p_e|.
+  \label{eq:weighted-baseline}
+\end{equation}
+Indeed, following a majority sign incurs the smaller of $p_e$ and $1-p_e$;
+reversing it incurs the larger and adds their absolute difference.  Ties
+have zero margin and so do not depend on the chosen convention.  The
+baseline $B_0$ is independent of $C$, but it matters to multiplicative
+approximation guarantees.  In particular, an approximation to the total
+metric-weighted objective need not approximate the number of majority
+mistakes.  Our local-to-global argument will use the latter objective only
+to construct candidates and then evaluate those candidates for the original
+consensus cost.
+
 We will not construct this dense graph.  Instead, our local solvers use a
 constant-size sample of inputs.
 
@@ -677,8 +864,11 @@ $u\sim_{P_i}v$.  The algorithm may sample a uniform index in $[m]$ in
 $O(1)$ time and then read the corresponding array in $O(n)$ time.  We count
 only data actually accessed by the algorithm and report working space in
 addition to the read-only input representation.  We use a word RAM with word
-size $\Omega(\log(mn))$, so indices, labels, counters, and pointers occupy one
-word.  Consequently, an algorithm
+size sufficient to hold input indices, labels, counters, and memory addresses
+in one word; in particular it is $\Omega(\log(m(n+1)))$.  For arbitrary
+accuracy and confidence parameters it must also hold sample indices and
+unnormalized empirical scores.  We assume a unit-cost primitive for drawing
+a uniform integer in a specified word-sized range.  Consequently, an algorithm
 that reads $\polylog(n)$ partitions and performs $\polylog(n)$ scans of
 length $n$ has running time $\wtO(n)$ even though the full explicit input has
 size $mn$.
@@ -729,7 +919,56 @@ triangle inequality shows that $P_1^t$ is optimal: every $C$ satisfies
   \dist(P_1^t,P_2^t)
   \le\dist(P_1^t,C)+\dist(C,P_2^t).
 \]
-Hence both results may assume $m\ge3$.
+Hence all the algorithms may assume $m\ge3$ after handling these cases.
+
+\subsection{Fully dynamic model and input access}
+\label{subsec:dynamic-model}
+
+The dynamic process starts from an empty set, or from an initial instance
+$\Pp^0=(P_1^0,\ldots,P_m^0)$ on $V_0$ supplied for initialization.  The
+number $m\ge1$ of input indices remains fixed.  At update $t$, one of the
+following operations is performed:
+\begin{enumerate}[(i)]
+  \item \emph{Insert a vertex $v$.}  A previously inactive vertex identifier
+        is supplied with labels $(c_t^1(v),\ldots,c_t^m(v))$.  In input $i$,
+        equal labels specify membership in the same cluster.  Labels of all
+        previously active vertices remain unchanged.
+  \item \emph{Delete a vertex $v\in V_{t-1}$.}  Remove $v$ and its label
+        entries.  Every input partition is restricted to $V_{t-1}\setminus\{v\}$.
+\end{enumerate}
+Labels are persistent word-sized identifiers, and need not be bounded by
+$n_t=|V_t|$.  Reinsertions are allowed and are treated as new insertions with
+their supplied label vectors.  The theorem concerns vertex updates; it does
+not silently allow an insertion to change pair relations between surviving
+vertices.  Write $\Pp^t=(P_1^t,\ldots,P_m^t)$ and use the same objective
+$\cost_t(C)=m^{-1}\sum_i\dist_{V_t}(C,P_i^t)$ and optimum $\OPT_t$ as in
+\eqref{eq:online-cost}.  Unlike in the insertion-only model,
+\eqref{eq:opt-monotone} need not hold.
+
+In the \emph{sampled-coordinate model}, an insertion permits random access to
+its $m$ labels while the update is being processed.  The algorithm pays for
+the coordinates it reads and retains selected coordinates for future use.
+It need not retain the entire input collection.  If the communication or
+parsing interface instead forces a scan of all $m$ entries, that scan is
+charged separately.  An initial nonempty instance is accessed in the same
+way, one sampled partition array at a time.
+
+In the \emph{full-current-input model}, after every update the algorithm can
+read the current label array of any input index on all active vertices.
+We explicitly report whether this database is external read-only input for
+the clustering computation or is stored and maintained by the algorithm.
+This distinction is necessary when new input indices are sampled after
+earlier vertices have arrived.
+
+An \emph{oblivious} update sequence is fixed independently of all random
+choices.  An \emph{adaptive} adversary may use all previous public outputs
+when choosing the next update, but must commit the new instance before the
+algorithm draws that update's fresh private random choices.  In both models,
+we allow arbitrary choices of the vertex to delete, subject to the stated
+information available to the adversary.  Our bounds use a known capacity
+$N\ge1$ and horizon $T\ge1$ and include the optional initial snapshot in
+the failure budget.  Logarithms in sampling formulas are natural logarithms;
+other bases affect only absolute constants.
 
 % =============================================================================
 \section{Sampled Triples and Majority Fitting}
@@ -1252,9 +1491,10 @@ monotone scores $G_a(t)$ and $M_t$ rather than current costs.
 \textbf{History-score rebuilding.}
 
 \begin{enumerate}[(1)]
-  \item If $M_t=0$, follow any candidate of history score zero.  If the
-        selected candidate later becomes positive while $M_t$ remains zero,
-        switch to another zero-score candidate.
+  \item If $M_t=0$, retain the current candidate if its history score is zero.
+        Otherwise, select a candidate of history score zero (also doing so
+        if no candidate has yet been selected).  Switch during this stage
+        only when the selected candidate's score becomes positive.
   \item When $M_t$ first becomes positive, start a positive phase.  Set its
         baseline $B:=M_t$, clear its discarded-candidate set, and select a
         minimizer of $G_a(t)$.
@@ -1386,10 +1626,10 @@ initialize persistent candidate histories and identifiers carefully.
 
 The algorithm maintains exact scores against all $m$ inputs.  This is
 polynomial time, but the theorem is a statement about competitive ratio and
-recourse, not update time or memory.  Finally, the deterministic Online
-Agreement process is essential: replacing it by an independently rerun
-randomized offline procedure would destroy the whole-history guarantee used by
-\cref{lem:triple-history-bound}.
+recourse, not update time or memory.  The proof uses a persistent local solver
+with an all-prefix approximation guarantee and bounded per-vertex recourse.
+Deterministic Online Agreement supplies this interface.  Independently
+rerunning a randomized offline algorithm does not supply either guarantee.
 
 % =============================================================================
 \section{Near-Linear-Time Offline Consensus Clustering}
@@ -1406,7 +1646,7 @@ execution takes $O(n)$ time.
 \subsection{The global sampling algorithm}
 \label{subsec:offline-global}
 
-If $n=1$, the unique partition has zero cost.  If $m\le2$, return $P_1$, which
+If $n\le1$, the unique partition has zero cost.  If $m\le2$, return $P_1$, which
 is optimal by the argument in \cref{sec:preliminaries}.  Henceforth assume
 $n\ge2$ and $m\ge3$.
 
@@ -1497,7 +1737,7 @@ space.
 \end{proof}
 
 Consequently, evaluating one candidate on $s$ sampled inputs costs $O(sn)$,
-without examining any of the other $m-s$ inputs.
+without examining the unsampled inputs.
 
 \subsection{An implicit majority graph for three partitions}
 \label{subsec:implicit-majority}
@@ -1851,11 +2091,531 @@ majority error is a multiplicative surrogate for the full weighted objective.
 \end{remark}
 
 % =============================================================================
+% =============================================================================
+\section{Fully Dynamic Consensus Clustering}
+\label{sec:dynamic}
+% =============================================================================
+
+We now prove \cref{thm:dynamic-main,thm:adaptive-main}.  The main algorithmic
+ingredient is the near-linear-time snapshot algorithm of
+\cref{sec:offline}.  A complete recomputation is affordable because it works
+with label arrays and never constructs the dense pairwise instance.  The
+remaining issues are probabilistic and representational: we must obtain a
+guarantee over an entire update sequence, retain enough input information to
+handle deletions, and distinguish a fixed sample against an oblivious stream
+from fresh sampling against an adaptive adversary.
+
+\subsection{Update model and the meaning of the resource bounds}
+\label{subsec:dynamic-resources-model}
+
+We use the vertex-update model of \cref{subsec:dynamic-model}, with fixed
+$m$, at most $N$ active vertices, and at most $T$ updates.  The first
+construction uses sampled coordinates and an oblivious stream; the adaptive
+extension uses the full-current-input model.  Both include an optional initial
+snapshot at time $0$.  Deleting a vertex restricts the input partitions and
+never changes the relation between two survivors.
+
+The space bound for the oblivious construction includes all sampled labels
+retained for active vertices.  Thus a future deletion needs no new input
+queries.  If a complete incoming vector must be scanned, the additional
+$O(m)$ ingestion cost is charged only to insertions.  For the adaptive
+extension, the full current input database is a separate, explicitly charged
+resource.
+
+Labels and vertex identifiers need not be consecutive integers.  They are
+assumed to occupy one word.  The word size also accommodates the sample
+indices, pointers, and integer score sums used below; in particular, a sum
+of $s$ distances is at most $s\binom{N}{2}$.  We rank-compact the labels of
+the current snapshot before using the linear-time primitives of
+\cref{sec:offline}.  The label arrays output by our algorithm use ranks in
+$[n_t]$.  These output labels are snapshot identifiers, and we impose no
+recourse guarantee on their changes.
+
+\subsection{A snapshot theorem with an explicit failure parameter}
+\label{subsec:snapshot-confidence}
+
+We first make the confidence dependence of the offline result explicit.
+This will allow a direct union bound over an update sequence whose length
+can be much larger than its maximum number of active vertices.  All
+logarithms in this section are natural unless a base is displayed.
+
+\begin{lemma}[Snapshot approximation at confidence $1-\beta$]
+\label{lem:snapshot-confidence}
+Let $\delta\in(0,1/14]$ and $\beta\in(0,1)$.  For a fixed instance with
+$m\ge3$ and $n\ge2$, set
+\begin{equation}
+  q_\beta:=\left\lceil\delta^{-1}\log\frac2\beta\right\rceil,
+  \qquad
+  s_\beta:=\left\lceil18\delta^{-2}
+                  \log\frac{4q_\beta}{\beta}\right\rceil.
+  \label{eq:snapshot-explicit-sizes}
+\end{equation}
+Draw $q_\beta$ independent uniform input indices and $q_\beta$ independent
+uniform three-element subsets of $[m]$.  Form one candidate from each sampled
+input and one independent \Pivot{} candidate from each sampled triple.
+Select the minimum empirical-cost candidate using an independent multiset
+of $s_\beta$ uniform input indices.  With probability at least $1-\beta$,
+the output $\widehat C$ satisfies
+\begin{equation}
+  \cost_{\Pp}(\widehat C)
+  \le(1+\delta)\left(\frac{13}{7}+18\delta\right)\OPT.
+  \label{eq:snapshot-confidence-ratio}
+\end{equation}
+More generally, the same assertion holds for any $q\ge q_\beta$ input
+candidates and $q$ local candidates provided the evaluation sample has size
+at least $\lceil18\delta^{-2}\log(4q/\beta)\rceil$.
+\end{lemma}
+
+\begin{proof}
+Set $\alpha=1/7$ and call an input index good if its partition has cost at
+most $(2-\alpha)\OPT$.  If at least a $\delta$ fraction of the indices
+are good, the probability that all $q$ input samples miss them is at most
+\[
+  (1-\delta)^q\le e^{-\delta q}\le\frac\beta2.
+\]
+Otherwise, the calculation in
+\cref{lem:offline-local-C2,lem:offline-good-candidate} shows that one local
+trial produces a candidate of cost at most
+$(13/7+18\delta)\OPT$ with probability at least
+\[
+  \frac{\delta}{\alpha+3\delta}\ge\delta.
+\]
+The last inequality follows from
+$\alpha+3\delta\le1/7+3/14=5/14<1$.  Hence all $q$ independent local
+trials fail with probability at most $e^{-\delta q}\le\beta/2$.
+Only one of these two cases is needed for a fixed instance.  It follows
+that the probability of failing to generate a candidate of the stated
+cost is at most $\beta/2$, rather than the sum of two such terms.
+
+For completeness, we give the numerical confidence bound for candidate
+evaluation.  Condition on the candidate family $\Y$, of size at most
+$2q$, and let $A\in\Y$ minimize true cost.  For a candidate $B$ whose
+cost exceeds $(1+\delta)\cost_{\Pp}(A)$, put
+$D:=\dist(A,B)>0$.  The normalized cost-difference random variable
+\[
+  Z_P:=\frac{\dist(B,P)-\dist(A,P)}D
+\]
+belongs to $[-1,1]$, and the argument in
+\cref{lem:evaluation-sample} gives
+\[
+  \E[Z_P]>\frac{\delta}{2+\delta}\ge\frac\delta3.
+\]
+Hoeffding's inequality therefore bounds the probability that $B$ has
+empirical cost at most that of $A$ by
+\[
+  \exp\!\left(-\frac{s\delta^2}{18}\right).
+\]
+A union bound over at most $2q$ candidates makes the probability of an
+incorrect empirical choice at most
+\[
+  2q\exp\!\left(-\frac{s\delta^2}{18}\right)
+  \le\frac\beta2.
+\]
+Together with the candidate-generation bound, this proves the lemma.
+
+There is no exception when $\OPT=0$.  In that case all input partitions
+coincide with the zero-cost optimum, so every input index is good and the
+first case applies.  The evaluation proof considers only candidates with
+strictly larger cost, for which $D>0$ remains valid.
+\end{proof}
+
+The lemma concerns a fixed snapshot and does not assume that its optimum is
+related to the optimum of any earlier snapshot.  This independence from
+temporal monotonicity is the reason arbitrary deletions cause no difficulty
+for the approximation analysis.
+
+\subsection{Fixed samples and a complete rebuild after each update}
+\label{subsec:dynamic-algorithm}
+
+Fix the accuracy $\eps>0$ and total failure probability $\zeta\in(0,1)$,
+and define
+\begin{equation}
+  \delta:=\min\left\{\frac1{14},\frac\eps{40}\right\},
+  \qquad
+  L:=\log\frac{8(N+1)(T+1)}{\delta\zeta},
+  \label{eq:dynamic-rebuild-parameters}
+\end{equation}
+and
+\begin{equation}
+  q:=\left\lceil2\delta^{-1}L\right\rceil,
+  \qquad
+  s:=\left\lceil72\delta^{-2}L\right\rceil.
+  \label{eq:dynamic-sample-sizes}
+\end{equation}
+We first describe the algorithm for $m\ge3$.
+
+At initialization, draw independent uniform input indices
+$I_1,\ldots,I_q\in[m]$, independent uniform triples
+$Q_1,\ldots,Q_q\in\binom{[m]}3$, and an independent evaluation multiset
+$S=(J_1,\ldots,J_s)$ of uniform input indices.  Retain these samples for
+the entire execution.  Let
+\[
+  R:=\{I_a:a\in[q]\}\cup
+      \bigcup_{a\in[q]}Q_a\cup
+      \{J_b:b\in[s]\}.
+\]
+The set $R$ contains at most $4q+s$ distinct indices.  We store the
+labels $c^i(v)$ only for active vertices $v$ and indices $i\in R$.
+Repeated indices may share a stored array, but their multiplicities in
+sampling and empirical scoring are preserved.
+
+After initialization and after every update, form the current candidate family
+\begin{equation}
+  \Y_t:=\{P_{I_a}^t:a\in[q]\}
+      \cup\{Y_{a,t}:a\in[q]\},
+  \qquad
+  Y_{a,t}:=\Pivot(H_{Q_a}^t).
+  \label{eq:dynamic-candidates}
+\end{equation}
+Every \Pivot{} execution uses fresh randomness, independent of the samples,
+of the other executions, and of all previous executions.  Crucially,
+candidate generation does not use the evaluation sample $S$.  Return a
+partition minimizing
+\begin{equation}
+  \widehat{\cost}_t(C)
+    :=\frac1s\sum_{b=1}^s\dist_{V_t}(C,P_{J_b}^t),
+  \qquad C\in\Y_t.
+  \label{eq:dynamic-empirical-cost}
+\end{equation}
+Ties can be broken by a fixed rule.  One may compare the integer score sums
+without performing any divisions.
+
+\begin{paperalgorithm}[htbp]
+\centering
+\fbox{\begin{minipage}{0.93\textwidth}
+\textbf{Fully dynamic consensus with persistent input samples.}
+
+\begin{enumerate}[(1)]
+  \item \textbf{Initialize.} Sample $(I_a)_{a\in[q]}$,
+        $(Q_a)_{a\in[q]}$, and $S$ independently, with the sizes in
+        \eqref{eq:dynamic-sample-sizes}.  Store their distinct index set $R$
+        and the labels of every initially active vertex in these inputs.
+  \item \textbf{Insert $v$.} Read $c^i(v)$ for every $i\in R$ and add a
+        row for $v$ to the retained input representation.
+  \item \textbf{Delete $v$.} Remove the row of $v$ from all retained input
+        arrays.  The retained labels of surviving vertices stay unchanged.
+  \item \textbf{Prepare the snapshot.} Rank-compact each retained input's
+        labels on the current active set.  If $n_t\le1$, output the unique
+        partition and finish this update.
+  \item \textbf{Rebuild candidates.} Add the $q$ sampled input restrictions
+        to $\Y_t$.  For every sampled triple, execute the implicit
+        \Pivot{} procedure of \cref{alg:implicit-pivot} with fresh coins
+        and add its output to $\Y_t$.
+  \item \textbf{Evaluate and output.} Compute the distances between all
+        candidates and all sampled evaluation inputs using
+        \cref{lem:linear-distance}.  Output a label array for a minimizer
+        of \eqref{eq:dynamic-empirical-cost}.
+\end{enumerate}
+\end{minipage}}
+\caption{The oblivious-stream algorithm.  Steps (2) and (3) are alternative
+update operations; steps (4)--(6) follow either operation.  Input samples
+persist, while the local clusterings are rebuilt.  Steps (4)--(6) also run
+once after initialization to produce the optional initial output.}
+\label{alg:dynamic-rebuild}
+\end{paperalgorithm}
+
+At a snapshot with no vertices, the unique partition is the empty family;
+with one vertex, it is the singleton partition.  We still retain the
+sampled labels of an inserted vertex even when the current output is
+trivial, because those labels will be needed at later snapshots.  If
+$m\le2$, sampling is unnecessary: following $P_1^t$ is exact at every
+snapshot by the metric triangle inequality.  Storing that one input and
+materializing its restriction fits all the bounds below.
+
+\subsection{A simultaneous guarantee under arbitrary oblivious deletions}
+\label{subsec:dynamic-correctness}
+
+The next lemma formalizes the use of persistent samples.  Reusing a sample
+across time does not make the candidate family and the evaluation sample
+independent after conditioning on previous outputs.  No such conditioning
+is used in the oblivious-stream proof.
+
+\begin{lemma}[Marginal snapshot law]
+\label{lem:dynamic-marginal-law}
+Fix an oblivious stream and a snapshot $t$.  The random candidates and
+evaluation sample used by \cref{alg:dynamic-rebuild} at time $t$ have the
+same joint distribution as a fresh execution of the sampling algorithm
+in \cref{lem:snapshot-confidence} on the fixed instance $\Pp^t$, with
+$q$ input samples, $q$ local samples, and $s$ evaluation samples.
+\end{lemma}
+
+\begin{proof}
+Because the stream is oblivious, $V_t$ and each partition $P_i^t$ are fixed
+objects independent of all random choices.  The indices $I_a$ remain
+independent uniform elements of $[m]$, and the $Q_a$ remain independent
+uniform elements of $\binom{[m]}3$.  The stored labels reconstruct exactly
+the restrictions of those inputs to $V_t$, regardless of the insertions
+and deletions that led to this active set.  Fresh, independent pivot coins
+therefore give precisely the candidate-generation distribution prescribed
+by the snapshot algorithm.
+
+The evaluation indices were drawn independently of the candidate indices,
+the triple indices, and every pivot execution.  Thus they are independent
+of $\Y_t$, which is a function only of the fixed instance and those latter
+random variables.  An accidental equality between an evaluation index and
+a candidate index does not invalidate independence of their sampling
+experiments.  This establishes the full joint distribution claimed.
+\end{proof}
+
+\begin{proof}[Approximation part of \cref{thm:dynamic-main}]
+Let $\beta:=\zeta/(T+1)$.  The choices in
+\eqref{eq:dynamic-parameters} and \eqref{eq:dynamic-sample-sizes} satisfy the sample
+requirements of \cref{lem:snapshot-confidence}.  Indeed,
+$L\ge\log(2/\beta)$, and therefore
+$q\ge\delta^{-1}\log(2/\beta)$.  Also
+$q\le3\delta^{-1}L$ since $\delta^{-1}L\ge1$.  It follows that
+\begin{align*}
+  \log\frac{4q}{\beta}
+  &\le\log\frac{12\delta^{-1}L(T+1)}{\zeta}\\
+  &=L+\log\frac{3L}{2(N+1)}
+   \le 2L.
+\end{align*}
+The last inequality uses $N+1\ge1$, $L\ge\log112>1$, and
+$\log(3L/2)\le L$ in this range.  Thus
+$s\ge18\delta^{-2}\log(4q/\beta)$, with room to spare.
+
+By \cref{lem:dynamic-marginal-law,lem:snapshot-confidence}, for each fixed
+$t$ the probability that the output violates
+\[
+  \cost_t(C_t)
+  \le(1+\delta)\left(\frac{13}{7}+18\delta\right)\OPT_t
+\]
+is at most $\beta$.  There are at most $T+1$ snapshots, so a union bound
+gives this inequality simultaneously for all of them with probability at
+least $1-(T+1)\beta=1-\zeta$.  The failure events at different times may
+be dependent; independence is unnecessary for this union bound.
+
+Finally, since $\delta\le1/14$,
+\[
+  (1+\delta)\left(\frac{13}{7}+18\delta\right)
+  =\frac{13}{7}+\frac{139}{7}\delta+18\delta^2
+  \le\frac{13}{7}+40\delta
+  \le\frac{13}{7}+\eps.
+\]
+Trivial snapshots and the cases $m\le2$ are exact, completing the
+approximation proof.
+\end{proof}
+
+The relevant horizon in this proof is $T$, rather than $N$.  For example,
+a stream may repeatedly insert and delete vertices while keeping only a
+small active set.  Substituting an inverse-polynomial failure probability
+in $N$ without accounting for the number of updates would not by itself
+establish a guarantee over such a stream.
+
+\subsection{Worst-case update time and total maintained space}
+\label{subsec:dynamic-implementation}
+
+We next give the implementation details needed for the resource claims in
+\cref{thm:dynamic-main}.  A uniform triple can be sampled in constant time
+by choosing successive ranks among the remaining indices and skipping the
+at most two indices already chosen; this avoids an unbounded rejection loop.
+At initialization, sorting the $4q+s$ sampled indices constructs $R$ and
+the references from each sampling position to its stored array.  This takes
+$O((q+s)\log(q+s))=O(\delta^{-3}L^2)$ time, within the stated bound even
+when the initial set is empty.  The subsequent initial rebuild has the same
+bound as an update, with $n_0$ in place of $n_t$.
+
+Put $k:=|R|\le4q+s$.  Maintain a dense ordering
+of the active vertices and one raw-label array for each sampled input.
+A dictionary maps an external vertex identifier to its current row.
+An insertion reads and stores $k$ labels.  A deletion finds its row and
+removes it; moving the last row into the vacated position preserves a
+dense representation.  A deterministic balanced dictionary suffices for
+the $O(\log(n_t+2))$ identifier operations.
+
+For a fully worst-case bound, the label arrays can be freshly allocated
+and copied during each rebuild.  The previous snapshot has at most
+$n_t+1$ vertices, so even during a deletion the old and new arrays together
+occupy $O(k(n_t+1))$ words.  This avoids relying on an amortized resizing
+bound or retaining an $N$-sized allocation when few vertices remain.
+The dictionary may similarly be reconstructed during the snapshot scan;
+its $O((n_t+1)\log(n_t+2))$ construction cost is dominated below.
+
+The retained raw labels must preserve their external meaning, because a
+later insertion may use one of those labels.  We therefore rank-compact
+into temporary arrays instead of replacing the stored raw labels.
+For every retained input, comparison-sort the pairs consisting of raw
+label and vertex row, and assign equal labels equal ranks in $[n_t]$.
+The total compaction time is
+\begin{equation}
+  O\!\left(k(n_t+1)\log(n_t+2)\right),
+  \label{eq:dynamic-compaction-cost}
+\end{equation}
+using $O(k(n_t+1))$ words.  Once ranks are available, the bucket
+constructions in \cref{lem:implicit-pivot-linear} and the pair-key sorts
+in \cref{lem:linear-distance} use counting or radix sort with universe
+size $n_t$ and therefore take linear time per execution.  Cluster labels
+of newly produced candidates are already ranks in $[n_t]$.
+
+There are $q$ local trials, so generating their output arrays takes
+$O(q(n_t+1))$ time and space.  There are at most $2q$ candidates and $s$
+evaluation positions.  All scores can consequently be computed exactly
+in
+\begin{equation}
+  O\!\left(qs(n_t+1)\right)
+  =O\!\left(\delta^{-3}(n_t+1)L^2\right)
+  \label{eq:dynamic-evaluation-time}
+\end{equation}
+time.  This uses the contingency-table distance identity, rather than an
+enumeration of the $\binom{n_t}{2}$ vertex pairs.  It is unnecessary to
+store a table of distances for all candidate--evaluation pairs: maintain
+one running integer score per candidate and reuse the linear-size
+distance-computation workspace.
+
+Because $k=O(\delta^{-2}L)$ and $L\ge\log(N+1)$, the compaction cost
+in \eqref{eq:dynamic-compaction-cost}, all array copies, and candidate
+generation are dominated by \eqref{eq:dynamic-evaluation-time}.  Writing
+the selected partition as a full length-$n_t$ label array is also included.
+The bound is worst-case for each update, under the constant-time uniform
+sampling convention of our word-RAM model.  It holds for every outcome of
+the random samples and pivot choices: the linear-time pivot implementation
+does not rely on an expected running-time bound.
+
+The raw and compacted sampled labels require $O(k(n_t+1))$ words; the
+candidate arrays require $O(q(n_t+1))$; and the pivot and scoring
+workspaces require $O(n_t+q+1)$.  The sample indices themselves use
+$O(q+s)$ words.  The total is therefore
+\begin{equation}
+  O\!\left((q+s)(n_t+1)\right)
+  =O\!\left(\delta^{-2}(n_t+1)L\right)
+  \label{eq:dynamic-total-space}
+\end{equation}
+words.  This accounts for all input labels retained by the oblivious
+algorithm.  A sampled input index requires a word capable of storing an
+element of $[m]$; the bound does not assert that identifiers have a bit
+length independent of $m$.
+
+Together with the preceding approximation proof, these estimates complete
+\cref{thm:dynamic-main}.  When $\eps$ is constant, $T$ is polynomially
+bounded in $N+1$, and $\zeta$ is inverse polynomial in $N+1$, they simplify
+to $O((n_t+1)\log^2(N+2))$ worst-case update time and
+$O((n_t+1)\log(N+2))$ maintained words.  Without these parameter
+restrictions, \eqref{eq:dynamic-parameters} retains the dependence on the
+actual update horizon and confidence.
+
+\subsection{Adaptive updates with fresh access to the full input}
+\label{subsec:dynamic-adaptive}
+
+Persistent samples provide a compact input representation, but their
+independence from the current instance was essential in
+\cref{lem:dynamic-marginal-law}.  If future updates may depend on past
+outputs, the active instance can become correlated with the retained
+samples.  We do not claim that the fixed-sample algorithm has the same
+guarantee in this adaptive model.
+
+There is a direct adaptive variant under a stronger access assumption.
+Assume that, after every update, the algorithm can obtain the label array
+of any chosen current input $P_i^t$ in $O(n_t+1)$ time.  The full current
+family may be maintained by an external database, or it may be stored
+explicitly by the algorithm.  After the adversary commits the current
+update, draw entirely fresh input indices, fresh triple indices, fresh
+evaluation indices, and fresh pivot coins.  Apply the snapshot algorithm
+with the same $q,s$ as in \eqref{eq:dynamic-sample-sizes}.  Discard the
+samples when their output has been produced.  The candidate and evaluation
+samples are mutually independent, as before.
+
+\begin{proof}[Proof of \cref{thm:adaptive-main}]
+Allow the adversary to choose update $t$ as an arbitrary function of the
+past transcript and its own random bits, but require that it commit the
+update before the algorithm draws its fresh random bits for snapshot $t$.
+Condition on this transcript and the completed current update.  Under the
+conditioning, the current instance $\Pp^t$ is fixed, while all random
+choices used by the snapshot solver are fresh and independent of that
+instance.  Hence \cref{lem:snapshot-confidence} applies conditionally and
+gives
+\[
+  \Prb\!\left[
+    \cost_t(C_t)>
+    \left(\frac{13}{7}+\eps\right)\OPT_t
+    \;\middle|\;\text{past transcript and current update}
+  \right]
+  \le\frac{\zeta}{T+1}.
+\]
+Taking expectations preserves this bound unconditionally.  Summing over
+at most $T+1$ snapshots shows that the probability of any failure is at
+most $\zeta$.  This argument permits the adversary to observe all earlier
+output partitions; it does not require the sequence to have been fixed
+at initialization.
+
+The implementation within a snapshot is identical to the oblivious
+algorithm: load at most $4q+s$ current input arrays, compact their labels,
+generate the local candidates, and score them.  Thus the clustering
+computation takes
+$O(\delta^{-3}(n_t+1)L^2)$ worst-case time and
+$O(\delta^{-2}(n_t+1)L)$ working words after the current full input is
+available.  These working words include the sampled arrays loaded for
+this snapshot.
+
+If the full input is maintained locally, its additional storage is
+$O(m(n_t+1))$ words.  One simple representation keeps a length-$m$ raw
+label vector in each active vertex record and links the records in an
+active list.  Reading any chosen input coordinate over the active list
+takes $O(n_t+1)$ time.  Inserting or deleting a record takes $O(m)$ time
+in addition to identifier-dictionary operations, which are dominated by
+the clustering computation above.  Thus a fully local implementation
+has total update time
+\[
+  O\!\left(m+\delta^{-3}(n_t+1)L^2\right)
+\]
+and total space
+\[
+  O\!\left(m(n_t+1)+\delta^{-2}(n_t+1)L\right).
+\]
+If an external input store supplies current arrays, these full-input
+storage and maintenance terms belong to that store, and the stated
+clustering time and workspace describe the algorithm's own computation.
+This completes the proof.
+\end{proof}
+
+The extra access assumption is substantive.  Fresh sampling can request
+an input index that has never previously been inspected, so its labels
+on all surviving vertices must be recoverable.  The compact retained
+sample of \cref{thm:dynamic-main} does not provide that capability by
+itself.
+
+\subsection{Relationship to the online result and to dynamic agreement}
+\label{subsec:dynamic-scope}
+
+Our online and dynamic theorems optimize different resources.  The online
+algorithm follows persistent local solutions and uses history scores to
+bound the total number of identifier changes of every vertex.  The
+dynamic algorithm recomputes local solutions and selects a fresh snapshot
+output, thereby allowing the current optimum to decrease after a deletion.
+It may change the output labels of $\Theta(n_t)$ surviving vertices in one
+update.  No polylogarithmic per-vertex recourse statement follows from its
+update-time or approximation bound.
+
+The dynamic theorem is a consequence of the near-linear snapshot solver
+together with persistent sampling and explicit access accounting.  It
+does not maintain a dense weighted correlation-clustering instance under
+individual edge updates.  In particular, it uses no fully dynamic
+correlation-clustering algorithm as a black box.
+
+Dynamic Agreement of Cohen-Addad et al.~\cite{CLMP2024Dynamic} addresses
+unweighted correlation clustering under a different update and access
+model.  Its sublinear-update analysis allows adversarial vertex insertions
+and assumes random vertex deletions.  Our oblivious theorem permits any
+predetermined sequence of deletions, but pays near-linear time to rebuild
+the current output.  These statements concern different objectives and
+different resource guarantees.  Substituting a dynamic routine for
+\Agree{} inside the online theorem would require the approximation and
+persistent-identifier guarantees used in
+\cref{thm:agree-blackbox}; a fast dynamic update bound alone does not supply
+that interface.
+
+Finally, when an explicit output partition is requested after every
+update, writing its $n_t$ labels already costs $\Omega(n_t)$ operations.
+The dynamic computation is within polylogarithmic factors of this output
+cost under the sampled-coordinate assumptions.  This observation is only an
+output-size comparison: it is not a lower bound for an implicit-output or
+query-only dynamic data structure.
+
+% =============================================================================
 \section{Conclusion and Open Problems}
 \label{sec:conclusion}
 % =============================================================================
 
-The common explanation behind both results is that the factor-$2$ benchmark
+The common explanation behind our results is that the factor-$2$ benchmark
 for metric medians can be crossed when a constant-size
 sample supports a useful candidate not already present among the inputs.  For
 partition distance, three inputs suffice: their majority relation has error at
@@ -1864,6 +2624,17 @@ most half of the total triangle slack.  Offline, an implicit linear-time
 reading only polylogarithmically many inputs.  Online, a persistent deterministic
 majority solver and monotone history scores make the same phenomenon stable
 throughout the vertex-arrival sequence.
+
+For fully dynamic inputs, we use the same snapshot solver after every vertex
+insertion or deletion.  Fixing the sampled input indices gives a compact
+representation against oblivious updates, while fresh sampling gives an
+adaptive guarantee when all current inputs remain accessible.  A union bound
+over the update horizon yields a simultaneous $13/7+\eps$ approximation.
+The implementation includes arbitrary-label compaction, exact evaluation on
+the sampled inputs, and materialization of the complete output in
+$O_{\eps}((n_t+1)L^2)$ worst-case time.  The dynamic theorem follows from
+fast recomputation and therefore controls computation without controlling
+the lifetime recourse of individual vertices.
 
 Several directions remain open.  First, the Online Agreement constant $\eta$
 is not explicit in its published analysis.  A sharper, explicit persistent
@@ -1874,9 +2645,15 @@ polylogarithmic persistent-identifier recourse; our randomized proof uses
 initial sampling as a hitting family over all prefixes.  Third, the online
 algorithm maintains exact candidate costs and does not optimize update time.
 Combining history-stable selection with sublinear evaluation is a natural next
-step.  Finally, the offline constant could improve if a better fast local
-solver is implemented on the implicit triple-majority representation, while
-preserving the worst-case near-linear access bound.
+step.  In the fully dynamic model, achieving a sub-$2$ approximation together
+with both near-linear update time and small per-vertex recourse is a separate
+challenge, especially when deletions sharply reduce the optimum.  Another
+question is whether an adaptive algorithm can retain only a small sampled
+input representation while obtaining the guarantees currently proved using
+fresh access to all inputs.  Finally, the offline and dynamic constants could
+improve if a better fast local solver is implemented on the implicit
+triple-majority representation, while preserving the worst-case near-linear
+access bound.
 
 \newpage
 \ifusebiblatex
