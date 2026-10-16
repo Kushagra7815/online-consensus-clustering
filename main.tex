@@ -128,14 +128,12 @@ Online Recourse and Fully Dynamic Algorithms}
 \maketitle
 
 \begin{abstract}
-\emph{Placeholder. The abstract will be completed by the collaborators.}
+placeholder, To be completed
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
 
-\emph{Placeholder. The introduction, motivation, overview of the joint
-contributions, and discussion of related work will be completed by the
-collaborators. The online result is stated in \cref{thm:online-main}.}
+placeholder, To be completed
 
 \section{Preliminaries for the Online Result}\label{sec:preliminaries}
 
@@ -395,258 +393,98 @@ We therefore assume $n\ge2$ and $m\ge3$ for the rest of the section.
 \paragraph{Proof overview.}
 The algorithm maintains a small family of candidate processes, each
 proposing a partition at every prefix.
-Some candidates simply follow sampled input partitions.
-Others run persistent copies of $\Agree$ on signed graphs built from
-sampled triples of input indices: a pair is positive precisely when at
-least two of the three inputs join it.
-For any fixed terminal prefix, either many inputs already have cost below
-twice the optimum, or the triangle inequalities through an optimal
-partition are nearly tight for a random triple of inputs.
-We show that such a triple produces a candidate
-whose cost is small throughout its entire history, relative to the optimum
-at that terminal prefix.
+An input candidate follows a uniformly sampled input partition.
+A triple candidate runs a persistent copy of $\Agree$ on the signed
+graph obtained from three uniformly sampled input indices: a pair is
+positive precisely when at least two of these inputs join it.
+We generate each candidate by randomly choosing between these two types,
+with a fixed probability that depends only on $\eta$.
 
-This history guarantee is what permits low-recourse selection.
-We score each candidate by its largest cost so far and keep the selected
-candidate until it crosses a fixed multiplicative threshold.
-Candidates discarded at a threshold never become eligible again at that
-threshold, since their history scores cannot decrease.
-There are few thresholds and few candidates, so there are few changes
-of the selected candidate.
-The next subsections establish the structural bounds, construct the
-candidate family, and analyze this selection rule before completing
-the proof of \cref{thm:online-main}.
+The analysis fixes a terminal prefix and its optimal partition.
+For each vertex pair, we consider the fraction of inputs disagreeing with
+this optimum. The sum of the squared fractions appears with a negative
+coefficient in the expected cost of an input candidate and a positive
+coefficient in the bound for a triple candidate.
+Our choice of mixture probabilities cancels these terms, leaving an
+expected bound strictly below twice the optimum.
 
-\subsection{Majority graphs and triangle-inequality slack}
-\label{subsec:majority-slack}
+To control changes to the output, we apply this cancellation to each
+candidate's \emph{history score}, meaning its maximum cost over all
+prefixes seen so far.
+The key step is to compare every earlier output of a triple candidate
+to a restriction of the same terminal optimum.
+Independent repetitions then ensure that a candidate with a good
+history exists at every prefix.
+A deterministic selection rule keeps the selected candidate until its
+history score crosses a fixed multiplicative threshold.
+History scores cannot decrease, so a candidate discarded at a threshold
+never becomes eligible again at that threshold.
+Few candidates and few thresholds imply few changes of the selected
+candidate.
 
-Fix a time $t\in[n]$ and a reference partition $F$ of $V_t$.
-For an input index $i\in[m]$, let
-\[
-  I_i^t(F)=E^+(F)\triangle E^+(P_i^t)
-\]
-be its set of errors relative to $F$.
-For distinct indices $i,j$, define their \emph{triangle-inequality slack}
-around $F$ by
-\begin{equation}\label{eq:pair-slack}
-  \Delta_{ij}^t(F)
-  =d(F,P_i^t)+d(F,P_j^t)-d(P_i^t,P_j^t).
-\end{equation}
-This number is nonnegative by \eqref{eq:partition-triangle}.
-
-For a triple $Q\in\binom{[m]}{3}$, its \emph{total slack} is
-\[
-  \Delta_Q^t(F)=\sum_{\{i,j\}\in\binom{Q}{2}}\Delta_{ij}^t(F).
-\]
-The indices in a triple are distinct, although their input partitions
-may coincide.
-The \emph{majority graph} $H_Q(t)$ is the complete signed graph on $V_t$
-in which a pair is positive if at least two of the three indexed inputs
-join it, and negative otherwise.
-Finally, let
-\[
-  B_Q^t(F)=E^+(H_Q(t))\triangle E^+(F)
-\]
-be the pairs on which this majority relation disagrees with $F$.
-
-The next lemma identifies pairwise slack exactly with overlapping input
-errors. Since a majority error requires two input errors, the number of
-majority errors is at most half the total slack.
-
-\begin{lemma}[Majority errors and half-slack]\label{lem:majority-half-slack}
-For every time $t$, reference partition $F$ of $V_t$, and distinct
-indices $i,j\in[m]$,
-\begin{equation}\label{eq:overlap-identity}
-  \Delta_{ij}^t(F)=2|I_i^t(F)\cap I_j^t(F)|.
-\end{equation}
-Consequently, for every $Q\in\binom{[m]}{3}$,
-\begin{equation}\label{eq:half-slack}
-  |B_Q^t(F)|=\err_{H_Q(t)}(F)\le\frac12\Delta_Q^t(F).
-\end{equation}
-\end{lemma}
-\begin{proof}
-The symmetric difference of $I_i^t(F)$ and $I_j^t(F)$ is
-$E^+(P_i^t)\triangle E^+(P_j^t)$. Hence
-\[
-  d(P_i^t,P_j^t)
-  =|I_i^t(F)|+|I_j^t(F)|
-     -2|I_i^t(F)\cap I_j^t(F)|.
-\]
-Subtracting this identity from
-$d(F,P_i^t)+d(F,P_j^t)=|I_i^t(F)|+|I_j^t(F)|$
-proves \eqref{eq:overlap-identity}.
-
-A pair belongs to $B_Q^t(F)$ if and only if at least two inputs indexed
-by $Q$ disagree with $F$ on that pair. Therefore
-\[
-  B_Q^t(F)
-  =
-  \bigcup_{\{i,j\}\in\binom{Q}{2}}
-       \bigl(I_i^t(F)\cap I_j^t(F)\bigr).
-\]
-Bounding the size of this union by the sum of its set sizes and applying
-\eqref{eq:overlap-identity} gives \eqref{eq:half-slack}.
-\end{proof}
-
-\subsection{Few good inputs imply many useful triples}
-\label{subsec:triple-averaging}
-
-We next relate the costs of the input partitions to the slack of a random
-triple. This is the metric averaging principle underlying the sampling
-framework of Carmel et al.~\cite{carmel2026scalable}; we give the complete
-argument specialized to triples.
-
-Fix $t\in[n]$, and let $\alpha\in(0,1)$ measure a desired improvement
-over ratio $2$. Define the set of \emph{good input indices} by
-\begin{equation}\label{eq:good-inputs}
-  J_t(\alpha)
-  =\bigl\{i\in[m]:
-      \cost_t(P_i^t)\le(2-\alpha)\OPT_t\bigr\}.
-\end{equation}
-Let $\rho\in[0,1-\alpha]$ be an upper bound on the fraction of such
-indices, and let $Q$ be uniformly distributed over $\binom{[m]}{3}$.
-Informally, if few inputs are good, then the average distance between
-inputs is large; this leaves little average triangle-inequality slack
-around the optimum.
-
-\begin{lemma}[Triple-slack averaging]\label{lem:universal-averaging}
-If $|J_t(\alpha)|\le\rho m$, then
-\begin{equation}\label{eq:expected-slack}
-  \E_Q[\Delta_Q^t(F_t^*)]
-  \le 3(\alpha+2\rho)\OPT_t.
-\end{equation}
-\end{lemma}
-\begin{proof}
-Define the aggregate input cost and total pairwise slack by
-\[
-  T_t=\sum_{i=1}^m\cost_t(P_i^t),
-  \qquad
-  S_t=\sum_{1\le i<j\le m}\Delta_{ij}^t(F_t^*).
-\]
-At least $(1-\rho)m$ input indices have cost greater than
-$(2-\alpha)\OPT_t$. Discarding the costs of all remaining inputs gives
-\begin{equation}\label{eq:aggregate-input-lower}
-  T_t\ge (1-\rho)m(2-\alpha)\OPT_t.
-\end{equation}
-Each pairwise input distance occurs twice in the definition of $T_t$,
-so
-\[
-  T_t=\frac2m\sum_{1\le i<j\le m}d(P_i^t,P_j^t).
-\]
-Also, every distance $d(F_t^*,P_i^t)$ occurs $m-1$ times in the sum
-defining $S_t$. Since $\sum_i d(F_t^*,P_i^t)=m\OPT_t$,
-\begin{align}
-  S_t
-  &=m(m-1)\OPT_t-\frac m2T_t \notag\\
-  &\le\frac m2\bigl[m(\alpha+2\rho-\alpha\rho)-2\bigr]\OPT_t
-      \notag\\
-  &\le\frac m2\bigl[m(\alpha+2\rho)-2\bigr]\OPT_t.
-       \label{eq:total-slack-upper}
-\end{align}
-A fixed unordered pair of input indices appears in a uniform triple
-with probability $6/(m(m-1))$. Thus
-\[
-  \E_Q[\Delta_Q^t(F_t^*)]
-  =\frac{6S_t}{m(m-1)}
-  \le
-  3\frac{m(\alpha+2\rho)-2}{m-1}\OPT_t.
-\]
-Finally, $\rho\le1-\alpha$ implies $\alpha+2\rho\le2$, and hence
-\[
-  \frac{m(\alpha+2\rho)-2}{m-1}
-  \le\alpha+2\rho.
-\]
-This proves the claimed expectation bound.
-\end{proof}
-
-The expectation bound yields a quantitative sampling guarantee.
-For the following corollary, additionally assume $\rho>0$.
-Increasing the slack threshold by $3\rho\OPT_t$ ensures a probability
-of success proportional to $\rho$.
-
-\begin{corollary}[A useful random triple]\label{cor:low-slack-triple}
-Under the assumptions of \cref{lem:universal-averaging},
-\begin{equation}\label{eq:useful-triple-prob}
-  \Prb_Q\!\left[
-    \Delta_Q^t(F_t^*)\le3(\alpha+3\rho)\OPT_t
-  \right]
-  \ge\frac{\rho}{\alpha+3\rho}.
-\end{equation}
-\end{corollary}
-\begin{proof}
-If $\OPT_t=0$, every input partition equals $F_t^*$, because all
-summands in its consensus cost are nonnegative and sum to zero.
-All slacks then vanish, and the displayed probability is $1$.
-Suppose instead that $\OPT_t>0$. Markov's inequality and
-\eqref{eq:expected-slack} give
-\[
-  \Prb_Q\!\left[
-    \Delta_Q^t(F_t^*)>3(\alpha+3\rho)\OPT_t
-  \right]
-  \le\frac{\alpha+2\rho}{\alpha+3\rho}.
-\]
-Taking complements proves the claim.
-\end{proof}
-
-\subsection{The sampled candidate processes}\label{subsec:online-candidates}
+\subsection{Majority graphs and the sampled candidate processes}
+\label{subsec:online-candidates}
 
 A \emph{candidate process} is a partition trajectory, together with
 persistent cluster identifiers, maintained at every arrival.
-We construct a fixed, randomly sampled family of these processes.
-Every process continues to receive all arrivals, including those times
-when it is not selected for the output.
+Every process receives all arrivals, including those times when it is
+not selected for the output.
+Its trajectory is determined by its own initial sample and the input;
+selection never changes the evolution of a process.
 
-The balancing constant, sampling parameter, and target bound for the
-candidate histories are, respectively,
+For a triple $Q\in\binom{[m]}{3}$, the \emph{majority graph} $H_Q(t)$ is
+the complete signed graph on $V_t$ in which a pair is positive if at
+least two of the three indexed inputs join it, and negative otherwise.
+The indices within $Q$ are distinct, although the corresponding input
+partitions may coincide.
+The sequence $H_Q(1),\ldots,H_Q(n)$ is a valid vertex-arrival signed-graph
+sequence, since decisions on pairs of previously arrived vertices never
+change.
+
+We now specify the sampling distribution and the number of candidates.
+Define
 \begin{equation}\label{eq:online-parameters}
-  \alpha_*=\frac{2}{3\eta+5},
-  \qquad
-  \rho=\frac{\eps}{9(\eta+1)},
-  \qquad
-  R=2-\alpha_*+\frac{\eps}{2}.
+  c=\eta+1,\qquad
+  w=\frac{3c}{3c+2},\qquad
+  R_0=2-\frac{2}{3\eta+5},\qquad
+  R=R_0+\frac{\eps}{2}.
 \end{equation}
-Here $\rho$ is the value used in the preceding sampling bounds.
-Since $\eta\ge1$ and $0<\eps<\alpha_*\le1/4$, we have
-$0<\rho<1-\alpha_*$ and $R<2$.
+Here $c$ is the error factor used to compare a triple candidate to a
+reference partition, $w$ is the probability of choosing an input
+candidate, $R_0$ is the target expected history ratio, and $R$ is the
+slightly larger threshold used for the probability bound.
+We have $0<w<1$ and $1<R_0<R<2$, using the assumed range of $\eps$.
 
-Let the numbers of input and triple candidates be
-\begin{equation}\label{eq:candidate-sample-sizes}
-  L_{\rm in}
-  =\left\lceil\frac1\rho\log\frac{2n}{\zeta}\right\rceil,
-  \qquad
-  L_{\rm tri}
-  =\left\lceil
-      \frac{\alpha_*+3\rho}{\rho}\log\frac{2n}{\zeta}
-    \right\rceil.
-\end{equation}
-Set $K=L_{\rm in}+L_{\rm tri}$ and define the index sets
-\[
-  \A=[K],\qquad
-  \A_{\rm in}=[L_{\rm in}],\qquad
-  \A_{\rm tri}=\{L_{\rm in}+1,\ldots,K\}.
-\]
-For each $a\in\A_{\rm in}$, sample an input index $i_a$ uniformly from
-$[m]$. For each $a\in\A_{\rm tri}$, sample a triple $Q_a$ uniformly
-from $\binom{[m]}{3}$. All these draws are mutually independent.
-Sampling is with replacement across candidate indices.
-In particular, two occurrences of the same input or triple remain
-separately indexed candidates. The resulting family size satisfies
+Let
 \begin{equation}\label{eq:candidate-count}
-  K=O_\eta\!\left(\eps^{-1}\log\frac{2n}{\zeta}\right).
+  K=\left\lceil\frac4\eps\log\frac{2n}{\zeta}\right\rceil,
+  \qquad
+  \A=[K].
 \end{equation}
-
-For each $a\in\A$, let $A_a(t)$ denote its partition at time $t$.
-The processes are defined as follows.
+Thus $K=O(\eps^{-1}\log(2n/\zeta))$.
+For each candidate index $a\in\A$, independently perform the following
+draw and initialize the corresponding process:
 \begin{enumerate}
-  \item For $a\in\A_{\rm in}$, set $A_a(t)=P_{i_a}^t$ and use the
-  persistent input labels as cluster identifiers.
-  \item For $a\in\A_{\rm tri}$, run one persistent copy of $\Agree$ on
-  $H_{Q_a}(1),\ldots,H_{Q_a}(n)$ and let $A_a(t)$ be its output.
+  \item With probability $w$, choose an input index $i_a$ uniformly
+  from $[m]$. At time $t$, the candidate outputs
+  $A_a(t)=P_{i_a}^t$ and uses the persistent input labels as identifiers.
+  \item With probability $1-w$, choose a triple $Q_a$ uniformly from
+  $\binom{[m]}{3}$. Run one persistent copy of $\Agree$ on
+  $H_{Q_a}(1),\ldots,H_{Q_a}(n)$ and let $A_a(t)$ be its output at
+  time $t$.
 \end{enumerate}
-The latter is a valid vertex-arrival signed-graph sequence:
-the three input restrictions never change their decisions on pairs of
-already arrived vertices. The sampled indices are the only random
-choices of the algorithm; the copies of $\Agree$ are deterministic.
+Each complete draw consists of the candidate type and its input index
+or triple. These complete draws are mutually independent.
+Different candidates may sample the same input or the same triple;
+such occurrences remain separately indexed processes.
+
+Let $\A_{\rm in}\subseteq\A$ and $\A_{\rm tri}\subseteq\A$ denote,
+respectively, the indices of the input and triple candidates generated
+by these draws. These two sets are random, disjoint, and cover $\A$.
+Either set may be empty. In every realization,
+$|\A_{\rm tri}|\le K$.
+All initial samples are retained for the entire execution, and the
+copies of $\Agree$ are deterministic.
 
 Write $\lambda_t^a(v)$ for the local identifier of $v$ in candidate $a$.
 For a vertex $v_s$, define its \emph{internal recourse} in that candidate by
@@ -655,29 +493,29 @@ For a vertex $v_s$, define its \emph{internal recourse} in that candidate by
   =\sum_{t=s+1}^n
      \1[\lambda_t^a(v_s)\ne\lambda_{t-1}^a(v_s)].
 \]
-Input candidates have zero internal recourse, and
-\cref{thm:agree-blackbox} gives
+Input candidates have zero internal recourse.
+For triple candidates, \cref{thm:agree-blackbox} gives
 \begin{equation}\label{eq:internal-recourse}
   \operatorname{rec}_a(v)\le q_{\rm A}\lceil\log_2 n\rceil
   \qquad(a\in\A_{\rm tri}).
 \end{equation}
 
-The selector will use the following exact scores:
+The selector uses the following exact scores:
 \begin{equation}\label{eq:history-scores}
   f_a(t)=\cost_t(A_a(t)),\qquad
   G_a(t)=\max_{1\le u\le t}f_a(u),\qquad
   M_t=\min_{a\in\A}G_a(t).
 \end{equation}
-Thus $f_a(t)$ is a current cost, $G_a(t)$ is a \emph{history score},
-and $M_t$ is the smallest history score currently available.
-Set $G_a(0)=0$. We update a history score by
-$G_a(t)=\max\{G_a(t-1),f_a(t)\}$.
+Thus $f_a(t)$ is a current cost, $G_a(t)$ is the history score, and
+$M_t$ is the smallest history score available at time $t$.
+Set $G_a(0)=0$.
+We update scores by $G_a(t)=\max\{G_a(t-1),f_a(t)\}$.
 All costs are evaluated against the complete collection $\Pp^t$,
-not only the inputs used to generate a candidate.
+not only the inputs used to generate the candidate.
 
 History scores do not decrease, even when an auxiliary clustering
-changes. For an input candidate, the current cost itself already has
-this monotonicity.
+changes. For an input candidate, the current cost already has this
+monotonicity.
 
 \begin{observation}\label{obs:history-monotonicity}
 For every $a\in\A$, $G_a(t)$ is nondecreasing in $t$, and so is $M_t$.
@@ -687,161 +525,299 @@ For every $a\in\A_{\rm in}$, $G_a(t)=f_a(t)$ at every time.
 The first assertion follows from taking a maximum over a growing set
 of times. A minimum of coordinatewise nondecreasing quantities is also
 nondecreasing, proving the assertion for $M_t$.
-For an input candidate, every pairwise distance
-$d(P_{i_a}^t,P_j^t)$ is nondecreasing as vertices arrive: old pair
-decisions are fixed, and newly available pairs contribute nonnegative
-additional errors. Their average $f_a(t)$ is therefore nondecreasing
-and equals its own historical maximum.
+For an input candidate, each distance $d(P_{i_a}^t,P_j^t)$ is
+nondecreasing as vertices arrive: old pair decisions remain fixed,
+and new pairs contribute nonnegative additional errors.
+Their average $f_a(t)$ is therefore nondecreasing and equals its own
+historical maximum.
 \end{proof}
 
-\subsection{A triple controls its entire history}\label{subsec:online-history}
+\subsection{Controlling a triple candidate's entire history}
+\label{subsec:online-history}
 
-The main reason to use a persistent $\Agree$ execution is stronger than
-its approximation guarantee at the current prefix.
-If a sampled triple has small slack at time $t$, then its candidate
-has been inexpensive at every earlier time, measured against $\OPT_t$.
-We compare all earlier outputs to restrictions of the same terminal
-optimum $F_t^*$.
+We next compare a triple candidate to an arbitrary reference partition
+at a terminal prefix.
+The pairs on which the triple majority disagrees with that partition
+control the candidate's costs at all earlier prefixes.
+This comparison is the reason to use a persistent $\Agree$ execution.
 
-To make this comparison precise, fix $t\in[n]$ and
-$a\in\A_{\rm tri}$, and write $Q=Q_a$.
-For each $u\in[t]$, define the restricted majority-error set
+Fix $t\in[n]$ and a partition $F$ of $V_t$.
+For a triple $Q\in\binom{[m]}{3}$, define its majority-error set by
+\begin{equation}\label{eq:majority-errors}
+  B_Q^t(F)=E^+(H_Q(t))\triangle E^+(F).
+\end{equation}
+For every $u\in[t]$, let
 \[
-  B_{Q,t,u}=B_Q^t(F_t^*)\cap\binom{V_u}{2}.
+  B_{Q,t,u}(F)=B_Q^t(F)\cap\binom{V_u}{2}
 \]
+be the errors whose endpoints have both arrived by time $u$.
 Consistency of the input restrictions gives
 \begin{equation}\label{eq:restricted-majority-errors}
-  \err_{H_Q(u)}(F_t^*|_{V_u})=|B_{Q,t,u}|,
+  \err_{H_Q(u)}(F|_{V_u})=|B_{Q,t,u}(F)|,
   \qquad
-  B_{Q,t,u}\subseteq B_Q^t(F_t^*).
+  B_{Q,t,u}(F)\subseteq B_Q^t(F).
 \end{equation}
-The reference partition in this expression is the restriction of
-$F_t^*$, not an independently chosen optimum at time $u$.
+
+Informally, $\Agree$ stays close to the restriction of $F$ at each
+earlier prefix whenever the terminal majority-error set is small.
+The following lemma bounds the whole history using that one error set.
 
 \begin{lemma}[History bound for a triple candidate]
 \label{lem:triple-history-bound}
-For every sampled triple candidate $a\in\A_{\rm tri}$ and every $t\in[n]$,
+For every realization of the sampled family, every
+$a\in\A_{\rm tri}$, every $t\in[n]$, and every partition $F$ of $V_t$,
 \begin{equation}\label{eq:triple-history-bound}
-  G_a(t)
-  \le \OPT_t+\frac{\eta+1}{2}\Delta_{Q_a}^t(F_t^*).
+  G_a(t)\le \cost_t(F)+c\,|B_{Q_a}^t(F)|.
 \end{equation}
-This bound holds for every realization of the sampled family.
+In particular,
+\[
+  G_a(t)\le\OPT_t+c\,|B_{Q_a}^t(F_t^*)|.
+\]
 \end{lemma}
 \begin{proof}
-Fix $u\in[t]$. Since $F_t^*|_{V_u}$ is a valid partition of $V_u$,
-\cref{thm:agree-blackbox} and \eqref{eq:restricted-majority-errors} imply
+Fix $u\in[t]$ and write $Q=Q_a$.
+The restriction $F|_{V_u}$ is a feasible partition of $V_u$.
+By \cref{thm:agree-blackbox} and \eqref{eq:restricted-majority-errors},
 \[
   \err_{H_Q(u)}(A_a(u))
-  \le \eta\,\OPT_{\rm CC}(H_Q(u))
-  \le \eta\,\err_{H_Q(u)}(F_t^*|_{V_u})
-  =\eta|B_{Q,t,u}|.
+  \le\eta\,\OPT_{\rm CC}(H_Q(u))
+  \le\eta\,\err_{H_Q(u)}(F|_{V_u})
+  =\eta|B_{Q,t,u}(F)|.
 \]
-Applying \eqref{eq:signed-comparison} therefore gives
+The comparison inequality \eqref{eq:signed-comparison} then gives
 \begin{equation}\label{eq:history-distance-bound}
-  d(A_a(u),F_t^*|_{V_u})
-  \le(\eta+1)|B_{Q,t,u}|.
+  d(A_a(u),F|_{V_u})
+  \le(\eta+1)|B_{Q,t,u}(F)|
+  =c|B_{Q,t,u}(F)|.
 \end{equation}
-On the other hand, restricting each pairwise input distance yields
+Also, restricting every input distance gives
 \[
-  \cost_u(F_t^*|_{V_u})
-  =\frac1m\sum_{i=1}^m
-       d(F_t^*|_{V_u},P_i^u)
-  \le\frac1m\sum_{i=1}^m d(F_t^*,P_i^t)
-  =\OPT_t.
+  \cost_u(F|_{V_u})
+  =\frac1m\sum_{i=1}^m d(F|_{V_u},P_i^u)
+  \le\frac1m\sum_{i=1}^m d(F,P_i^t)
+  =\cost_t(F).
 \]
-Combining this inequality with \eqref{eq:cost-comparison},
-\eqref{eq:history-distance-bound}, and \cref{lem:majority-half-slack},
-we obtain
+Combining this with \eqref{eq:cost-comparison} and
+\eqref{eq:history-distance-bound}, we obtain
 \begin{align*}
   f_a(u)
-  &\le\cost_u(F_t^*|_{V_u})+d(A_a(u),F_t^*|_{V_u})\\
-  &\le\OPT_t+(\eta+1)|B_{Q,t,u}|\\
-  &\le\OPT_t+(\eta+1)|B_Q^t(F_t^*)|\\
-  &\le\OPT_t+\frac{\eta+1}{2}\Delta_Q^t(F_t^*).
+  &\le\cost_u(F|_{V_u})+d(A_a(u),F|_{V_u})\\
+  &\le\cost_t(F)+c|B_{Q,t,u}(F)|\\
+  &\le\cost_t(F)+c|B_Q^t(F)|.
 \end{align*}
-The right-hand side does not depend on $u$. Taking the maximum over
-$u\in[t]$ proves the lemma.
+The right-hand side is independent of $u$.
+Taking the maximum over $u\in[t]$ proves the first assertion.
+Choosing $F=F_t^*$ proves the second.
 \end{proof}
 
-No optimality assertion about $F_t^*|_{V_u}$ is needed.
-Only its feasibility at time $u$ and the monotonicity of pairwise
-disagreement under restriction are used.
-This is also why a guarantee merely in expectation at each prefix
-would not directly provide the deterministic history bound above.
+The same terminal reference is used throughout the comparison.
+Its restrictions need not be optimal at earlier prefixes.
+The proof uses only their feasibility and the fact that restriction
+cannot increase pairwise disagreement.
+In particular, this lemma bounds a maximum over the whole history
+before any expectation over the initial samples is taken.
+
+\subsection{Direct pairwise analysis of the randomized mixture}
+\label{subsec:online-mixture}
+
+We now show that the two candidate types have complementary expected
+history bounds. Their mixture cancels the extra terms, giving an
+expected history ratio strictly below $2$ by elementary pair counting.
+
+Fix a time $t\in[n]$ and the optimal partition $F_t^*$ chosen in the
+preliminaries. For a pair $e=\{u,v\}\in\binom{V_t}{2}$, let
+\[
+  k_e^t
+  =\bigl|\{i\in[m]:
+       \1[u\sim_{P_i^t}v]\ne\1[u\sim_{F_t^*}v]\}\bigr|,
+  \qquad
+  p_e^t=\frac{k_e^t}{m}.
+\]
+Thus $k_e^t$ is the number of inputs disagreeing with $F_t^*$ on $e$,
+and $p_e^t$ is their fraction.
+Define
+\begin{equation}\label{eq:pair-error-moments}
+  X_t=\sum_{e\in\binom{V_t}{2}}(p_e^t)^2.
+\end{equation}
+Counting errors first by input and then by pair gives
+\begin{equation}\label{eq:pair-error-opt}
+  \sum_{e\in\binom{V_t}{2}}p_e^t
+  =\frac1m\sum_{i=1}^m d(P_i^t,F_t^*)
+  =\OPT_t.
+\end{equation}
+The nonnegative quantity $X_t$ is used only in the analysis; the
+algorithm does not compute it or the reference optimum.
+
+For any fixed candidate index, conditioning on its type leaves a
+uniform input or a uniform triple, respectively.
+The next lemma shows that a large $X_t$ helps the input candidate,
+whereas a small $X_t$ helps the triple candidate.
+
+\begin{lemma}[Expected histories of the two candidate types]
+\label{lem:conditional-histories}
+For every fixed $t\in[n]$ and $a\in\A$,
+\begin{align}
+  \E[G_a(t)\mid a\in\A_{\rm in}]
+     &=2\OPT_t-2X_t, \label{eq:input-history-expectation}\\
+  \E[G_a(t)\mid a\in\A_{\rm tri}]
+     &\le\OPT_t+3cX_t. \label{eq:triple-history-expectation}
+\end{align}
+\end{lemma}
+\begin{proof}
+Condition first on $a\in\A_{\rm in}$.
+By \cref{obs:history-monotonicity}, the history score is the
+current input cost, so
+\[
+  \E[G_a(t)\mid a\in\A_{\rm in}]
+  =\frac1m\sum_{i=1}^m\cost_t(P_i^t)
+  =\frac1{m^2}\sum_{i=1}^m\sum_{j=1}^m d(P_i^t,P_j^t).
+\]
+For a fixed pair $e$, two independent uniform input indices disagree
+with one another on $e$ exactly when one disagrees with $F_t^*$ and
+the other agrees. The probability is
+$2p_e^t(1-p_e^t)$.
+Summing over pairs and using \eqref{eq:pair-error-opt} gives
+\[
+  \E[G_a(t)\mid a\in\A_{\rm in}]
+  =\sum_{e\in\binom{V_t}{2}}2p_e^t(1-p_e^t)
+  =2\OPT_t-2X_t.
+\]
+
+Next condition on $a\in\A_{\rm tri}$.
+Represent the uniform triple $Q_a$ by three uniformly sampled,
+distinct indices in a random order.
+For a fixed pair $e$, the probability that the inputs in two specified
+positions both disagree with $F_t^*$ on $e$ is
+\begin{equation}\label{eq:two-vote-error-probability}
+  \frac{k_e^t(k_e^t-1)}{m(m-1)}
+  \le\left(\frac{k_e^t}{m}\right)^2
+  =(p_e^t)^2.
+\end{equation}
+For $k_e^t=0$ both sides are zero.
+For $k_e^t\ge1$, the inequality follows from
+$(k_e^t-1)/(m-1)\le k_e^t/m$, since $k_e^t\le m$.
+
+A majority error on $e$ requires errors in at least one of the three
+pairs of sampled positions. A union bound therefore gives
+\[
+  \Prb[e\in B_{Q_a}^t(F_t^*)\mid a\in\A_{\rm tri}]
+  \le3(p_e^t)^2.
+\]
+By linearity of expectation,
+\begin{equation}\label{eq:majority-error-expectation}
+  \E[|B_{Q_a}^t(F_t^*)|\mid a\in\A_{\rm tri}]
+  \le3X_t.
+\end{equation}
+Applying \cref{lem:triple-history-bound} with $F=F_t^*$ proves
+\eqref{eq:triple-history-expectation}.
+\end{proof}
+
+The probability $w$ was chosen so that the coefficient of $X_t$
+vanishes when we average the two conditional bounds.
+This cancellation yields a bound for a single sampled candidate's
+entire history.
+
+\begin{lemma}[Expected history of a mixture candidate]
+\label{lem:mixture-history}
+For every fixed $t\in[n]$ and $a\in\A$,
+\begin{equation}\label{eq:mixture-history}
+  \E[G_a(t)]\le R_0\OPT_t.
+\end{equation}
+\end{lemma}
+\begin{proof}
+By the law of total expectation and \cref{lem:conditional-histories},
+\begin{align*}
+  \E[G_a(t)]
+  &\le w(2\OPT_t-2X_t)
+       +(1-w)(\OPT_t+3cX_t)\\
+  &=(1+w)\OPT_t+\bigl(-2w+3c(1-w)\bigr)X_t.
+\end{align*}
+Since $w=3c/(3c+2)$,
+\[
+  -2w+3c(1-w)=0,
+  \qquad
+  1+w=2-\frac2{3c+2}
+      =2-\frac2{3\eta+5}
+      =R_0.
+\]
+Substitution proves the claim.
+\end{proof}
+
+The reference optimum is fixed independently of all candidate samples.
+The argument takes expectation only after controlling each triple
+candidate's full history. It does not interchange expectation and
+a maximum over times.
 
 \subsection{A good history at every prefix}\label{subsec:online-sampling}
 
-We now combine the two candidate types.
-At a fixed time $t$, write $J_t=J_t(\alpha_*)$, using
-\eqref{eq:good-inputs}. If $|J_t|\ge\rho m$, input sampling finds a good
-input with high probability. Otherwise triple sampling finds a
-small-slack triple, whose history is controlled by
-\cref{lem:triple-history-bound}.
-The constants in \eqref{eq:online-parameters} balance these two alternatives.
+We next turn the expected history guarantee into a simultaneous
+probability guarantee.
+The threshold $R=R_0+\eps/2$ from \eqref{eq:online-parameters} leaves
+enough room above the expectation for a single candidate to succeed
+with probability proportional to $\eps$.
+Independent repetition then makes failure at any fixed prefix unlikely.
 
 \begin{lemma}[A good candidate at a fixed prefix]\label{lem:fixed-prefix}
-For every fixed $t\in[n]$,
-\[
-  \Prb[M_t\le R\OPT_t]\ge1-\frac{\zeta}{n}.
-\]
+For every fixed $t\in[n]$ and every $a\in\A$,
+\begin{equation}\label{eq:single-candidate-success}
+  \Prb[G_a(t)\le R\OPT_t]\ge\frac{\eps}{4}.
+\end{equation}
+Consequently,
+\begin{equation}\label{eq:fixed-prefix-success}
+  \Prb[M_t\le R\OPT_t]\ge1-\frac{\zeta}{2n}.
+\end{equation}
 \end{lemma}
 \begin{proof}
-First suppose $|J_t|\ge\rho m$.
-A uniform input index belongs to $J_t$ with probability at least $\rho$.
-The probability that all $L_{\rm in}$ input draws miss $J_t$ is at most
-\[
-  (1-\rho)^{L_{\rm in}}
-  \le e^{-\rho L_{\rm in}}
-  \le\frac{\zeta}{2n}.
-\]
-Whenever a sampled index $i_a$ is in $J_t$,
-\cref{obs:history-monotonicity} gives
-\[
-  G_a(t)=\cost_t(P_{i_a}^t)
-  \le(2-\alpha_*)\OPT_t
-  \le R\OPT_t.
-\]
+First suppose $\OPT_t=0$.
+Every input partition $P_i^t$ equals $F_t^*$, because the nonnegative
+distances in the optimum's cost sum to zero.
+Input candidates therefore have history score zero by
+\cref{obs:history-monotonicity}.
+Every triple has $B_Q^t(F_t^*)=\varnothing$, so
+\cref{lem:triple-history-bound} gives history score zero for each
+triple candidate as well.
+Thus both assertions hold with success probability $1$.
 
-Now suppose $|J_t|<\rho m$.
-By \cref{cor:low-slack-triple}, a uniform triple satisfies
+Suppose $\OPT_t>0$.
+Markov's inequality and \cref{lem:mixture-history} give
 \[
-  \Delta_Q^t(F_t^*)\le3(\alpha_*+3\rho)\OPT_t
+  \Prb[G_a(t)>R\OPT_t]
+  \le\frac{\E[G_a(t)]}{R\OPT_t}
+  \le\frac{R_0}{R}.
 \]
-with probability at least $\rho/(\alpha_*+3\rho)$.
-The probability that no sampled triple satisfies this inequality is at most
+Taking complements and using $R-R_0=\eps/2$ and $R<2$,
 \[
-  \left(1-\frac{\rho}{\alpha_*+3\rho}\right)^{L_{\rm tri}}
-  \le
-  \exp\!\left(-\frac{\rho L_{\rm tri}}{\alpha_*+3\rho}\right)
+  \Prb[G_a(t)\le R\OPT_t]
+  \ge1-\frac{R_0}{R}
+  =\frac{\eps}{2R}
+  >\frac{\eps}{4}.
+\]
+This proves \eqref{eq:single-candidate-success}.
+
+For fixed $t$, each history score is a deterministic function of its
+candidate's own initial draw and the fixed input sequence.
+The candidate draws are independent, so their success events at time
+$t$ are independent.
+By \eqref{eq:candidate-count},
+\[
+  \Prb[M_t>R\OPT_t]
+  \le\left(1-\frac{\eps}{4}\right)^K
+  \le\exp\!\left(-\frac{\eps K}{4}\right)
   \le\frac{\zeta}{2n}.
 \]
-For a successful triple occurrence $a$, \cref{lem:triple-history-bound}
-implies
-\begin{align*}
-  G_a(t)
-  &\le
-  \left(1+\frac{3(\eta+1)}2(\alpha_*+3\rho)\right)\OPT_t\\
-  &=
-  \left(2-\alpha_*+\frac{9(\eta+1)}2\rho\right)\OPT_t\\
-  &=R\OPT_t.
-\end{align*}
-The second line uses
-$1+\frac{3(\eta+1)}2\alpha_*=2-\alpha_*$, which follows directly from
-$\alpha_*=2/(3\eta+5)$.
-The last line uses the definition of $\rho$.
-In either alternative the failure probability is at most
-$\zeta/(2n)$, and therefore at most $\zeta/n$.
+This proves \eqref{eq:fixed-prefix-success}.
 \end{proof}
 
-Define the event that a good history exists at every prefix by
+Define the event that some good history exists at every prefix by
 \begin{equation}\label{eq:simultaneous-event}
   \mathcal E=\{M_t\le R\OPT_t\text{ for all }t\in[n]\}.
 \end{equation}
-The same sampled family is used for all prefixes.
-A union bound suffices to obtain the simultaneous guarantee; independence
+The same sampled family is used throughout the execution.
+A union bound obtains the simultaneous guarantee; independence
 between different times is unnecessary.
 
-\begin{lemma}[Simultaneous history guarantee]\label{lem:simultaneous-history-event}
+\begin{lemma}[Simultaneous history guarantee]
+\label{lem:simultaneous-history-event}
 The event $\mathcal E$ has probability at least $1-\zeta$.
 Equivalently, with this probability, for every $t\in[n]$ there is a
 candidate index $b_t\in\A$ such that
@@ -850,18 +826,19 @@ candidate index $b_t\in\A$ such that
 \]
 \end{lemma}
 \begin{proof}
-For each fixed $t$, \cref{lem:fixed-prefix} bounds the probability of
-$M_t>R\OPT_t$ by $\zeta/n$. Summing these probabilities over $n$
-prefixes proves the claim.
-The equivalent formulation follows from the definitions of $G_a(t)$
-and $M_t$ in \eqref{eq:history-scores}.
+By \cref{lem:fixed-prefix}, the probability that any of the $n$ prefixes
+violates $M_t\le R\OPT_t$ is at most
+$n\cdot\zeta/(2n)=\zeta/2\le\zeta$.
+The equivalent formulation follows from
+\eqref{eq:history-scores}.
 \end{proof}
 
-The witness $b_t$ may depend on the terminal time $t$.
-The lemma does not require one candidate to serve all terminal times.
-The known horizon determines the sample sizes, and the oblivious-instance
-assumption ensures that each fixed prefix and its chosen optimum are
-independent of the initial samples.
+The witness $b_t$ may change with the terminal time $t$.
+The statement does not require a single candidate to serve all
+terminal times.
+The known horizon determines the sample size, and the oblivious-instance
+assumption makes the fixed-prefix expectation and independence
+arguments applicable.
 
 \subsection{Selecting a candidate with few changes}\label{subsec:online-selection}
 
@@ -1051,7 +1028,7 @@ For every realization of the sampled family and every vertex $v$,
 \begin{align}
   \operatorname{rec}(v)
   &\le S+\sum_{a\in\A}\operatorname{rec}_a(v) \notag\\
-  &\le K(1+H)+L_{\rm tri}q_{\rm A}\lceil\log_2 n\rceil
+  &\le K(1+H)+Kq_{\rm A}\lceil\log_2 n\rceil
        \label{eq:recourse-decomposition}\\
   &=O_{\eta,q_{\rm A}}\!\left(
        \eps^{-2}
@@ -1070,7 +1047,8 @@ corresponding internal-recourse event.
 No internal event is charged more than once, proving the first inequality.
 
 Input candidates have no internal recourse.
-For triple candidates, apply \eqref{eq:internal-recourse}.
+For triple candidates, apply \eqref{eq:internal-recourse}; there are
+at most $K$ such candidates in every realization.
 Combining with \cref{lem:outer-switches} gives
 \eqref{eq:recourse-decomposition}.
 Finally, substitute \eqref{eq:candidate-count} and the bound on $H$.
@@ -1102,11 +1080,11 @@ all $t\in[n]$,
   \le(1+\theta)M_t
   \le(1+\theta)R\OPT_t.
 \]
-Using $\theta=\eps/4$, $R=2-\alpha_*+\eps/2$, and $R<2$, we have
+Using $\theta=\eps/4$, $R=R_0+\eps/2$, and $R<2$, we have
 \[
   (1+\theta)R
   =R+\frac{\eps}{4}R
-  <2-\alpha_*+\frac{\eps}{2}+\frac{\eps}{2}
+  <R_0+\frac{\eps}{2}+\frac{\eps}{2}
   =2-\frac{2}{3\eta+5}+\eps.
 \]
 This proves \eqref{eq:online-ratio}, including prefixes with
@@ -1127,17 +1105,15 @@ history bound and in the final recourse accounting.
 
 \section{Fully Dynamic Consensus Clustering}\label{sec:dynamic}
 
-\emph{Placeholder. The fully dynamic contribution, including the model,
-main results, algorithms, and proofs for vertex insertions and deletions,
-will be completed by the collaborators.}
+placeholder, To be completed
 
 \subsection{Dynamic model and main results}
 
-\emph{Placeholder for the collaborators.}
+placeholder, To be completed
 
 \subsection{Dynamic algorithms and analysis}
 
-\emph{Placeholder for the collaborators.}
+placeholder, To be completed
 
 \ifusebiblatex
   \printbibliography
