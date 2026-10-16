@@ -1,370 +1,906 @@
-\documentclass[11pt]{article}
+\documentclass[11pt,letterpaper]{article}
 
 \usepackage[T1]{fontenc}
-\usepackage{amsmath,amssymb,amsthm}
-\usepackage{algorithm,algpseudocode} 
-\usepackage{mathtools}
+\usepackage{lmodern}
 \usepackage[margin=1in]{geometry}
-\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,tabularx,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
 
-\newtheorem{theorem}{Theorem}
-\newtheorem{observation}{Observation}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
+\allowdisplaybreaks
+\setlength{\parindent}{1.35em}
+\setlength{\parskip}{0.18em}
+\setlist{itemsep=0.2em,topsep=0.35em}
+\emergencystretch=2em
 
-\newcommand{\C}{\mathcal{C}}
-\newcommand{\sym}{\,\triangle\,}
-\newcommand{\OPTCC}{\OPT_{\mathrm{CC}}}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{observation}[theorem]{Observation}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
 \newcommand{\OPT}{\mathrm{OPT}}
-\newcommand{\costCC}{\mathrm{cost}_{\mathrm{CC}}}
-\newcommand{\cost}{\mathrm{cost}}
-\newcommand{\Ep}{\mathbb{E}}
-\newcommand{\Epivot}{\Ep_{\mathrm{piv}}}
-\newcommand{\Vtwo}{\binom{V}{2}}
-\newcommand{\Ipair}[2]{I^{#1}_{#2}}
-\newcommand{\bigOt}{\widetilde{O}}
-\algrenewcommand\algorithmicrequire{\textbf{Input:}}
-\algrenewcommand\algorithmicensure{\textbf{Output:}}
+\newcommand{\cost}{\operatorname{cost}}
+\newcommand{\Bad}{\operatorname{Bad}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prb}{\mathbb{P}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\polylog}{\operatorname{polylog}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\CC}{\mathcal{C}}
+\newcommand{\calB}{\mathcal{B}}
+\newcommand{\calT}{\mathcal{T}}
+\newcommand{\Pivot}{\textnormal{\textsc{Pivot}}}
 
-\title{Near Linear Offline Consensus Clustering Algorithm with below 2-Approximation}
-\author{}
-\date{}
+\crefname{equation}{Eq.}{Eqs.}
+\crefname{theorem}{Theorem}{Theorems}
+\crefname{lemma}{Lemma}{Lemmas}
+\crefname{proposition}{Proposition}{Propositions}
+\crefname{corollary}{Corollary}{Corollaries}
+\crefname{observation}{Observation}{Observations}
+
+\hypersetup{
+  pdftitle={Near-Linear and Dynamic Consensus Clustering below Factor Two},
+  pdfsubject={Anonymous SODA-style submission},
+  pdfkeywords={consensus clustering, dynamic clustering, randomized approximation, Pivot}
+}
 
 \begin{document}
-\maketitle
+
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{0.7in}
+{\LARGE\bfseries Near-Linear and Dynamic Consensus Clustering below Factor Two \par}
+
+\vspace{0.65in}
+
+\begin{minipage}{0.88\textwidth}
+\begin{abstract}
+Consensus clustering asks for a partition that minimizes its average pairwise disagreement with a collection of input partitions.  We give static and dynamic approximation algorithms based on the constant $\gamma=34058/20101<1.6944$, using a small number of input partitions and avoiding the explicit dense weighted instance.
+
+The static algorithm samples seven input clusterings, runs \Pivot{} on their majority graph through an implicit linear-size bucket oracle, and competes with an independently sampled input clustering.  Independent repetition and sample-based candidate evaluation give, with high probability, cost at most $(\gamma+O(\delta))\OPT$ in $\widetilde O(n)$ time for every fixed $\delta>0$.  Only $\polylog(n)$ input clusterings are read.  The analysis derives an exact pairwise identity for \Pivot{}, uses sampled unanimity to remove triangle charges from some erroneous pairs, and combines the remaining sampling loss with the structural charge.  An exact rational certificate establishes the constant and bounds a fixed randomized mixture of the two candidates.
+
+For an oblivious sequence of vertex insertions and deletions, with persistent input labels and random access to selected coordinates, we maintain this mixture in $O(\log(N+2))$ expected amortized time per update and linear space, where $N$ bounds the active set size.  At every fixed snapshot its expected cost is at most $\gamma\OPT$.  The dynamic algorithm maintains exact random-priority \Pivot{} on the sampled graph.  Separating a vertex's blocking certificate from its cluster owner lets us combine random-greedy sensitivity bounds with a potential argument for logarithmic update time.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords.}
+Consensus clustering, dynamic clustering, randomized approximation, sublinear input access, Pivot.
+\end{minipage}
+
+\vfill
+\end{titlepage}
+
+\hypersetup{pageanchor=true}
+\pagenumbering{arabic}
 
 \section{Introduction}
 \label{sec:intro}
 
-Consensus clustering is the problem of aggregating a collection of (possibly conflicting) clusterings of the same data set into a single clustering that best represents the input as a whole. It is also referred to as \emph{cluster ensembles} or \emph{aggregation of clusterings}: for instance, given several input clusterings of a particular data set obtained from different clustering algorithms, different parameter settings of the same algorithm, or different runs of a randomized algorithm, the goal is to compute a single \emph{consensus clustering} that minimizes the total disagreement with the inputs and is, in a precise combinatorial sense, closest on average to all of them.
-
+Consensus clustering is the problem of aggregating a collection of possibly conflicting clusterings of the same data set into a single clustering that best represents the input as a whole.  It is also known as \emph{cluster ensembles} or \emph{aggregation of clusterings}.  The input clusterings may come from different algorithms, different parameter choices, or different runs of a randomized procedure.  The goal is to find one clustering that minimizes its average disagreement with all of them.
 
 \paragraph{Prior work.}
-Consensus clustering is NP-complete~\cite{FilkovSkiena2003}, and remains so even when the number of input clusterings is restricted to three~\cite{FilkovSkiena2003}; it is in fact APX-hard already on three input partitions~\cite{BDDJ2008}. On the other hand, returning one of the input clusterings uniformly at random is a folklore $2$-approximation in expectation.
+Consensus clustering is NP-hard~\cite{filkov-skiena} and is APX-hard already for three input partitions~\cite{bonizzoni}.  At the other extreme, returning a uniformly random input clustering is a folklore $2$-approximation in expectation.
 
-The problem is most often approached through its reduction to weighted \textsc{Correlation-Clustering}: setting the weight of a pair to the fraction of input clusterings that co-cluster it yields an instance satisfying the probability and triangle-inequality constraints~\cite{ACN2008}. Ailon, Charikar, and Newman~\cite{ACN2008} gave an $11/7$-approximation by running their combinatorial \textsc{Pivot} algorithm on the majority instance, and a $4/3$-approximation by LP rounding followed by \textsc{Pivot}; the latter remains the best approximation ratio known for consensus clustering. Neither is subquadratic: \textsc{Pivot} on a consensus instance takes $\Theta(n^2)$ time, and and the LP has a variable for every one of the $\binom{n}{2}$ pairs.
+The standard approach reduces the problem to weighted \textsc{Correlation Clustering}.  For each pair of elements, its positive weight is the fraction of input clusterings that put the pair together, and its negative weight is the fraction that separate it.  These weights satisfy the probability and triangle-inequality constraints used by Ailon, Charikar, and Newman~\cite{acn}.  Their analysis gives an $11/7$-approximation by taking the better of \Pivot{} on the full majority graph and a random input clustering, and a $4/3$-approximation by taking the better of an LP-based randomized pivot clustering and a random input clustering.
 
-Correlation clustering on unweighted $\pm 1$ complete graphs, by contrast, now admits fast algorithms with ratio well below $2$. Cohen-Addad et al.~\cite{CALP2024} gave a combinatorial $\approx 1.847$-approximation in $\tilde{O}(n)$ time, and Cao et al.~\cite{CCL2025} solve the cluster LP to within a $(1+\varepsilon)$ factor and round it in $\tilde{O}(2^{\mathrm{poly}(1/\varepsilon)} n)$ time, giving a $(1.437+\varepsilon)$-approximation. Earlier work trades ratio for efficiency: Assadi and Wang~\cite{AW2022} give an $O(n\,\mathrm{polylog}\,n)$-time algorithm via a sparse--dense decomposition, and agreement-based methods~\cite{CLMNPT2021} give constant-round and streaming guarantees, both at a large constant factor.
+Direct use of these approaches requires constructing a dense instance.  There are $\binom n2$ pair weights, and a direct construction from $m$ input clusterings examines $m\binom n2$ pair decisions.  Even after the signs are known, the full majority graph can have $\Theta(n^2)$ edges.  Thus, explicitly constructing or scanning the instance already takes quadratic time in~$n$.
 
-The unweighted $\pm 1$ results do not settle consensus clustering. One can pass to an unweighted instance by taking the majority graph over all $m$ inputs, as \textsc{Pivot} does in~\cite{ACN2008}, but that graph has $\Theta(n^2)$ edges in general and building it is already quadratic. A near-linear-time algorithm must therefore avoid constructing any such graph. Consequently, no algorithm for consensus clustering is known to beat the trivial factor of $2$ in $o(n^2)$ time, and whether a ratio strictly below $2$ is achievable in near-linear time was open.
+Fast algorithms are known for correlation clustering on unweighted $\pm1$ complete graphs.  Cohen-Addad et al.~\cite{cohen-addad-2024} give a combinatorial approximation below $1.847$ in $\widetilde O(n)$ time, while Cao et al.~\cite{cohen-addad-2025} approximately solve and round the cluster LP in $\widetilde O(2^{\operatorname{poly}(1/\varepsilon)}n)$ time, obtaining a $(1.485+\varepsilon)$-approximation.  Earlier work gives near-linear algorithms through sparse--dense decompositions~\cite{assadi-wang}, and agreement-based methods give constant-round and streaming guarantees~\cite{CLMNPT2021}.  These results assume access to an unweighted signed instance; they do not remove the cost of constructing the majority instance from the original clusterings.
 
-Our approach follows a different framework. Chakraborty, Das, and Krauthgamer~\cite{CDK2021} first broke the $2$-approximation barrier for the Ulam $1$-median; a later work~\cite{CDK2023} constructs candidate medians from a constant number of inputs. Carmel, Das, and Nguyen~\cite{carmel2026scalable} abstract this into a framework for $1$-median problems and instantiate it for Hamming, Kendall-tau, Spearman's footrule, and Ulam. We instantiate it for partitions under the symmetric-difference metric, where a constant-size subsample has an unweighted majority graph that never has to be built.
+For dynamic random-greedy clustering, Censor-Hillel, Haramaty, and Karnin~\cite{censor-hillel-2016} show that a vertex update influences at most one vertex in expectation in their greedy-MIS repair closure.  Behnezhad et al.~\cite{behnezhad-2019} prove that the expected number of vertices whose earliest blocking pivot changes is $O(\log n)$, and give polylogarithmic algorithms for general dynamic graphs.  These sensitivity bounds alone do not bound the time needed to find and repair affected vertices.  Our sampled graph has a constant-size clique-bucket representation, which makes this repair possible in logarithmic expected amortized time.  The use of delayed blocking certificates is related to delayed leaders in dynamic $k$-center clustering~\cite{bateni-2023}.
+
+We work in the random-access model.  An input clustering can be sampled uniformly and read from its length-$n$ label array in $O(n)$ time.  Our aim is to make the dependence on $n$ near-linear without reading all $m$ inputs.  Consequently, the algorithm cannot estimate every one of the $\binom n2$ majority signs accurately.  It must use a small sample while controlling only the errors that matter to the final objective.  In the dynamic model, an update inserts or deletes one vertex, labels of surviving vertices remain fixed, and selected input coordinates can be read in constant time.  The update sequence is oblivious to the algorithm's randomness.
 
 \paragraph{Our contribution.}
-We give the first near-linear-time algorithm for consensus clustering with an approximation ratio bounded away from $2$.
+We give a near-linear-time algorithm and a dynamic algorithm for consensus clustering with approximation ratios bounded away from~$2$.
 
-\begin{theorem}[Main]
-\label{thm:main}
-For every constant $\delta>0$ there is a randomized algorithm that, given $m$ clusterings of an $n$-element ground set, runs in $\tilde{O}(n)$ time, reads only $\mathrm{polylog}(n)$ of the input clusterings, and returns with high probability a consensus clustering of cost at most $\bigl(2-\tfrac{1}{13}+O(\delta)\bigr)\cdot\mathrm{OPT}$.
+\begin{theorem}[Main]\label{thm:main}
+For every $0<\delta\le1$, there is a randomized algorithm that, given random access to $m\ge1$ clusterings of an $n$-element ground set with $n\ge1$, returns with high probability a clustering of cost at most
+\[
+ \bigl(1.6944+O(\delta)\bigr)\OPT.
+\]
+Let $L=\log((n+2)/\delta)$.  Its running time is $O(n\delta^{-3}L^2)$, its space usage is $O(n\delta^{-1}L)$, and it reads
+\[
+ O\!\left((\delta^{-1}+\delta^{-2})L\right)
+\]
+input clusterings.  In particular, for fixed $\delta$ the time is $\widetilde O(n)$ and only $\polylog(n)$ input clusterings are read.  High probability means $1-(n+2)^{-c}$ for any fixed $c>0$, with constants depending on~$c$.
 \end{theorem}
 
-Our algorithm follows the local-vs-global sampling framework for the $1$-median problem of~\cite{carmel2026scalable}, which reduces median computation in any metric space to two parts: a universal averaging bound, and a \emph{local solver} that, on a constant-size random subsample $Q$ of the inputs, builds a solution that is provably close to the optimal median. The quality of the local solver translates directly into the final approximation ratio; the better it approximates the median of the subsample, the further below $2$ the overall guarantee falls.
+\begin{theorem}[Dynamic]\label{thm:dynamic-intro}
+Starting from an empty ground set, consider an oblivious sequence of $U$ vertex insertions and deletions among $m\ge1$ input partitions with persistent labels.  Assume constant-time random access to a selected input label.  There is a randomized algorithm using at most eight sampled input indices that maintains a clustering $C_t$ such that, at every fixed time~$t$,
+\[
+ \E[\cost_t(C_t)]\le\frac{34058}{20101}\OPT_t.
+\]
+If $N$ bounds the active set size, the expected total update time is $O(U\log(N+2))$, the space at a snapshot with $n$ active vertices is $O(n+1)$, and a vertex's cluster can be queried in $O(\log(n+2))$ time.  The maintained partition is represented through these membership queries.
+\end{theorem}
 
-\emph{A linear-time local solver.} To instantiate the framework we need a local solver: an algorithm that runs in linear time on the majority graph of a constant number of inputs. Our solver is \textsc{Pivot}, a simple randomized algorithm that repeatedly picks a random unclustered vertex, emits that vertex together with its still-unclustered neighbors as a cluster, and recurses. The obstacle is the graph itself: the majority graph can have $\binom{n}{2}$ edges, so writing it down already costs $\Theta(n^2)$. We instead compress it into an oracle of linear size, built in linear time and space, and run \textsc{Pivot} on that representation.
+Our approach is inspired by the local-to-global sampling framework of Carmel, Das, and Nguyen~\cite{carmel-das-nguyen}.  One trial samples seven input clusterings and runs \textsc{Pivot} on their majority graph $G_Q$.  The graph is not constructed explicitly.  Because the sample size is constant, a vertex's neighbors are determined by the seven cluster labels assigned to it.  Grouping vertices by four-coordinate label patterns gives a linear-size oracle that enumerates the current neighborhood of a pivot in time proportional to the number of vertices it removes.  Over the entire run, every vertex is removed once, and hence one trial takes $O(n)$ time.  The dependence on the original number of inputs~$m$ disappears: a trial reads seven inputs, not all~$m$ of them.
 
-Section~\ref{sec:algorithm} shows how to do this in $O(n)$ time without ever building $G_Q$. The key observation is that a vertex's neighbors can be read off directly from the cluster labels the constantly many inputs assign to it. Grouping the vertices by these labels in advance yields an implicit representation of $G_Q$ that answers adjacency queries in $O(1)$ time, reports a vertex's degree in $O(1)$ time, and enumerates its neighborhood in time proportional to the degree, so non-neighbors are never touched. All three remain available as vertices are deleted. \textsc{Pivot} is then one client of this oracle among others: any correlation-clustering algorithm that accesses its input through such queries can be run on $G_Q$ in the same way. For \textsc{Pivot} in particular, every vertex is handled exactly once over the whole run; either as a pivot or as a neighbor absorbed into some cluster. So, the total work is $O(n)$.
+The approximation analysis is the main technical issue.  Seven samples need not recover the full majority graph $G^*$, and in a large instance $G_Q$ may disagree with $G^*$ on many pairs.  We therefore do not try to prove that the two graphs are globally close.  Instead, we analyze the cost of the output directly against the original distribution of all $m$ inputs.
 
-The approximation analysis (Section~\ref{sec:analysis}) establishes the two framework properties for the symmetric difference metric. The averaging bound holds in any metric space and is inherited from~\cite{carmel2026scalable}. The metric-specific part is our main technical contribution: we show that \textsc{Pivot} on the majority graph is a good local solver, in the sense that its output $y$ satisfies $\mathbb{E}[d(x^*,y)] \le C\Delta^*$ for $C=4$, where $x^*$ is an optimal median and $\Delta^*$ is the total slack of $x^*$ on the subsample. The framework converts a local solver with constant $C$ on a subsample of size $r$ into an approximation ratio of $2 - 1/(C\binom{r}{2}+1)$; at $r=3$ and $C=4$ this gives $2-\tfrac{1}{13}$. The factor $4$ is $1+3$, where the $3$ is \textsc{Pivot}'s approximation ratio for correlation clustering on $G_Q$, so any local solver with a better guarantee on $G_Q$ improves the constant directly.
+For a fixed pair, \textsc{Pivot} either follows its sign in $G_Q$ or decides the pair in the opposite way.  The latter event has an exact description: it occurs when a third vertex completes a bad triplet with the pair and is selected before either endpoint.  This description gives a pairwise identity for the expected cost.  It separates the usual structural loss of \textsc{Pivot} from two effects of sampling: the direct price of using a wrong sign, and the change in the bad-triplet events that can make \textsc{Pivot} oppose other signs.
 
+The two sampling effects are not independent penalties.  If all seven sampled clusterings make the same decision on a pair, then transitivity of the sampled partitions prevents that pair from belonging to any bad triplet of $G_Q$.  Thus a unanimous sampled decision may be wrong relative to $G^*$, but it pays only the direct pairwise price and receives no bad-triplet charge.  We use this unanimity property to charge the remaining sampling loss together with the structural \textsc{Pivot} loss.  The charge is made pair by pair against quantities that lower-bound~$\OPT$; it does not pass through a global distance bound between $G_Q$ and~$G^*$.
+
+One trial also keeps an independently sampled input clustering~$y'$.  If $y$ denotes the output of \Pivot{} on $G_Q$, the joint charging argument gives the stronger mixture bound, for $\beta=6144/20101$,
+\[
+ \beta\E[\cost(y)]+(1-\beta)\E[\cost(y')]
+ \le \frac{34058}{20101}\OPT
+ \qquad\text{where }\frac{34058}{20101}<1.6944.
+\]
+The same bound holds for the expected minimum of the two costs.  Repeating the trial and evaluating all candidates on a fresh independent sample gives \cref{thm:main}.
+
+For \cref{thm:dynamic-intro}, we sample the seven inputs and one additional input once, and choose a fixed randomized branch with probabilities $\beta$ and $1-\beta$.  The branch outputs either exact random-priority \Pivot{} or the sampled input partition at each snapshot.  The dynamic analysis separates the true cluster owner from a blocking certificate.  A certificate is repaired only when its blocking pivot disappears; membership queries recover the true owner directly from the constant number of buckets.  A potential argument pays for delayed certificate repairs, while the greedy-MIS influence bound pays for priority-queue work.  This yields logarithmic expected amortized updates without candidate scoring.  The dynamic guarantee is in expectation at each fixed snapshot, whereas the static guarantee is amplified to high probability.
 
 \section{The Algorithm}
 \label{sec:algorithm}
 
-\subsection{Preliminaries}\label{sec:prelim}
- 
-Throughout, $V = [n]$ is the ground set and a \emph{clustering} is a partition of $V$. Clusterings are represented by their \emph{label arrays}: for a clustering $x$ we write $c^{x}(v) \in [n]$ for the identifier of the block of $x$ containing $v$, so that a clustering occupies $O(n)$ space and is read in $O(n)$ time.
- 
-Call an unordered pair $\{u,v\}$ \emph{co-clustered} in $x$ if $u$ and $v$ lie in the same block of $x$, and let
+\subsection{Preliminaries}
 
+Let $V=[n]$.  A clustering $x$ is a partition of~$V$, represented by a label array; write $c_x(v)$ for the block label of~$v$.  For the static running-time bounds, labels are integers in $[n]$ occupying one machine word, so fixed-length label tuples can be radix-sorted in linear time.  Let
 \[
-  E^{+}(x) \;=\; \bigl\{\, \{u,v\} : u,v \text{ co-clustered in } x \,\bigr\}, \qquad E^{-}(x) \;=\; \Vtwo \setminus E^{+}(x).
+ E^+(x)=\bigl\{\{u,v\}:c_x(u)=c_x(v)\bigr\}
 \]
+be its co-clustered pairs.  The disagreement distance is
+\[
+ d(x,z)=\bigl|E^+(x)\mathbin\triangle E^+(z)\bigr|.
+\]
+It is the Hamming metric on pair indicators and hence satisfies the triangle inequality.
 
-The \emph{consensus distance} between two clusterings is the number of pairs on which they disagree, i.e.\ the symmetric difference
+The input is a multiset $P=(C_1,\ldots,C_m)$ of clusterings.  Define
+\[
+ \cost(x)=\frac1m\sum_{i=1}^m d(x,C_i),
+ \qquad
+ \OPT=\min_x\cost(x),
+\]
+and fix an optimal clustering~$x^*$.
 
-\begin{equation}\label{eq:d-def}
-  d(x,z) \;=\; \bigl| E^{+}(x) \,\triangle\, E^{+}(z) \bigr|
-  \;=\; \#\bigl\{\, \{u,v\} : \{u,v\} \text{ co-clustered in exactly one of } x,z \,\bigr\}.
+For a pair $e$, write
+\[
+ w_e^+=\frac1m\bigl|\{i:e\in E^+(C_i)\}\bigr|,
+ \qquad
+ w_e^-=1-w_e^+,
+ \qquad
+ m_e=\min\{w_e^+,w_e^-\}.
+\]
+If a candidate co-clusters~$e$, it pays $w_e^-$; if it separates~$e$, it pays $w_e^+$.  Therefore
+\begin{equation}\label{eq:pair-cost}
+ \cost(x)=\sum_e\left(\1\{e\in E^+(x)\}w_e^-+
+                 \1\{e\notin E^+(x)\}w_e^+\right).
 \end{equation}
 
-Sending each clustering $x$ to the indicator vector $\mathbf{1}_{E^{+}(x)} \in \{0,1\}^{\binom{V}{2}}$ realizes $d$ as the induced $\ell_1$ (Hamming) distance; hence $d$ is a metric, and the triangle inequality holds not only between clusterings but between any two subsets of $\Vtwo$. We use this last point in Section~\ref{sec:analysis}.
- 
-The input is a collection $\mathcal{P} = \{C_1,\dots,C_m\}$ of clusterings of $V$. For a clustering $x$ we write
-
+Let $G^*$ be the majority graph: $e$ is an edge when $w_e^+>1/2$, with ties broken arbitrarily.  Following $G^*$ on~$e$ costs $m_e$, while opposing it costs $1-m_e$.  Put
 \[
-  \cost(x) \;=\; \frac{1}{m}\sum_{i=1}^{m} d(x,C_i),
-  \qquad\text{and}\qquad
-  \cost(x,S) \;=\; \frac{1}{|S|}\sum_{C \in S} d(x,C)
-  \ \ \text{ for } S \subseteq \mathcal{P}.
+ u_e=1-2m_e\in[0,1].
 \]
+If $c_e^*$ denotes the contribution of~$e$ to $\cost(x^*)$, then
+\begin{equation}\label{eq:opt-lb}
+ c_e^*\in\{m_e,1-m_e\},
+ \qquad
+ \OPT=\sum_e c_e^*,
+ \qquad
+ \OPT\ge \sum_e m_e.
+\end{equation}
 
-The goal is to find a clustering of small $\cost$; we fix an optimal median $x^{*} = \arg\min_x \cost(x)$ and write $\OPT = \cost(x^{*})$.
+A triplet is \emph{bad} in a graph if exactly two of its three pairs are edges.  Such a sign pattern cannot be realized by a partition.
 
-\subsection{Overview}
-
-The algorithm instantiates the sampling framework of~\cite{carmel2026scalable} and is stated as Algorithm~\ref{alg:main}. It assembles a set $\mathcal{Y}$ of candidate clusterings from two sources. The first is the input itself: a random sample of $O(\log n/\delta)$ clusterings drawn from $P$. This source suffices when a substantial fraction of the inputs are already good medians. The second source covers the complementary case: for each of $O(\log n/\delta)$ independent random subsamples $Q\subseteq P$ of constant size $r$, we compute a \emph{local solution} that is an approximate median of the clusterings in $Q$ and add it to $\mathcal{Y}$. Finally, rather than evaluating candidates against all of $P$, we draw an evaluation sample $S$ of $O(\log n/\delta^2)$ inputs and return the candidate of least cost on $S$.
-
-\begin{algorithm}
-\caption{Consensus clustering in near-linear time}
-\label{alg:main}
-\begin{algorithmic}[1]
-\Procedure{ConsensusMedian}{$P,\delta$}
-  \State $\mathcal{Y}\leftarrow$ a set of $O(\log n/\delta)$ clusterings drawn uniformly at random from $P$
-  \For{$i=1,\dots,O(\log n/\delta)$}
-    \State $Q_i\leftarrow$ a set of $r=3$ clusterings drawn uniformly at random from $P$
-    \State $y_i\leftarrow\textsc{LocalSolve}(Q_i)$ \Comment{Algorithm~\ref{alg:pivot}}
-    \State $\mathcal{Y}\leftarrow\mathcal{Y}\cup\{y_i\}$
-  \EndFor
-  \State $S\leftarrow$ a set of $O(\log n/\delta^2)$ clusterings drawn uniformly at random from $P$
-  \State \Return $\arg\min_{x\in\mathcal{Y}}\mathrm{cost}(x,S)$
-  \Comment{Corollary \ref{cor:dist-alg}}
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
-
-Only $\mathrm{polylog}(n)$ of the $m$ input clusterings are ever read. Two subroutines must therefore run in linear time for the whole algorithm to be near-linear: the local solver (Section~\ref{sec:local}) and the cost evaluation on line~9. The local solver is developed and proved correct in this section; for the cost evaluation we recall a folklore linear-time computation of the symmetric-difference distance (Corollary \ref{cor:dist-alg}). The approximation guarantee is deferred to Section~\ref{sec:analysis}.
-
-\subsection{The local solver: \textsc{Pivot} on the majority graph}
-\label{sec:local}
-
-Write $N(u)$ for the neighborhood of $u$ and $N[u]=N(u)\cup\{u\}$ for its closed neighborhood. The \textsc{Pivot} algorithm repeatedly selects a uniformly random unclustered vertex $p$, emits $N[p]$ (restricted to the still-unclustered vertices) as one cluster, deletes those vertices, and recurses. Two quantities govern its running time: the number of pivots, which can be $\Theta(n)$, and the time to compute a single pivot's neighborhood in the current graph, which a naive scan makes $\Theta(n)$; their product gives a naive bound of $\Theta(n^2)$. For a linear-time algorithm it is enough to compute each neighborhood in time proportional to its size in the current graph. Since emitting $N[p]$ deletes all of $N[p]$, every vertex lies in exactly one emitted neighborhood throughout the run. Charging the work of a step to its pivot and to the neighbors it absorbs, each vertex is then handled only once, either as a pivot or as an absorbed neighbor, and the total is $O(n)$.
-
-Fix a subsample $Q=\{\mathcal{A}_1,\dots,\mathcal{A}_r\}$ of constant size $r$. Its \emph{majority graph} $G_Q=(V,E_Q)$ places an edge between two elements exactly when a strict majority of the clusterings in $Q$ co-cluster them:
+\begin{lemma}[Majority-triangle inequality]\label{lem:majority-triangle}
+If a triplet $t$ is bad in $G^*$, then
 \[
-  \{u,v\}\in E_Q \iff \bigl|\{\,i\in[r]\;:\;u,v \text{ are co-clustered in } \mathcal{A}_i\,\}\bigr|\;\ge\;t,
-  \qquad t=\lfloor r/2\rfloor+1 .
+ \sum_{e\in t}m_e\ge1.
 \]
-(The threshold $t$ is a strict majority for either parity of $r$; when $r$ is even a tie leaves the pair non-adjacent, so no tie-breaking rule is needed. We use $r=3$, hence $t=2$.)
-
-\paragraph{A compressed neighborhood oracle.}
-Each clustering in $Q$ assigns a label to every vertex: for $u\in V$ we let $c_i(u)$ denote the identifier of the block containing $u$ in $\mathcal{A}_i$, and we write $c(u)=(c_1(u),\dots,c_r(u))$ for its \emph{label tuple}. For a $t$-element subset $S\subseteq[r]$ and a vertex $u$, define the \emph{bucket}
-\[
-  B_S(u) \;=\; \{\, v\in V : c_i(v)=c_i(u)\ \text{for all } i\in S \,\},
-\]
-the set of vertices that match $u$ on every coordinate in $S$. Buckets are keyed by value tuples, so two vertices share the bucket for $S$ iff $c(u)|_S=c(v)|_S$. Since two vertices are co-clustered in $\mathcal{A}_i$ precisely when they carry the same label under $c_i$, the vertices of a single bucket are exactly those co-clustered in every clustering indexed by $S$. In particular, every $v\in B_S(u)$ is co-clustered with $u$ in $|S|=t$ of the $r$ clusterings, a strict majority, so $\{u,v\}\in E_Q$. There are $\binom{r}{t}=O(1)$ subsets $S$, and each vertex belongs to exactly one bucket per subset, namely the one keyed by its own restriction $c(u)|_S$.
-
-\begin{observation}
-\label{obs:buckets}
-For every $u\in V$, $\;N[u]=\bigcup_{S\subseteq[r],\,|S|=t} B_S(u)$. Moreover, if $u$ and $v$ agree on exactly $j\ge t$ coordinates, then $v$ lies in exactly $\binom{j}{t}\le\binom{r}{t}$ of these buckets.
-\end{observation}
-
-\begin{proof}
-A vertex $v$ lies in some $B_S(u)$ iff it agrees with $u$ on the $t$ coordinates of $S$, hence on at least $t$ coordinates in total; that is, $u$ and $v$ are co-clustered in at least $t$ of the inputs, which is exactly the majority condition defining $N[u]$. Conversely, if they agree on $j\ge t$ coordinates, then any $t$-subset of those coordinates is such an $S$. The multiplicity is therefore the number of $t$-subsets of the $j$ agreeing coordinates, namely $\binom{j}{t}$.
-\end{proof}
-
-So a pivot's neighborhood is the union of $O(1)$ buckets, and by the second part of Observation~\ref{obs:buckets} enumerating those buckets costs $O(|N[p]|)$: each neighbor is met at most $\binom{r}{t}=O(1)$ times, and no non-neighbor is ever met.
-
-\paragraph{Data structures}
-Two structures support the run.
-\begin{itemize}
-  \item \textbf{Buckets.} Each nonempty bucket $B_S$ is stored as a doubly linked list of its currently \emph{active} (unclustered) vertices. For a fixed $S$, these lists partition the active vertices into groups that are co-clustered in every input indexed by $S$. Every vertex $u$ stores an array of $\binom{r}{t}$ back-pointers, one to its node in each bucket it inhabits, so it can be spliced out of all of its buckets in $O(1)$ total time.
-
-  The lists are built in $O(n)$ time. Fix a $t$-subset $S$: each vertex $u$ has key $c(u)|_S=(c_i(u))_{i\in S}$, a $t$-tuple of cluster identifiers, which we lie in $[n]$. Radix-sorting the vertices on this key, $t=O(1)$ passes of counting sort, one per coordinate, each $O(n)$ because the alphabet is $[n]$, places equal-key vertices in contiguous runs, and a single scan splits the runs into the buckets for $S$, linking each list and filling in its back-pointers. This costs $O(tn)=O(n)$ per subset, hence $O(n)$ over all $\binom{r}{t}=O(1)$ subsets.
-
-  \item \textbf{Pivot pool (swap array).} The active vertices are held in a \emph{swap array}: an array $A[0..n-1]$ together with an inverse map $\mathrm{pos}[\cdot]$ recording each vertex's position in $A$, and a live-count $k$, maintaining the invariant that $A[0..k-1]$ are exactly the active vertices and $\mathrm{pos}[A[i]]=i$. A uniform random pivot is drawn as $A[\textsc{Rand}(0,k-1)]$ in $O(1)$; a vertex is deleted by overwriting its slot with $A[k-1]$ and decrementing $k$ (procedure \textsc{Absorb} in Algorithm~\ref{alg:pivot}). This deletes from the middle of the pool in $O(1)$ while keeping the live vertices contiguous. The order of the live vertices is permuted in the process, which does not affect correctness, since pivots are chosen uniformly at random.
-\end{itemize}
-
-\begin{algorithm}
-\caption{Linear-time \textsc{Pivot} algorithm on the majority graph of $r$ clusterings}
-\label{alg:pivot}
-\begin{algorithmic}[1]
-\Procedure{Build}{$C_1,\dots,C_r$}
-  \ForAll{$t$-subsets $S\subseteq[r]$}
-    \State sort the vertices of $V$ by their key $c(x)|_S$
-\Comment{radix sort: $t$ counting-sort passes, $O(n)$}
-    \State partition the sorted vertices into buckets (maximal runs of equal key), each stored as a doubly linked list; for every vertex $x$, record in $\mathrm{node}_S[x]$ a handle to its own node in the bucket list for $S$
-  \EndFor
-  \State initialize the swap array $A$ with all of $V$;\ \ $k\gets n$
-  \State $\mathrm{stamp}[x]\gets 0$ for every $x\in V$
-\EndProcedure
-\Statex
-\Procedure{Pivot}{}
-  \State $s\gets 0$
-  \While{$k>0$}
-    \State $s\gets s+1$
-    \State $p\gets A[\,\textsc{Rand}(0,k-1)\,]$ \Comment{uniform active pivot}
-    \State $C\gets\{p\}$;\ \ $\mathrm{stamp}[p]\gets s$
-    \ForAll{$t$-subsets $S\subseteq[m]$} \Comment{lists hold active vertices only}
-      \For{each $y\in B_S(p)$}
-        \If{$\mathrm{stamp}[y]\neq s$}
-          \State $\mathrm{stamp}[y]\gets s$;\ \ add $y$ to $C$
-        \EndIf
-      \EndFor
-    \EndFor
-    \State \textbf{output} cluster $C$
-    \ForAll{$z\in C$}
-      \State \Call{Absorb}{$z$}
-    \EndFor
-  \EndWhile
-\EndProcedure
-\Statex
-\Procedure{Absorb}{$z$} \Comment{remove $z$ from the instance; $O(1)$}
-  \ForAll{$t$-subsets $S\subseteq[r]$}
-    \State splice $z$ out of its bucket list for $S$ via the handle $\mathrm{node}_S[z]$
-  \EndFor
-  \State $i\gets\mathrm{pos}[z]$;\ \ $u\gets A[k-1]$
-  \State $A[i]\gets u$;\ \ $\mathrm{pos}[u]\gets i$;\ \ $k\gets k-1$
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
-
-\begin{lemma}
-\label{lem:pivot-linear}
-Algorithm~\ref{alg:pivot} simulates \textsc{Pivot} on $G_Q$ without constructing it: it emits the same clusters that \textsc{Pivot} would emit under the same sequence of pivots, and its pivots are uniformly distributed over the currently unclustered vertices. It runs in $O(n)$ time and $O(n)$ space.
 \end{lemma}
 
 \begin{proof}
-\emph{Correctness.} \textsc{Absorb} splices a vertex out of every bucket containing it, so the bucket lists always hold exactly the active vertices. Hence at a step with pivot $p$ the inner loops enumerate $\bigcup_{S\subseteq[r],\,|S|=t}B_S(p)$ restricted to the active vertices, which by Observation~\ref{obs:buckets} is $N[p]$ restricted to the active vertices; the timestamp $s$ ensures each such vertex is added to $C$ once. For the pivots, the swap array invariant guarantees that $A[0..k-1]$ contains precisely the active vertices, in some order. Since the draw $A[\textsc{Rand}(0,k-1)]$ ignores that order, each pivot is uniform on the set of vertices still unclustered at its step.
-
-\emph{Running time.} \textsc{Build} costs $O(n)$, as argued above. Consider a single pivot step. Drawing the pivot is $O(1)$. The enumeration costs $\sum_{|S|=t}|B_S(p)|\le\binom{r}{t}\,|N[p]|=O(|C|)$ by Observation~\ref{obs:buckets}, since every enumerated vertex belongs to $N[p]$ and is met at most $\binom{r}{t}$ times. Absorption costs $O(1)$ per vertex of $C$, hence $O(|C|)$, so the step costs $O(|C|)$ in total. Every vertex of $C$ is deleted at the end of the step and the emitted clusters partition $V$. Summing over the run, $\sum_C O(|C|)=O\bigl(\sum_C|C|\bigr)=O(n)$. The buckets, back-pointers, swap array, and timestamps occupy $O(n)$ space, as $\binom{r}{t}=O(1)$.
+Suppose $uk$ and $vk$ are edges of $G^*$ while $uv$ is a nonedge.  The separation indicator of a single partition is a semimetric; averaging over the inputs gives
+\[
+ w_{uv}^-\le w_{uk}^-+w_{vk}^-.
+\]
+Here $m_{uk}=w_{uk}^-$, $m_{vk}=w_{vk}^-$, and $m_{uv}=1-w_{uv}^-$, including tied pairs under either tie-breaking choice.  Rearranging proves the claim.
 \end{proof}
 
-\paragraph{Evaluating the cost.}
-Although computing the symmetric difference of two subsets of $\binom{V}{2}$ takes $\Theta(n^2)$ time in general, the distance between two clusterings can be evaluated in linear time. Let $x$ and $y$ be clusterings, and for $i\in[n]$ let $A^x_i$ be the cluster of $x$ with identifier $i$, so that $E^{+}(x)=\bigcup_i\binom{A^x_i}{2}$. Let $z$ denote the meet of $x$ and $y$: the clustering in which $u$ and $v$ are co-clustered iff they are co-clustered in both $x$ and $y$, so that each cluster $A^z_k$ equals $A^x_i\cap A^y_j$ for some $i$ and $j$. Since the clusters of $z$ are disjoint and cover $V$, there are at most $n$ of them. Applying $|X\triangle Y|=|X|+|Y|-2|X\cap Y|$ to $E^{+}(x)$ and $E^{+}(y)$, and counting the pairs inside each cluster, gives the classical identity (see, e.g.,~\cite{Meila2007})
-\begin{equation}\label{eq:contingency}
-  d(x,y)\;=\;\sum_i\binom{|A^x_i|}{2}+\sum_j\binom{|A^y_j|}{2}-2\sum_{k}\binom{|A^z_k|}{2}.
+\subsection{Overview}
+
+Fix the sample size $r=7$ and the strict-majority threshold $h=4$.  In one trial we draw seven inputs independently with replacement and let $G_Q$ be their majority graph.  We then run \Pivot{} on $G_Q$: choose a uniformly random active vertex~$p$, output the closed neighborhood of~$p$ among the active vertices as one cluster, remove this cluster, and continue.  We never materialize $G_Q$.
+
+Each trial produces two candidates.  The first is the clustering returned by \Pivot{}; the second is an independently sampled input clustering.  Repeating the trial supplies a small candidate set, which is evaluated on a fresh independent sample.  The complete algorithm is stated below.
+
+\medskip
+\noindent\fbox{\begin{minipage}{0.94\textwidth}
+\textbf{Algorithm: Sampled-majority consensus clustering}
+
+\smallskip
+\begin{enumerate}[label=\arabic*.,leftmargin=1.7em]
+\item Set $L=\log((n+2)/\delta)$, $T=\Theta(\delta^{-1}L)$, and initialize the candidate multiset $\mathcal Y\gets\varnothing$.
+\item Independently for $i=1,\ldots,T$:
+  \begin{enumerate}[label=(\alph*),leftmargin=1.7em]
+  \item sample $Q_i$ as seven independent uniform inputs and compute $y_i=\Pivot(G_{Q_i})$;
+  \item sample one independent uniform input $y_i'$;
+  \item add both $y_i$ and $y_i'$ to $\mathcal Y$.
+  \end{enumerate}
+\item Sample $S$ as $\Theta(\delta^{-2}L)$ independent uniform inputs, independently of the trials.
+\item Return $\widehat x\in\arg\min_{x\in\mathcal Y}\cost(x,S)$, where
+$\cost(x,S)=|S|^{-1}\sum_{C\in S}d(x,C)$.
+\end{enumerate}
+\end{minipage}}
+\medskip
+
+\subsection{An implicit majority-graph oracle}
+
+Write $Q=(A_1,\ldots,A_7)$ and let $c_i(u)$ be the block label of~$u$ in~$A_i$.  For each four-element set $R\subseteq[7]$, define the bucket
+\[
+ B_R(u)=\{v:c_i(v)=c_i(u)\text{ for every }i\in R\}.
+\]
+
+\begin{observation}\label{obs:buckets}
+The closed neighborhood of~$u$ in $G_Q$ is
+\[
+ N_{G_Q}[u]=\bigcup_{R\in\binom{[7]}4}B_R(u).
+\]
+Moreover, if $u$ and $v$ agree in exactly $j\ge4$ sampled inputs, then $v$ appears in exactly $\binom j4\le35$ of these buckets.
+\end{observation}
+
+For every $R\in\binom{[7]}4$, radix-sort the vertices by the four-coordinate key $(c_i(v))_{i\in R}$ and store each maximal equal-key run as a doubly linked list.  Each vertex keeps one list handle per~$R$.  Lists contain only active vertices: removing a vertex splices its $35$ nodes from the lists and deletes it from a swap array storing the active set.  A timestamp array removes duplicates while the $35$ buckets of a pivot are enumerated.
+
+\begin{lemma}\label{lem:oracle}
+The bucket oracle simulates \Pivot{} on $G_Q$ exactly and uses $O(n)$ time and space.
+\end{lemma}
+
+\begin{proof}
+By \cref{obs:buckets}, the enumerated union is precisely the active closed neighborhood of the pivot.  The swap array chooses the pivot uniformly from the active vertices.  Each enumerated vertex is a genuine neighbor and occurs at most $35$ times, so a cluster $C$ is found in $O(|C|)$ time.  Removing its vertices also costs $O(|C|)$ because the number of lists per vertex is constant.  The emitted clusters partition~$V$, and the $35$ initial radix sorts each take $O(n)$ time and space.
+\end{proof}
+
+\subsection{Linear-time distance evaluation}
+
+Let $z$ be the meet of two clusterings $x$ and $y$, whose blocks are the nonempty intersections of a block of~$x$ with a block of~$y$.  Then
+\begin{equation}\label{eq:linear-distance}
+ d(x,y)=
+ \sum_{A\in x}\binom{|A|}{2}
+ +\sum_{B\in y}\binom{|B|}{2}
+ -2\sum_{D\in z}\binom{|D|}{2}.
 \end{equation}
-
-The cluster sizes $|A^x_i|$ and $|A^y_j|$ are obtained by sorting $V$ on the cluster identifiers $c^x$ and $c^y$, which is a counting sort in $O(n)$ since the identifiers are in $[n]$; each cluster is then a maximal run of equal key. The sizes $|A^z_k|$ are obtained in the same way, sorting the pair key $\bigl(c^x(v),c^y(v)\bigr)$ by two counting-sort passes. Hence, the following.
-
-\begin{corollary}\label{cor:dist-alg}
-$d(x,y)$ is computable in $O(n)$ time and space; hence $\cost(x,\mathcal{S})$ is computable in $O(|\mathcal{S}|\,n)$ time.
-\end{corollary}
+All block and intersection sizes are obtained by counting or radix sorting the label pairs $(c_x(v),c_y(v))$.  Thus $d(x,y)$ is computable in $O(n)$ time and space.
 
 \section{Approximation Guarantee}
 \label{sec:analysis}
 
-We now analyze the algorithm of Section~\ref{sec:algorithm} and show that it returns a $\bigl(2 - \tfrac{1}{13} + O(\delta)\bigr)$-approximate $1$-median for consensus clustering. We keep the notation of Section~\ref{sec:prelim} with some additional definitions.
+We now analyze the algorithm of \cref{sec:algorithm} and prove \cref{thm:main}.  The proof works directly with the original consensus-clustering objective; it does not require $G_Q$ to approximate $G^*$ on every pair.  We first derive an exact expression for the cost of \Pivot{} on a fixed sampled graph, then isolate the additional loss caused by sampling, and finally combine the structural and sampling terms in one charging argument.
 
-\paragraph{Slack.} For $x$ and inputs $C_i, C_j$,
-\[
-  \Delta_{i,j}(x) \;=\; d(x,C_i) + d(x,C_j) - d(C_i,C_j) \;\ge\; 0,
-\]
-where non-negativity is the triangle inequality. For a subset $Q \subseteq \mathcal{P}$ define the total slack $\Delta(x,Q) = \sum_{i<j,\, C_i,C_j \in Q} \Delta_{i,j}(x)$, and abbreviate $\Delta^{*} = \Delta(x^{*},Q)$.
+Fix one sample~$Q$ for now, let $G=G_Q$, and take expectation only over the random pivots.  For a pair~$e$, let $s_e$ be its objective cost when the output follows the sign of~$G$; opposing~$G$ costs $1-s_e$.
 
-\paragraph{The algorithm, restated.} Fix a constant $\delta > 0$ and set $r = 3$. Following the sampling framework of~\cite{carmel2026scalable}, Algorithm~\ref{alg:main} builds a candidate set $\mathcal{C}$ consisting of $O(\log n/\delta)$ inputs drawn uniformly from $\mathcal{P}$, together with $O(\log n/\delta)$ local solutions: for each of $O(\log n/\delta)$ uniformly random size-$3$ samples $Q \subseteq \mathcal{P}$ it runs \textsc{Pivot} (Algorithm~\ref{alg:pivot}) on the majority graph $G_Q$ and adds the output to $\mathcal{C}$. It then draws an evaluation sample $S$ of $O(\log n/\delta^2)$ inputs and returns $\arg\min_{x \in \mathcal{C}} \cost(x,S)$ (Corollary~\ref{cor:dist-alg}).
+\subsection{How a bad triplet decides a pair}
 
-The guarantee reduces to two properties: a universal averaging bound (Lemma~\ref{lem:averaging}) and a metric-specific bound on the local solutions (Lemma~\ref{lem:property2}). Throughout, $y$ denotes the output of \textsc{Pivot} on the majority graph $G_Q$ of a size-$3$ sample $Q$, and $\Epivot$ the expectation over its pivot choices with $Q$ fixed.
+For a $G$-bad triplet~$t$, let $p_t$ be the probability that all three vertices of~$t$ are active when the first of them is selected as a pivot.
 
-\paragraph{Property 1: a universal averaging bound}
-\begin{lemma}\label{lem:averaging}
-Suppose $\bigl|\{p \in \mathcal{P} : \cost(p) \le (2-\alpha)\OPT\}\bigr| \le \delta m$ with $\delta \le 1 - \alpha$. Then for a uniformly random $Q \subseteq \mathcal{P}$ of size $r$,
-\[
-  \Ep_Q[\Delta^{*}] \;\le\; \binom{r}{2}\,(\alpha + 2\delta)\,\OPT .
-\] For $r = 3$ this reads $\Ep_Q[\Delta^{*}] \le 3(\alpha + 2\delta)\OPT$.
+\begin{lemma}[Contradiction event]\label{lem:contradiction}
+\Pivot{} decides a pair $e$ against~$G$ precisely when some $G$-bad triplet $t\supset e$ survives until its first internal pivot and the pivot is the vertex of~$t$ opposite~$e$.  Conditional on the survival event, each of the three vertices is the first internal pivot with probability $1/3$.
 \end{lemma}
 
-The proof of this lemma is stated in~\cite{carmel2026scalable}.
-
-\paragraph{Property 2: the pivot local solution}
-\begin{lemma}[Property 2, $C = 4$]\label{lem:property2}
-$\Epivot\bigl[d(x^{*},y) \mid Q\bigr] \le 4\,\Delta^{*}$.
-\end{lemma}
-
-The proof of this is deferred to later of this section. Combining the two lemmas, we prove the main theorem. 
-
-\begin{proof}[Proof of the theorem \ref{thm:main}]
-Set $r = 3$, $C = 4$, and
-\[
-  \alpha \;=\; \frac{1}{C\binom{r}{2} + 1} \;=\; \frac{1}{4\cdot 3 + 1} \;=\; \frac{1}{13}.
-\]
-Let $G = \{p \in \mathcal{P} : \cost(p) \le (2-\alpha)\OPT\}$; we may assume $\delta \le \alpha$ (so $\delta \le 1 - \alpha$).
-
-\emph{Case 1: $|G| \ge \delta m$.} A single uniform input misses $G$ with probability $\le 1 - \delta$, so over the $O(\log n/\delta)$ inputs placed in $\mathcal{C}$ the probability of missing $G$ entirely is $\le (1-\delta)^{O(\log n/\delta)} = n^{-\Omega(1)}$. Hence w.h.p. $\mathcal{C}$ contains a $(2-\alpha)$-approximate median.
-
-\emph{Case 2: $|G| < \delta m$.} Then Lemma~\ref{lem:averaging} applies. For one loop iteration, with $y$ its local solution, combining Lemma~\ref{lem:property2} (over pivots) with Lemma~\ref{lem:averaging} (over $Q$, using $\binom{3}{2} = 3$),
-\[
-  \Ep[d(x^{*},y)] = \Ep_Q\,\Epivot[d(x^{*},y) \mid Q] \le 4\,\Ep_Q[\Delta^{*}] \le 12(\alpha + 2\delta)\OPT .
-\]
-By Markov's inequality, $d(x^{*},y) \le 12(\alpha + 3\delta)\OPT$ with probability $\ge \frac{\delta}{\alpha + 3\delta} = \Theta(\delta)$. On this event, the triangle inequality gives
-\[
-  \cost(y) \le \OPT + d(x^{*},y) \le \bigl(1 + 12\alpha + 36\delta\bigr)\OPT
-  = \Bigl(2 - \tfrac{1}{13} + 36\delta\Bigr)\OPT,
-\] 
-using the identity $1 + 12\alpha = 2 - \alpha$ at $\alpha = \tfrac{1}{13}$. Each of the $O(\log n/\delta)$ iterations produces such a $y$ independently with probability $\Theta(\delta)$, so w.h.p.\ at least one candidate in $\mathcal{C}$ has cost $\le (2 - \tfrac{1}{13} + 36\delta)\OPT$.
-
-In both cases $\mathcal{C}$ contains, w.h.p., a clustering of cost $\le (2 - \tfrac{1}{13} + O(\delta))\OPT$. The evaluation step selects $\hat{x} = \arg\min_{x \in \mathcal{C}} \cost(x,S)$; since $|\mathcal{C}| = \mathrm{polylog}(n)$ and $|S| = O(\log n/\delta^2)$, Indyk's sampling bound~\cite{Indyk1999} guarantees w.h.p.\ that $\cost(\hat{x}) \le (1+\delta)\min_{x \in \mathcal{C}} \cost(x)$. Composing the two guarantees,
-\[
-  \cost(\hat{x}) \le (1+\delta)\Bigl(2 - \tfrac{1}{13} + O(\delta)\Bigr)\OPT
-  = \Bigl(2 - \tfrac{1}{13} + O(\delta)\Bigr)\OPT .
-\]
-For the running time, each of the $O(\log n/\delta)$ local solves is $O(n)$ by Lemma~\ref{lem:pivot-linear}, and the evaluation makes $|\mathcal{C}|\cdot|S| = \mathrm{polylog}(n)$ calls to distance calculation, each $O(n)$ by Corollary~\ref{cor:dist-alg}; the total is $\bigOt(n)$.
-\end{proof}
-
-It remains to prove Lemma~\ref{lem:property2}. We begin with some definitions. Fix a size-$3$ sample $Q = \{W_1, W_2, W_3\}$. Its majority graph $G_Q = (V,E_Q)$ has edge set
-\[
-  E_Q = \bigl\{ \{u,v\} : \{u,v\} \in E^{+}(W) \text{ for a strict majority of } W \in Q \bigr\}.
-\]
-Because $|Q|=3$ is odd, a strict majority of $Q$ co-clusters every pair or a strict majority separates it, so no tie-breaking is needed. For a clustering $x$, its correlation-clustering cost on $G_Q$ is the number of pairs that are co-clustered in exactly one of $x$ and $G_Q$:
-\[
-  \costCC(x;G_Q) = \bigl| E^{+}(x) \triangle E_Q \bigr|,
-  \qquad \OPTCC(G_Q) = \min_x \costCC(x;G_Q).
-\]
-For clusterings $x$ and $W$, write $\Ipair{x}{W} = E^{+}(x) \triangle E^{+}(W)$ for the set of pairs on which $x$ and $W$ disagree, so that $|\Ipair{x}{W}| = d(x,W)$; Finally, let $D_x$ be the set of pairs on which $x$ disagrees with at least two of $W_1,W_2,W_3$:
-\[
-  D_x = (\Ipair{x}{W_1} \cap \Ipair{x}{W_2}) \cup (\Ipair{x}{W_1} \cap \Ipair{x}{W_3}) \cup (\Ipair{x}{W_2} \cap \Ipair{x}{W_3}).
-\]
-
-\begin{lemma}[cost identity]\label{lem:cost-id}
-For every clustering $x$, $D_x = E^{+}(x) \triangle E_Q$, and hence $\costCC(x;G_Q) = |D_x|$.
-\end{lemma}
 \begin{proof}
-We show the two inclusions.
-
-Let $e \in E^{+}(x) \triangle E_Q$, and suppose first that $x$ co-clusters $e$, so that $e \notin E_Q$. Then fewer than two of $W_1,W_2,W_3$ co-cluster $e$, so at least two of them separate it; without loss of generality $W_1$ and $W_2$ do. Each therefore disagrees with $x$ on $e$, giving $e \in \Ipair{x}{W_1} \cap \Ipair{x}{W_2} \subseteq D_x$. The case in which $x$ separates $e$ is symmetric: then $e \in E_Q$, so at least two of the $W_i$ co-cluster $e$ and again disagree with $x$. Hence $E^{+}(x) \triangle E_Q \subseteq D_x$.
-
-Conversely, let $e \in D_x$; without loss of generality $e \in \Ipair{x}{W_1} \cap \Ipair{x}{W_2}$, so both $W_1$ and $W_2$ disagree with $x$ on $e$. If $x$ co-clusters $e$, then $W_1$ and $W_2$ separate it, so at most one of the three clusterings co-clusters $e$ and thus $e \notin E_Q$. If $x$ separates $e$, then $W_1$ and $W_2$ co-cluster it, so $e \in E_Q$. Either way $x$ and $G_Q$ differ on $e$, i.e.\ $e \in E^{+}(x) \triangle E_Q$. Hence $D_x \subseteq E^{+}(x) \triangle E_Q$.
-
-The two sets therefore coincide, and taking cardinalities gives the identity.
+If an endpoint of~$e$ pivots, its closed neighborhood makes the output follow the sign of~$e$.  A third vertex~$k$ joins the endpoints when it is adjacent to both and separates them when it is adjacent to exactly one.  Either action contradicts~$e$ exactly when the three induced signs contain two edges and one nonedge.  At the first iteration in which a vertex of~$t$ is chosen while all three remain active, the pivot rule is uniform on the active set, so the three conditional choices have equal probability.
 \end{proof}
 
-\begin{lemma}[slack bound]\label{lem:slack}
-For every clustering $x$ and all distinct $W,W' \in Q$, $|\Ipair{x}{W} \cap \Ipair{x}{W'}| \le \Delta_{W,W'}(x)$. Consequently $|D_x| \le \Delta(x,Q)$, and in particular $\OPTCC(G_Q) \le |D_{x^{*}}| \le \Delta^{*}$.
-\end{lemma}
-\begin{proof}
-By inclusion--exclusion, $|\Ipair{x}{W} \cap \Ipair{x}{W'}| = |\Ipair{x}{W}| + |\Ipair{x}{W'}| - |\Ipair{x}{W} \cup \Ipair{x}{W'}|$. We claim $\Ipair{W}{W'} \subseteq \Ipair{x}{W} \cup \Ipair{x}{W'}$: if $W$ and $W'$ disagree on a pair $e$, then one places it in $E^{+}$ and the other in $E^{-}$, so whether $x$ co-clusters $e$ or separates it, $x$ differs from at least one of them, i.e.\ $e \in \Ipair{x}{W}$ or $e \in \Ipair{x}{W'}$. Hence $|\Ipair{x}{W} \cup \Ipair{x}{W'}| \ge |\Ipair{W}{W'}| = d(W,W')$, and substituting,
-\[
-  |\Ipair{x}{W} \cap \Ipair{x}{W'}| \le d(x,W) + d(x,W') - d(W,W') = \Delta_{W,W'}(x).
-\]
-Summing over the three pairs of $Q$ and using the union bound gives $|D_x| \le \Delta(x,Q)$. Specializing $x = x^{*}$ yields $|D_{x^{*}}| \le \Delta^{*}$; and since $x^{*}$ is a feasible clustering of $G_Q$, Lemma~\ref{lem:cost-id} gives
-\[
-  \OPTCC(G_Q) = \min_x |E^{+}(x) \triangle E_Q| \le |E^{+}(x^{*}) \triangle E_Q| = |D_{x^{*}}| \le \Delta^{*}.
-\]
-\end{proof}
-
-The correlation-clustering cost of the local solution $y$ is in turn controlled by the \textsc{Pivot} guarantee for unweighted correlation clustering.
-
-\begin{lemma}[\textsc{Pivot},~\cite{ACN2008}]\label{lem:pivot3}
-$\Epivot\bigl[\costCC(y;G_Q) \mid Q\bigr] \le 3\,\OPTCC(G_Q)$.
-\end{lemma}
-
-We can now prove Property 2.
-
-\begin{proof}[Proof of Lemma~\ref{lem:property2}]
-The distance $d$ was realized in Section~\ref{sec:prelim} as the Hamming distance on $\{0,1\}^{\Vtwo}$ via $x \mapsto \mathbf{1}_{E^{+}(x)}$. In particular the triangle inequality holds between \emph{any} two subsets of $\Vtwo$, not only between those of the form $E^{+}(\cdot)$. This lets us use the majority edge set $E_Q$ as an intermediate point, even though $E_Q$ need not be the co-clustering set of any clustering: the majority of three partitions need not be transitive.
-
-Fix the sample $Q$ and condition on it throughout. For every realization of the pivots,
-\begin{equation}\label{eq:bridge}
-d(x^{*},y) = \bigl| E^{+}(x^{*}) \triangle E^{+}(y) \bigr| \;\le\; \bigl| E^{+}(x^{*}) \triangle E_Q \bigr| + \bigl| E_Q \triangle E^{+}(y) \bigr| \;=\; |D_{x^{*}}| + |D_y|,
+For a fixed pair, different triplets cannot both cause its contradiction: the first such pivot permanently clusters at least one endpoint and decides the pair.  Hence, defining
+\begin{equation}\label{eq:De}
+ D_e=\sum_{\substack{t\in\Bad(G)\\e\in t}}\frac{p_t}{3},
 \end{equation}
-where the inequality is the triangle inequality with $E_Q$ as the intermediate point and the last equality is Lemma~\ref{lem:cost-id}, applied once to $x^{*}$ and once to $y$.
+we have $0\le D_e\le1$, and $D_e$ is exactly the probability that \Pivot{} decides~$e$ against~$G$.
 
-We bound the two terms separately. The first involves no pivot randomness: $D_{x^{*}}$ is determined by $x^{*}$ and $Q$ alone, and Lemma~\ref{lem:slack} gives $|D_{x^{*}}| \le \Delta^{*}$ deterministically. For the second, Lemma~\ref{lem:cost-id} identifies $|D_y|$ with $\costCC(y;G_Q)$, so the \textsc{Pivot} guarantee of Lemma~\ref{lem:pivot3} applies to it:
+\begin{lemma}[Exact pair identity]\label{lem:exact}
+For fixed $Q$,
 \[
-  \Epivot\bigl[\,|D_y| \;\bigm|\; Q\,\bigr]
-  \;=\; \Epivot\bigl[\,\costCC(y;G_Q) \;\bigm|\; Q\,\bigr]
-  \;\le\; 3\,\OPTCC(G_Q)
-  \;\le\; 3\,\Delta^{*},
+ \E_{\mathrm{piv}}[\cost(y)]
+ =\sum_e s_e+\sum_eD_e(1-2s_e).
 \]
-the last step because $x^{*}$ is itself a feasible clustering of $G_Q$, so $\OPTCC(G_Q) \le \costCC(x^{*};G_Q) = |D_{x^{*}}| \le \Delta^{*}$ by Lemmas~\ref{lem:cost-id} and~\ref{lem:slack}.
+\end{lemma}
 
-Taking $\Epivot[\,\cdot \mid Q\,]$ of~\eqref{eq:bridge} and adding the two bounds,
-\[
-  \Epivot\bigl[\,d(x^{*},y) \bigm| Q\,\bigr] \;\le\; \Delta^{*} + 3\Delta^{*} \;=\; 4\Delta^{*},
-\]
-which is Property 2 with $C = 4$.
+\begin{proof}
+Pair~$e$ pays $s_e$ with probability $1-D_e$ and $1-s_e$ with probability~$D_e$.  Sum the resulting equality over all pairs.
 \end{proof}
-\bibliographystyle{siam}
+
+\subsection{Separating structural and sampling effects}
+
+Let $F_e$ indicate that $G_Q$ disagrees with $G^*$ on~$e$, and put
+\[
+ \eps_e=1-2F_e\in\{+1,-1\}.
+\]
+Following $G_Q$ costs
+\[
+ s_e=m_e+F_eu_e,
+ \qquad\text{and hence}\qquad
+ 1-2s_e=u_e\eps_e.
+\]
+
+Let $\calT_Q=\Bad(G_Q)$ and
+\[
+ \calB=\Bad(G_Q)\cap\Bad(G^*).
+\]
+Adding and subtracting the reference contribution of the common bad triplets in \cref{lem:exact} gives the exact decomposition
+\begin{equation}\label{eq:decomposition}
+ \E_{\mathrm{piv}}[\cost(y)]=(I)+(II)+(III),
+\end{equation}
+where
+\begin{align}
+ (I)&=\sum_em_e+
+ \sum_{t\in\calB}\frac{p_t}{3}\sum_{e\in t}u_e,
+ \label{eq:I}\\
+ (II)&=\sum_eF_eu_e,
+ \label{eq:II}\\
+ (III)&=\sum_{t\in\calT_Q}\frac{p_t}{3}X_t,
+ \label{eq:III}\\
+ X_t&=\sum_{e\in t}u_e\eps_e
+ -\1\{t\in\Bad(G^*)\}\sum_{e\in t}u_e.
+ \label{eq:Xt}
+\end{align}
+The restriction $t\in\calT_Q$ in \cref{eq:III} is essential: only bad triplets of the graph on which \Pivot{} runs contribute to \cref{eq:De}.
+
+If no pair of~$t$ is mis-sampled, then $G_Q$ and $G^*$ induce the same graph on~$t$, and $X_t=0$.  Thus every nonzero sampling correction can be assigned to a mis-sampled pair.
+
+\subsection{The price of sampling}
+
+For odd $r$, define the binomial tail
+\[
+ \phi_r(m)=\Prb\!\left[\operatorname{Bin}(r,m)>\frac r2\right].
+\]
+
+\begin{lemma}[Pair error]\label{lem:pair-error}
+For every pair~$e$,
+\[
+ \Prb[F_e=1]=\phi_r(m_e),
+ \qquad
+ \E[(II)]=\sum_e\phi_r(m_e)u_e.
+\]
+\end{lemma}
+
+\begin{proof}
+Whether $G^*$ co-clusters or separates~$e$, the minority decision occurs in one sampled input with probability~$m_e$.  The sampled majority is wrong exactly when the minority appears more than $r/2$ times.  The expectation follows by linearity; pair errors need not be independent.
+\end{proof}
+
+\subsubsection{A bad triplet causes at most one positive unit}
+
+\begin{lemma}[Damage bound]\label{lem:damage}
+For $t\in\Bad(G_Q)$:
+\begin{enumerate}[label=(\roman*),leftmargin=2em]
+\item if $t$ is also bad in $G^*$, then
+\[
+ X_t=-2\sum_{\substack{e\in t\\F_e=1}}u_e\le0;
+\]
+\item if $t$ is not bad in $G^*$, then $X_t\le1$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+The first statement follows immediately from \cref{eq:Xt}: correctly sampled pairs cancel, and each mis-sampled pair contributes $-2u_e$.
+
+For the second statement, encode a majority edge by $+$ and a nonedge by~$-$.  Up to symmetry, $G^*$ induces one of three consistent patterns.
+
+If the pattern is $+++$, exactly one pair~$f$ flips to make $G_Q$ bad.  For the other pairs $e_1,e_2$,
+\[
+ X_t=u_{e_1}+u_{e_2}-u_f
+ =1-2(m_{e_1}+m_{e_2}-m_f)\le1,
+\]
+where the last inequality is the triangle inequality for the average separation probabilities.
+
+If the pattern is $+--$, either one negative pair flips or all three pairs flip.  In the first case, labeling the positive pair by~$f$ and the unflipped negative pair by~$e_2$ gives
+\[
+ X_t=1-2(m_f+m_{e_2}-m_{e_1})\le1
+\]
+by another triangle inequality.  In the all-flipped case, $X_t=-\sum_{e\in t}u_e\le0$.
+
+Finally, from $---$ exactly two pairs must flip, giving
+\[
+ X_t=-u_{e_1}-u_{e_2}+u_f
+ =-1+2m_{e_1}+2m_{e_2}-2m_f\le1,
+\]
+because every mass is at most~$1/2$.
+\end{proof}
+
+Assign each triplet with $X_t>0$ to one of its mis-sampled pairs.  Let
+\[
+ \Gamma_e=\sum_{\substack{t\text{ assigned to }e}}
+ \frac{p_t}{3}X_t.
+\]
+Then $(III)\le\sum_e\Gamma_e$.  By \cref{lem:damage,eq:De},
+\begin{equation}\label{eq:gamma-pointwise}
+ 0\le\Gamma_e\le D_e\le1,
+ \qquad
+ \Gamma_e=0\quad\text{unless }F_e=1.
+\end{equation}
+
+\subsubsection{Unanimous errors are harmless}
+
+Let $J_e$ be the number of sampled inputs that co-cluster the endpoints of~$e$.
+
+\begin{lemma}[Unanimity]\label{lem:unanimity}
+If $J_e\in\{0,r\}$, then no triplet containing~$e$ is bad in~$G_Q$.  Consequently,
+\[
+ \E[\Gamma_e]\le \phi_r(m_e)-m_e^r.
+\]
+\end{lemma}
+
+\begin{proof}
+Write $e=\{u,v\}$.  If $J_e=0$, every sampled input separates $u$ and~$v$.  In any one partition a third vertex~$k$ can be co-clustered with at most one endpoint.  Therefore the two agreement counts for $ku$ and $kv$ sum to at most~$r$, while two strict majorities would sum to at least $r+1$.  Thus $k$ cannot be adjacent to both endpoints in~$G_Q$, which is exactly what a bad triplet containing the nonedge~$uv$ would require.
+
+If $J_e=r$, every sampled input co-clusters $u$ and~$v$.  Transitivity in each input implies $k\sim u$ if and only if $k\sim v$, so in $G_Q$ the vertex~$k$ is adjacent to both endpoints or to neither.  A bad triplet containing the edge~$uv$ would require adjacency to exactly one endpoint.
+
+Hence unanimity forces $\Gamma_e=0$.  If $e$ is positive in $G^*$, the event $J_e=0$ is a sampling error of probability $(w_e^-)^r=m_e^r$; if $e$ is negative, the analogous event $J_e=r$ has probability $(w_e^+)^r=m_e^r$.  Combine this harmless subevent with \cref{eq:gamma-pointwise}.
+\end{proof}
+
+Combining \cref{lem:pair-error,lem:unanimity}, define the sampling price
+\begin{equation}\label{eq:price}
+ P_r(m)=\phi_r(m)(2-2m)-m^r,
+ \qquad
+ \psi_r(m)=
+ \begin{cases}
+ P_r(m)/m,&m>0,\\
+ 0,&m=0.
+ \end{cases}
+\end{equation}
+Then
+\begin{equation}\label{eq:sampling-price}
+ \E[(II)+(III)]\le\sum_eP_r(m_e)
+ =\sum_e\psi_r(m_e)m_e.
+\end{equation}
+
+\subsection{Joint charging}
+
+Let $y'$ be an input selected uniformly from~$P$, independently of $Q$ and the pivots.  Its expected cost on pair~$e$ is
+\begin{equation}\label{eq:ze}
+ z_e=w_e^+w_e^-+w_e^-w_e^+
+ =2m_e(1-m_e).
+\end{equation}
+For any $\beta\in(0,1)$,
+\[
+ \min\{a,b\}\le\beta a+(1-\beta)b.
+\]
+We will mix the Pivot candidate and the random-input candidate using this inequality.
+
+The key is not to bound \cref{eq:I} and \cref{eq:sampling-price} separately.  Let
+\[
+ D_e'=\sum_{\substack{t\in\calB\\e\in t}}\frac{p_t}{3}\le1.
+\]
+Using $u_e=1-2m_e$, rewrite the structural term exactly as
+\begin{equation}\label{eq:I-split}
+ (I)=\sum_e(1-D_e')m_e
+ +\sum_{t\in\calB}\frac{p_t}{3}
+   \sum_{e\in t}(1-m_e).
+\end{equation}
+Indeed, pair~$e$ contributes
+$(1-D_e')m_e+D_e'(1-m_e)=m_e+D_e'u_e$.
+
+The same weights split any pair sum.  For arbitrary numbers~$q_e$,
+\begin{equation}\label{eq:generic-split}
+ \sum_eq_e=
+ \sum_e(1-D_e')q_e+
+ \sum_{t\in\calB}\frac{p_t}{3}\sum_{e\in t}q_e.
+\end{equation}
+We apply this identity to $q_e=P_r(m_e)$, $z_e$, and~$c_e^*$.
+
+\begin{lemma}[Joint-charging principle]\label{lem:joint}
+Suppose constants $\beta\in(0,1)$ and $\gamma$ satisfy the following two inequalities:
+\begin{align}
+ \beta\bigl[m+P_r(m)\bigr]
+ +(1-\beta)2m(1-m)
+ &\le \gamma m
+ &&\text{for every }m\in[0,1/2],
+ \label{eq:A}\\
+ \beta\left[\sum_{e\in t}(1-m_e)+
+              \sum_{e\in t}P_r(m_e)\right]
+ +(1-\beta)\sum_{e\in t}2m_e(1-m_e)
+ &\le\gamma\sum_{e\in t}c_e^*
+ &&\text{for every triplet $t$ bad in $G^*$.}
+ \label{eq:B}
+\end{align}
+Then
+\[
+ \beta\E[\cost(y)]+(1-\beta)\E[\cost(y')]\le\gamma\OPT.
+\]
+Consequently,
+\[
+ \E\bigl[\min\{\cost(y),\cost(y')\}\bigr]\le\gamma\OPT.
+\]
+\end{lemma}
+
+\begin{proof}
+Apply \cref{eq:A} to pair~$e$ with weight $1-D_e'$, and apply \cref{eq:B} to each $t\in\calB$ with weight $p_t/3$.  Sum the inequalities.  Equations \eqref{eq:I-split} and \eqref{eq:generic-split} reconstruct all terms on the left.  For the standalone pair part, $m_e\le c_e^*$ by \cref{eq:opt-lb}.  Thus
+\begin{equation}\label{eq:reserve}
+ \beta(I)+(1-\beta)\sum_ez_e
+ \le\gamma\OPT-\beta\sum_eP_r(m_e).
+\end{equation}
+
+Now use \cref{eq:decomposition,eq:ze}:
+\begin{align*}
+ \beta\E[\cost(y)]+(1-\beta)\E[\cost(y')]
+ &= \E\left[\beta(I)+(1-\beta)\sum_ez_e\right]
+      +\beta\E[(II)+(III)]\\
+ &\le \gamma\OPT-\beta\sum_eP_r(m_e)
+      +\beta\sum_eP_r(m_e)
+ =\gamma\OPT,
+\end{align*}
+where the second line uses \cref{eq:reserve,eq:sampling-price}.  The reserved sampling price cancels the actual expected sampling loss.  Finally, the minimum of the two costs is at most their convex combination.
+\end{proof}
+
+\subsection{An exact certificate for seven samples}\label{sec:certificate}
+
+For $r=7$,
+\begin{align}
+ \phi_7(m)&=35m^4-84m^5+70m^6-20m^7,
+ \label{eq:phi7}\\
+ P_7(m)&=70m^4-238m^5+308m^6-181m^7+40m^8.
+ \label{eq:P7}
+\end{align}
+Set
+\begin{equation}\label{eq:constants}
+ \beta=\frac{6144}{20101},
+ \qquad
+ \gamma=\frac{34058}{20101}=2-\beta.
+\end{equation}
+We prove \cref{eq:A,eq:B} exactly for these constants.
+
+For $d\ge0$, write
+\[
+ B_{j,d}(x)=\binom djx^j(1-x)^{d-j}
+\]
+for the Bernstein basis on $[0,1]$.  If all coefficients in a Bernstein expansion are nonnegative, then the polynomial is nonnegative on~$[0,1]$.
+
+\subsubsection{The pair inequality}
+
+Define
+\[
+ H(m)=\frac{P_7(m)}{m^2}
+ =70m^2-238m^3+308m^4-181m^5+40m^6,
+\]
+with $H(0)=0$.  Substituting $t=2m\in[0,1]$, its degree-six Bernstein coefficient vector is
+\[
+ \left(0,0,\frac76,\frac{161}{80},\frac73,
+              \frac{145}{64},\frac{63}{32}\right).
+\]
+Consequently $H(m)\le7/3$.  Using $\gamma=2-\beta$, the right side of \cref{eq:A} minus its left side equals
+\[
+ \gamma m-\beta[m+P_7(m)]-(1-\beta)2m(1-m)
+ =m^2\bigl(2(1-\beta)-\beta H(m)\bigr).
+\]
+This is nonnegative because
+\[
+ 2(1-\beta)-\frac73\beta
+ =\frac{13578}{20101}>0.
+\]
+Thus \cref{eq:A} holds.
+
+\subsubsection{The bad-triplet inequality}
+
+Let $e_1,e_2$ be the positive pairs and $e_3$ the negative pair of a triplet bad in~$G^*$, and abbreviate $m_i=m_{e_i}$.  By \cref{lem:majority-triangle},
+\begin{equation}\label{eq:mass-domain}
+ 0\le m_i\le\frac12,
+ \qquad
+ m_1+m_2+m_3\ge1.
+\end{equation}
+The restriction of any clustering to three vertices is one of five partitions.  The corresponding costs are
+\begin{align}
+ C_1&=m_1+m_2+(1-m_3),&
+ C_2&=m_1+(1-m_2)+m_3,\nonumber\\
+ C_3&=(1-m_1)+m_2+m_3,&
+ C_4&=(1-m_1)+(1-m_2)+(1-m_3),\label{eq:five-costs}\\
+ C_5&=(1-m_1)+(1-m_2)+m_3.\nonumber
+\end{align}
+In particular, $\sum_{e\in t}c_e^*$ equals one of these five quantities and is therefore at least $\min_jC_j$.  It suffices to prove that the left side of \cref{eq:B} is at most $\gamma C_j$ for every~$j$.
+
+Define the one-pair contribution
+\[
+ f(m)=\beta\bigl(1-m+P_7(m)\bigr)
+ +(1-\beta)2m(1-m).
+\]
+Put $x_i=1-2m_i$.  The domain \eqref{eq:mass-domain} becomes the standard simplex
+\begin{equation}\label{eq:simplex}
+ x_i\ge0,
+ \qquad
+ x_1+x_2+x_3\le1.
+\end{equation}
+Let $h(x)=f((1-x)/2)$.  Direct expansion gives
+\begin{align}
+ 40202h(x)={}&26149-480x-29413x^2+16800x^3+10080x^4\nonumber\\
+ &{}-6048x^5-8736x^6+2016x^7+1920x^8.
+ \label{eq:hpoly}
+\end{align}
+\begin{samepage}
+The two derivative polynomials needed below are positive on $[0,1]$.  Indeed, their degree-seven Bernstein coefficient vectors, after multiplication by~$40202$, are respectively
+\begin{align*}
+ 40202\left(\frac\gamma2-h'(x)\right):\quad
+ &\left(34538,\frac{300592}{7},\frac{342618}{7},
+ \frac{359780}{7},\frac{350062}{7},\frac{334968}{7},
+ \frac{362882}{7},55828\right),\\
+ 40202\left(\frac\gamma2+h'(x)\right):\quad
+ &\left(33578,\frac{176220}{7},\frac{134194}{7},
+ \frac{117032}{7},\frac{126750}{7},\frac{141844}{7},
+ \frac{113930}{7},12288\right).
+\end{align*}
+Every listed coefficient is positive.
+\end{samepage}
+
+Consider first $C_1$, which becomes
+\[
+ C_1=\frac32-\frac{x_1+x_2-x_3}{2}.
+\]
+For the gap
+\[
+ D_1=\gamma C_1-h(x_1)-h(x_2)-h(x_3),
+\]
+the derivative certificates show that $D_1$ decreases with $x_1,x_2$ and increases with~$x_3$.  Its minimum over \cref{eq:simplex} therefore has $x_3=0$ and $x_1+x_2=1$.  Writing $x=x_1$ on this boundary,
+\begin{equation}\label{eq:boundary-factor}
+ 40202D_1(x,1-x,0)=(2x-1)^2Q(x),
+\end{equation}
+where
+\[
+ Q(x)=3530-7170x+570x^2+14160x^3-9480x^4+2880x^5-960x^6.
+\]
+The degree-six Bernstein coefficient vector of~$Q$ is
+\[
+ (3530,2335,1178,767,1178,2335,3530),
+\]
+so $Q(x)>0$ on~$[0,1]$.  Hence $D_1\ge0$, with equality only at $(x_1,x_2,x_3)=(1/2,1/2,0)$.  The proofs for $C_2$ and $C_3$ are identical after permuting the coordinates.
+
+For $C_4=\frac32+\frac12(x_1+x_2+x_3)$, all three partial derivatives of the corresponding gap are $\gamma/2-h'(x_i)>0$.  The minimum is attained at $(0,0,0)$ and equals
+\[
+ \frac{23727}{40202}>0.
+\]
+Finally,
+\[
+ C_5=\frac32+\frac{x_1+x_2-x_3}{2}.
+\]
+Its gap increases with $x_1,x_2$ and decreases with~$x_3$, so its minimum over the simplex is at $(0,0,1)$ and equals
+\[
+ \frac{1765}{20101}>0.
+\]
+Thus the left side of \cref{eq:B} is at most $\gamma C_j$ for every $j$, proving \cref{eq:B}.
+
+Combining the pair and triplet arguments with \cref{lem:joint} proves the following one-trial guarantee.
+
+\begin{theorem}[One trial]\label{thm:one-trial}
+Let $Q$ consist of seven independent uniform inputs, let $y=\Pivot(G_Q)$, and let $y'$ be an independent uniform input.  For $\beta$ and $\gamma$ in \cref{eq:constants},
+\[
+ \E\min\{\cost(y),\cost(y')\}
+ \le \beta\E[\cost(y)]+(1-\beta)\E[\cost(y')]
+ \le \gamma\OPT.
+\]
+\end{theorem}
+
+\subsection{Amplification, evaluation, and running time}
+
+We finish the proof of \cref{thm:main}.  Let
+\[
+ Z=\min\{\cost(y),\cost(y')\}
+\]
+for one trial.  If $\OPT=0$, then \cref{thm:one-trial} gives $Z=0$ almost surely.  Otherwise, since every clustering has cost at least~$\OPT$, the nonnegative random variable $Z-\OPT$ has expectation at most $(\gamma-1)\OPT$.  Markov's inequality gives
+\begin{equation}\label{eq:success-prob}
+ \Prb[Z\le(\gamma+\delta)\OPT]
+ \ge \frac{\delta}{\gamma-1+\delta}
+ =\Omega(\delta).
+\end{equation}
+For $0<\delta\le1$ and $L=\log((n+2)/\delta)$, after $T=\Theta(\delta^{-1}L)$ independent trials, with probability $1-(n+2)^{-\Omega(1)}$ the candidate multiset contains a clustering of cost at most $(\gamma+\delta)\OPT$.
+
+For completeness, the following standard sampling lemma justifies empirical evaluation of the candidate set; it is the metric comparison argument underlying sublinear median evaluation~\cite{indyk,carmel-das-nguyen}.
+
+\begin{lemma}[Candidate evaluation]\label{lem:evaluation}
+Let $\mathcal Y$ be a nonempty finite set of points in a metric space.  Let $S$ contain $s$ independent uniform inputs, independently of~$\mathcal Y$.  For $0<\delta\le1$ and $0<\eta<1$, if
+\[
+ s\ge18\delta^{-2}\bigl(\log|\mathcal Y|+\log(1/\eta)\bigr),
+\]
+then, with probability at least $1-\eta$, every minimizer of $\cost(\cdot,S)$ over~$\mathcal Y$ has true cost at most $(1+\delta)$ times the minimum true cost in~$\mathcal Y$.
+\end{lemma}
+
+\begin{proof}
+Let $y_0$ minimize true cost in~$\mathcal Y$.  For a candidate~$x$, apply Hoeffding's inequality to
+\[
+ X_C=d(x,C)-d(y_0,C).
+\]
+The reverse triangle inequality gives $|X_C|\le d(x,y_0)$, while averaging the triangle inequality gives
+\[
+ d(x,y_0)\le\cost(x)+\cost(y_0).
+\]
+If $\cost(x)>(1+\delta)\cost(y_0)$, then
+\[
+ \frac{\E[X_C]}{d(x,y_0)}
+ \ge\frac{\delta}{2+\delta}.
+\]
+The variables $X_C$ lie in an interval of length $2d(x,y_0)$.  Thus Hoeffding's inequality bounds the probability that such an~$x$ has empirical cost no larger than that of~$y_0$ by
+\[
+ \exp\!\left(-\frac{s}{2}\left(\frac{\delta}{2+\delta}\right)^2\right)
+ \le \exp(-s\delta^2/18).
+\]
+A union bound over~$\mathcal Y$ proves the claim.  For a random candidate set, condition on~$\mathcal Y$ and use its independence from~$S$.  If $\cost(y_0)=0$, every input equals~$y_0$ in the metric quotient and the claim is immediate.
+\end{proof}
+
+Choose the constants in $T$ so that the candidate-generation failure probability is at most $\tfrac12(n+2)^{-c}$, and take $\eta=\tfrac12(n+2)^{-c}$ for evaluation.  Since $|\mathcal Y|=O(\delta^{-1}L)$ and $\log|\mathcal Y|=O(L)$, a sample of size $\Theta(\delta^{-2}L)$ with a sufficiently large constant suffices.  With probability at least $1-(n+2)^{-c}$,
+\[
+ \cost(\widehat x)
+ \le(1+\delta)(\gamma+\delta)\OPT
+ =\bigl(\gamma+O(\delta)\bigr)\OPT.
+\]
+
+Each local trial takes $O(n)$ time by \cref{lem:oracle}.  The evaluation stage performs
+$O(\delta^{-3}L^2)$ distance computations, each in $O(n)$ time by \cref{eq:linear-distance}.  Storing all candidates takes $O(n\delta^{-1}L)$ space; the independent evaluation inputs can be streamed while the candidate totals are accumulated.  The number of sampled inputs is
+\[
+ 8T+|S|=O\!\left((\delta^{-1}+\delta^{-2})L\right).
+\]
+This proves \cref{thm:main}.
+
+\section{Dynamic Consensus Clustering}
+\label{sec:dynamic}
+
+We now allow the ground set to change by vertex insertions and deletions.  The dynamic algorithm retains one constant-size sample and maintains exact random-priority \Pivot{} on its majority graph.  The stronger mixture guarantee in \cref{thm:one-trial} then supplies the approximation bound without evaluating candidates after an update.
+
+\subsection{Update model and graph representation}
+
+There are $m\ge1$ indexed input partitions.  At time~$t$, their restrictions to the active set $V_t$ form the current instance $P_t$.  Inserting a vertex provides random access to its input labels; deleting it removes it from every partition.  Labels of surviving vertices do not change.  Each selected label is a machine-word value available in constant time.  The number and identities of the input partitions are fixed.  The vertex identities, labels, and deletion choices form an \emph{oblivious} sequence: they are independent of all sampled input indices, branch choices, and random priorities.  Write
+\[
+ \cost_t(x)=\frac1m\sum_{i=1}^m d(x,C_i|_{V_t}),
+ \qquad
+ \OPT_t=\min_x\cost_t(x).
+\]
+Each vertex lifetime receives an independent continuous priority $\rho(v)$, retained until deletion.  A reinsertion may begin a new lifetime.  We use the usual random-ranking model in which priority comparisons take constant time.  Since the stream is oblivious, the active priorities induce a uniform random order at every fixed snapshot.
+
+Fix seven sampled input indices $Q$ throughout the stream.  By \cref{obs:buckets}, two distinct vertices are adjacent in $G_{Q,t}$ exactly when they share a key
+\[
+ \left(R,(c_i(v))_{i\in R}\right),
+ \qquad R\in\binom{[7]}4.
+\]
+There are $K=\binom74=35$ such keys per vertex.  Every bucket is a clique, and its membership changes only with vertex arrivals and departures.
+
+It is useful to prove the maintenance result for any graph represented by at most $K\ge1$ clique-bucket incidences per vertex, where adjacency means sharing a bucket and bucket keys have constant-time comparisons.  An independent set has at most one vertex in a bucket.  Consequently, a vertex has at most $K$ neighboring pivots, regardless of how many other vertices its buckets contain.  The sampled majority graph is a special case with constant~$K$.
+
+\subsection{Pivots, owners, and blocking certificates}
+
+For a fixed priority order, let $M$ be the greedy maximal independent set: scan vertices in increasing priority and select a vertex exactly when no earlier selected neighbor exists.  These selected vertices are precisely the pivots of \Pivot{} run in that order.  A vertex's cluster owner is
+\begin{equation}\label{eq:dynamic-owner}
+ e(v)=\arg\min_{p\in M\cap N[v]}\rho(p).
+\end{equation}
+Thus the clusters are the inverse images of~$e$.  A uniform random order produces the same distribution as choosing a uniform active pivot at each iteration of the static algorithm.
+
+For every bucket, retain its unique pivot, or a null value if it has none.  The at most $K$ bucket-pivot values of~$v$, together with $v$ itself when it is a pivot, determine $e(v)$ in $O(K)$ time.  We maintain separately a \emph{blocking certificate} $\ell(v)$ with the invariant
+\begin{equation}\label{eq:certificate-invariant}
+ \ell(v)=v\quad(v\in M),
+ \qquad
+ \ell(v)\in M\cap N(v),\quad
+ \rho(\ell(v))<\rho(v)\quad(v\notin M).
+\end{equation}
+The certificate of a nonpivot may differ from its owner.  It only proves that the vertex has an earlier neighboring pivot.  For each pivot~$p$, group its followers as
+\[
+ F(p)=\{v:\ell(v)=p\},
+\]
+including~$p$ itself.  A follower's certificate is repaired when its blocking pivot disappears; the appearance of a different earlier pivot need not change the certificate.  Membership queries always use \cref{eq:dynamic-owner}, rather than the certificate.
+
+Bucket records and vertices are indexed by balanced dictionaries.  Existing vertices retain references to their bucket records and follower positions.  Hence moving a follower between groups costs $O(1)$, inspecting its bucket-pivot values costs $O(K)$, and looking up an arriving or departing vertex and its keys costs $O(K\log(Kn+2))$.  These distinctions are needed in the update analysis: a repair of an existing follower does not incur a dictionary search.
+
+\subsection{Update rule and correctness}
+
+Keep a minimum-priority queue for vertices with no current earlier neighboring pivot.  The following \emph{refresh} rule is used for a newly inserted vertex or a vertex whose certificate has disappeared.  Clear its old certificate and inspect its bucket-pivot values.  If an earlier neighboring pivot exists, choose the earliest one as its certificate and attach it to that pivot's follower group.  Otherwise, put the vertex into the priority queue.  Only the latter case incurs queue work.
+
+\paragraph{Insertion.}
+Add the new vertex and its bucket incidences, apply the refresh rule, and drain the queue as described below.
+
+\paragraph{Deletion.}
+Deleting a nonpivot removes it from its follower group and its buckets.  No other repair is needed.  To delete a pivot, first clear its bucket-pivot values and detach its follower group.  Remove the vertex and its incidences, refresh every surviving detached follower, and drain the queue.
+
+\paragraph{Draining the queue.}
+Take the queued vertex~$v$ of minimum priority and recheck whether it has an earlier neighboring pivot.  If so, assign the earliest such pivot as its certificate.  Otherwise, $v$ becomes a pivot.  Its bucket records identify all conflicting later pivots, at most~$K$ of them.  Remove all these pivots and detach their follower groups, then install~$v$ in its buckets with $\ell(v)=v$, and finally refresh the detached followers, including the removed pivots themselves.  All conflicting pivots are removed before any follower is refreshed.
+
+\begin{lemma}[Exact maintenance]\label{lem:dynamic-correctness}
+After each update, the procedure restores \cref{eq:certificate-invariant} and maintains the exact greedy pivot set and its \Pivot{} partition for the retained priorities.  Each vertex enters the queue at most once during an update.  Newly installed pivots remain pivots for the rest of that update, and every removed pivot belongs to the pivot set at the start of the update and cannot return during the repair.
+\end{lemma}
+
+\begin{proof}
+The maintained pivots are independent: a new pivot removes every adjacent current pivot before being installed.  At all other times, each nonpivot has either a valid earlier certificate or a pending queue entry.  Removing a pivot invalidates exactly the certificates in its detached follower group, all of which are refreshed.
+
+Queue entries are processed in strictly increasing priority.  When $v$ becomes a pivot, every pivot~$p$ it removes has $\rho(p)>\rho(v)$.  Every follower~$u$ of~$p$ has $\rho(u)\ge\rho(p)$, so every new queue entry generated at this step is later than~$v$.  Subsequent pivots are therefore later than~$v$ and cannot remove it.  Moreover, a removed pivot is permanently blocked by the new earlier pivot that removed it, so it cannot return.  It follows that every removed pivot was present at the start of the update.
+
+A queued vertex initially has no earlier current pivot.  If it finds an earlier pivot when it is processed, that pivot must have been newly installed and is permanent during this update.  Otherwise the queued vertex becomes a permanent pivot itself.  In either case it cannot be queued again.  Thus the procedure terminates and restores the certificate invariant.
+
+An independent set in which every outside vertex has an earlier selected neighbor is uniquely the greedy maximal independent set.  Induction over the priority order proves this characterization.  The restored invariant therefore gives the exact pivot set, and \cref{eq:dynamic-owner} gives the exact \Pivot{} clusters.
+\end{proof}
+
+\subsection{Sensitivity and amortized update time}
+
+For update~$t$, let $n_t=\max\{|V_{t-1}|,|V_t|\}$.  Let $H_t$ be the number of queue entries, $F_t$ the number of changes in pivot membership, $A_t$ the number of refresh calls, including the initial refresh of an inserted vertex, and $R_t$ the number of surviving vertices whose true owner changes between the two stable snapshots.
+
+We use two sensitivity bounds for random greedy orders.  They concern fixed graphs and a fixed updated vertex; the oblivious-stream assumption makes them applicable at each time, conditional on the selected input indices.
+
+\begin{lemma}[Queue and owner sensitivity]\label{lem:dynamic-sensitivity}
+For every fixed update, conditioning on its bucket representation,
+\[
+ \E[H_t]\le1,
+ \qquad
+ \E[F_t]\le1,
+ \qquad
+ \E[R_t]=O(\log(n_t+2)).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $S_t$ be the influence set of Censor-Hillel, Haramaty, and Karnin~\cite[Theorem~1]{censor-hillel-2016}.  For a vertex update, it starts at the updated vertex when its greedy status requires a change.  Its closure includes an old pivot that has an earlier influenced neighbor, and an old nonpivot once all its earlier old-pivot neighbors have entered the closure.  Their theorem states that $\E[|S_t|]\le1$.
+
+Every removed old pivot has an earlier newly installed pivot as a neighbor.  Every surviving old nonpivot enters our queue only when all its earlier old-pivot neighbors have been removed.  Induction over repair events therefore places every removed pivot and every queue candidate in~$S_t$; the inserted root, when queued, is its initial element.  If an insertion is blocked, or a deleted vertex is a nonpivot, no propagated repair occurs.  By \cref{lem:dynamic-correctness}, each candidate is queued once and each pivot membership changes at most once.  Hence $H_t\le|S_t|$ and $F_t\le|S_t|$.
+
+For owners, \cref{eq:dynamic-owner} is exactly the greedy eliminator studied by Behnezhad et al.~\cite[Theorem~3]{behnezhad-2019}.  Their theorem bounds the expected number of eliminator changes after deleting an arbitrary fixed vertex by $O(\log(n_t+2))$.  An insertion compares the same two graphs in reverse order, with the same uniform ranking on their union, and satisfies the same bound.  Counting only surviving vertices can only decrease the number of changes.
+\end{proof}
+
+Owner sensitivity does not by itself bound refresh work: a certificate can disappear while its vertex's owner stays fixed.  We account for this delayed work using the analysis-only potential
+\begin{equation}\label{eq:dynamic-potential}
+ \Phi_t=\bigl|\{v\in V_t:\ell_t(v)\ne e_t(v)\}\bigr|.
+\end{equation}
+
+\begin{lemma}[Certificate amortization]\label{lem:certificate-amortization}
+For every update and every assignment of distinct priorities,
+\begin{equation}\label{eq:refresh-bound}
+ A_t\le\1\{\text{update $t$ is an insertion}\}
+       +(K+1)R_t+\Phi_{t-1}-\Phi_t.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Consider a surviving vertex whose owner is the same pivot~$p$ before and after the update.  By \cref{lem:dynamic-correctness}, $p$ remains a pivot throughout the repair.  There was no earlier old neighboring pivot, by the definition of the old owner.  No newly installed neighboring pivot can be earlier than~$p$: it would be permanent and would change the final owner.  Thus $p$ is the earliest neighboring pivot throughout.  If the vertex already has certificate~$p$, it is never refreshed.  If a different certificate disappears, its first refresh chooses~$p$, and no further refresh is needed.  That refresh reduces the vertex's contribution to~$\Phi$ from one to zero.
+
+Next consider a surviving vertex whose owner changes.  Each refresh follows the removal of one of its certificates.  All removed certificates are old pivots, because new pivots are permanent during the update.  An old independent set contributes at most $K$ pivots to the vertex's closed neighborhood, so there are at most $K$ refreshes.  Its contribution to~$\Phi$ can increase by at most one.  Its refresh count is therefore at most $K+1$ plus its old potential contribution minus its new one.
+
+An inserted vertex contributes one initial refresh.  If it is initially blocked, no propagated repair starts and its certificate is its owner.  Otherwise it becomes the first new pivot and is permanent.  Its final potential contribution is zero in either case.  A deleted vertex is not refreshed, and discarding its potential contribution provides a nonnegative credit.  Summing these per-vertex bounds proves \cref{eq:refresh-bound}.
+\end{proof}
+
+\begin{theorem}[Dynamic \Pivot{} in clique-bucket graphs]\label{thm:dynamic-pivot}
+Starting empty, exact random-priority \Pivot{} in a graph represented by at most $K\ge1$ clique-bucket incidences per vertex can be maintained under an oblivious sequence of $U$ vertex insertions and deletions in expected total time
+\begin{equation}\label{eq:dynamic-time}
+ O\!\left(K^2\sum_{t=1}^U\log(n_t+2)\right).
+\end{equation}
+Space at a snapshot with $n$ active vertices is $O(K(n+1))$.  An owner query costs $O(K)$ given a vertex reference, or $O(K+\log(n+2))$ given its identifier.
+\end{theorem}
+
+\begin{proof}
+Because the stream starts empty, $\Phi_0=0$, and always $\Phi_U\ge0$.  Summing \cref{eq:refresh-bound} yields the deterministic bound
+\[
+ \sum_{t=1}^U A_t\le U+(K+1)\sum_{t=1}^U R_t.
+\]
+Each refresh costs $O(K)$ outside the queue.  A pivot change inspects or changes $O(K)$ bucket-pivot values, and each queued vertex causes $O(K)$ inspections and a constant number of heap operations.  A single update therefore costs
+\[
+ O\!\left(KA_t+KF_t+KH_t+H_t\log(n_t+2)+K\log(Kn_t+2)\right).
+\]
+The logarithmic terms cover heap operations and dictionary work for the arriving or departing vertex.  Existing followers use their retained references and incur no logarithmic dictionary cost.  Applying \cref{lem:dynamic-sensitivity} and the summed potential bound proves \cref{eq:dynamic-time}, using $\log(Kn_t+2)=O(K\log(n_t+2))$ for $K\ge1$.  This uses linearity of expectation and requires no independence between different updates.
+
+There are at most $Kn$ bucket incidences, $n$ follower entries, and $n$ queued vertices.  Empty bucket records are discarded.  This gives the space bound.  The query bound follows by inspecting the bucket-pivot values after locating the vertex.
+\end{proof}
+
+A nonempty initial set of $n_0$ vertices can be processed in increasing priority, assigning every certificate to its true owner.  Sorting and building the bucket dictionaries cost $O(Kn_0\log(Kn_0+2))$ time and give $\Phi_0=0$, after which the same update bound applies.  For constant $K=35$ and maximum active size~$N$, \cref{eq:dynamic-time} is $O(U\log(N+2))$.  In particular, $N$ arrivals starting empty cost $O(N\log(N+2))$ in expectation.
+
+\subsection{Approximation at each snapshot}
+
+At initialization, sample $Q$ as seven independent uniform input indices and sample one more independent uniform index~$J$.  Independently choose a branch~$B$ with
+\[
+ \Prb[B=1]=\beta=\frac{6144}{20101}.
+\]
+Retain these choices throughout the stream.  When $B=1$, maintain the exact \Pivot{} partition of $G_{Q,t}$ using \cref{thm:dynamic-pivot}.  When $B=0$, output the restriction of the sampled input~$C_J$ to~$V_t$.  Maintaining the latter partition requires only its selected label and dictionary operations for each arriving or departing vertex.  Thus only a constant number of selected input labels need to be accessed per arrival.
+
+\begin{proof}[Proof of \cref{thm:dynamic-intro}]
+Fix a time~$t$.  The instance $P_t$ is independent of the retained random choices.  Conditional on~$Q$, its sampled graph is fixed and its active priorities are uniformly ordered.  By \cref{lem:dynamic-correctness}, the first branch has exactly the static distribution $Y_t=\Pivot(G_{Q,t})$.  The other branch is an independent uniform input partition $Y_t'=C_J|_{V_t}$.  The one-trial mixture bound gives
+\[
+ \E[\cost_t(C_t)]
+ =\beta\E[\cost_t(Y_t)]+(1-\beta)\E[\cost_t(Y_t')]
+ \le\gamma\OPT_t,
+ \qquad \gamma=\frac{34058}{20101}<1.6944.
+\]
+The time, space, and query bounds follow from \cref{thm:dynamic-pivot} with $K=35$ and the cheaper sampled-input branch.  The random choices need not be independent across snapshots: the proof uses their correct marginal distribution at each fixed time.
+\end{proof}
+
+The dynamic guarantees are expected approximation at each fixed snapshot and expected amortized update time.  Enumerating the entire maintained partition takes $O(n)$ time for constant~$K$; the logarithmic update bound uses the membership-query representation.
+
+\bibliographystyle{plain}
 \bibliography{ref}
 
 \end{document}
