@@ -58,13 +58,13 @@ The cases $ n=1 $ and $ m\le2 $ are handled by following an input, as in \cref{s
 
 \subsection{Algorithm}\label{subsec:explicit.consensus.algorithm}
 
-We follow the history score framework (\cref{alg:online-selection}) of the online consensus-clustering algorithm, with the following two  modifications.
-For every candidate in $ \A_{\rm tri} $, maintain its solution by employing $ \edSolver $ instead of $ \Agree $. 
-In~\cref{alg:online-selection}, the algorithm decides to follow the solution of a candidate or switch to another's solution based on the exact cost of the candidate's solution.
+We follow the history-score selection rule in \cref{sec:oncon-algorithm}, with the following two modifications.
+For every triple candidate, maintain its solution by employing $ \edSolver $ instead of $ \Agree $.
+In \cref{sec:oncon-algorithm}, the algorithm decides whether to retain the selected candidate or switch to another candidate using history scores computed from exact costs.
 As maintaining the exact cost of each candidate is too expensive in dynamic model, we maintain an estimated cost of each candidate using a set of evaluation samples. 
 We detail this estimation below.
 
-We reuse the following constants from~\eqref{eq:online-parameters}:
+We reuse the parameter choices from \cref{sec:oncon-algorithm,subsec:oncon-analysis}:
 \begin{equation*}
   c=\eta+1,\qquad
   w=\frac{3c}{3c+2},\qquad
@@ -72,15 +72,15 @@ We reuse the following constants from~\eqref{eq:online-parameters}:
   R=R_0+\frac{\eps}{2},
 \end{equation*}
 with $ \eta $ the approximation factor of $ \edSolver $. 
-The candidate set is defined similar to \cref{subsec:online-candidates}, with the parameters changed by a constant factor as follows.
+The candidate set is defined as in \cref{sec:oncon-algorithm}, with the parameters changed by a constant factor as follows.
 
 \begin{align}
     \theta=\gamma=\frac{\eps}{40}, \qquad
     K=\left\lceil\frac{8}{\eps}\log\frac{4n}{\zeta}\right\rceil \label{eq:explicit.dynamic.consensus.K}
 \end{align}
 
-Sample $ K $ candidates independently as in \cref{subsec:online-candidates}: with probability $ w $, follow a uniform input, and otherwise run $ \edSolver $ on the majority graph of a uniform triple of distinct input indices.
-\tienlong{We reuse the notation $ \A=[K] $, $ A_a(t),\lambda_t^a,\A_{\rm in},\A_{\rm tri} $.}
+Sample $ K $ candidates independently as in \cref{sec:oncon-algorithm}: with probability $ w $, follow a uniform input, and otherwise run $ \edSolver $ on the majority graph of a uniform triple of distinct input indices.
+Let $ \A=[K] $, and let $ \A_{\rm in} $ and $ \A_{\rm tri} $ be the sets of indices of input and triple candidates, respectively. As in \cref{sec:oncon-algorithm}, write $ A_a(t) $ for candidate $ a $'s partition and $ \lambda_t^a(v) $ for its local identifier of vertex $ v $.
 
 \paragraph{Evaluation samples.}
 Set
@@ -117,7 +117,7 @@ The updating rule of the algorithm are given in \cref{alg:explicit.consensus}.
         Update all group costs by processing $ \edlog{a}{t} $\;
         Compute $ \edscore{a}{t} $ and set $ \edhistory{a}{t}\gets\max\{\edhistory{a}{t-1},\edscore{a}{t}\} $\;
     }
-    Set $ \edminimum{t}\gets\min_{a\in\A}\edhistory{a}{t} $ and apply \cref{alg:online-selection} to choose $ a_t $\;
+    Set $ \edminimum{t}\gets\min_{a\in\A}\edhistory{a}{t} $ and apply the selection rule in \cref{sec:oncon-algorithm}, using estimated history scores, to choose $ a_t $\;
     \eIf{$ t=1 $ or $ a_t\ne a_{t-1} $}{
         Assign and report $ (a_t,\lambda_t^{a_t}(v)) $ for every $ v\in V_t $\;
     }{
@@ -145,8 +145,8 @@ With probability at least $ 1-\zeta/4 $, every prefix $ t\le n $ has a good cand
 \end{lemma}
 \begin{proof}
 The proxy depends only on the sampled candidate type and input indices.
-The input expectation in \eqref{eq:input-history-expectation}, the majority-error bound in \eqref{eq:majority-error-expectation}, and the cancellation in \cref{lem:mixture-history} give $ \E[\edproxy{a}{t}]\le R_0\OPT_t $.
-The Markov argument of \cref{lem:fixed-prefix} therefore gives
+The input expectation in \eqref{eq:oncon-input-history}, the majority-error bound in \eqref{eq:oncon-majority-error}, and the cancellation in the proof of \cref{lem:oncon-expectation} give $ \E[\edproxy{a}{t}]\le R_0\OPT_t $.
+The fixed-prefix Markov argument in the proof of \cref{lem:oncon-good-history} therefore gives
 \begin{align}
     \Prb[\edproxy{a}{t}\le R\OPT_t]\ge\frac{\eps}{4}.
     \label{eq:explicit.consensus.proxy.success}
@@ -155,7 +155,7 @@ If $ \OPT_t=0 $, the proxy is zero for every draw, so this bound still holds.
 
 Conditional on any fixed triple, its solver succeeds throughout the stream with probability at least $ 1/2 $.
 Consequently, a candidate is good for $ t $ with probability at least $ \eps/8 $, independently across candidates.
-By \eqref{eq:explicit.consensus.parameters}, the probability that any prefix has no good candidate is at most
+By the choice of $ K $ in \eqref{eq:explicit.dynamic.consensus.K}, the probability that any prefix has no good candidate is at most
 \begin{align}
     n\exp(-\eps K/8)\le\zeta/4.
     \label{eq:explicit.consensus.candidate.event}
@@ -201,12 +201,12 @@ If $ b $ is good for $ t $ and \eqref{eq:explicit.consensus.comparison} holds at
 \end{lemma}
 \begin{proof}
 The first inequality follows from the definition of $ \edminimum{t} $.
-If $ b $ is an input candidate, each group cost is nondecreasing under insertions, so $ \edhistory{b}{t}=\edcost{t}(P_{i_b}^t) $ by the argument of \cref{obs:history-monotonicity}.
+If $ b $ is an input candidate, each group cost is nondecreasing under insertions, so $ \edhistory{b}{t}=\edcost{t}(P_{i_b}^t) $ by the input-cost monotonicity argument in the proof of \cref{lem:oncon-expectation}.
 Since $ \cost_t(P_{i_b}^t)\le R\OPT_t $, the triangle inequality gives $ d(P_{i_b}^t,F_t^*)\le(R+1)\OPT_t\le3\OPT_t $.
 Substituting these bounds in \eqref{eq:explicit.consensus.comparison} proves the second inequality for an input candidate.
 
-For a successful triple candidate, the proof of \eqref{eq:history-distance-bound} uses only the solver's simultaneous approximation guarantee, so it gives $ d(A_b(u),F_t^*|_{V_u})\le c|B_{Q_b}^t(F_t^*)| $ for every $ u\le t $.
-Each group mean, and hence their minimum, satisfies both the cost comparison and restriction inequalities used in \cref{lem:triple-history-bound}.
+For a successful triple candidate, the derivation of \eqref{eq:oncon-history-distance} uses only the solver's simultaneous approximation guarantee, so it gives $ d(A_b(u),F_t^*|_{V_u})\le c|B_{Q_b}^t(F_t^*)| $ for every $ u\le t $.
+Each group mean, and hence their minimum, satisfies both the cost comparison and restriction inequalities used in \cref{lem:oncon-history}.
 Applying that proof with estimated costs yields
 \begin{align}
     \edhistory{b}{t}
@@ -222,7 +222,7 @@ With probability at least $ 1-\zeta $, the output satisfies $ \cost_t(C_t)\le(R_
 \begin{proof}
 By \cref{lem:explicit.good.candidate,lem:explicit.estimated.costs} and a union bound, with probability at least $ 1-3\zeta/4 $ every prefix has a good candidate and satisfies \eqref{eq:explicit.consensus.ceiling} and \eqref{eq:explicit.consensus.comparison}.
 On this event, fix $ t $ and apply \cref{lem:explicit.estimated.history} to a good candidate at $ t $.
-The proof of \cref{lem:online-phase-cost} uses only the monotonicity of history scores and the fact that a current score is at most its history score.
+The proof of \cref{lem:oncon-selection} uses only the monotonicity of history scores and the fact that a current score is at most its history score.
 It therefore applies without change and gives $ \edcost{t}(C_t)\le(1+\theta)\edminimum{t} $.
 Combine this inequality with \eqref{eq:explicit.consensus.good.history}, \eqref{eq:explicit.consensus.comparison} for the selected candidate, and $ d(C_t,F_t^*)\le\cost_t(C_t)+\OPT_t $ to obtain
 \begin{align}
@@ -274,7 +274,7 @@ Over the first $ t $ insertions, rebuilding the output at switches takes $ O(t(S
 \end{lemma}
 \begin{proof}
 Every estimated score, history score, and minimum history score belongs to $ g^{-1}\mathbb Z\cap[0,\binom n2] $.
-Applying the phase count of \cref{lem:outer-switches} with minimum positive score $ 1/g $ and the present value of $ \theta $ gives \eqref{eq:explicit.consensus.switches}.
+Applying the phase-count argument in the proof of \cref{lem:oncon-recourse}, with minimum positive score $ 1/g $ and the present value of $ \theta $, gives \eqref{eq:explicit.consensus.switches}.
 Each rebuild writes and reports at most $ t $ identifiers during the first $ t $ insertions.
 Between switches, output writes and reports are charged to assignments reported by the selected candidate.
 \end{proof}
@@ -302,7 +302,7 @@ Given the prefix expectation bound in \cref{lem:explicit.consensus.clustering}, 
 The modified algorithm retains the simultaneous approximation guarantee of \cref{lem:explicit.selected.cost}.
 \end{lemma}
 \begin{proof}
-Double $ K $ in \eqref{eq:explicit.consensus.parameters} and use this larger value when setting $ g $.
+Double $ K $ in \eqref{eq:explicit.dynamic.consensus.K} and use this larger value when setting $ g $.
 Set $ h=1+\lceil\log_2 n\rceil $.
 At insertion $ t $, stop a triple solver permanently if its next operation would bring its cumulative work above $ 8ht\edTime{n} $.
 Count only the solver's own work against its budget, and buffer its reports until the insertion finishes.
@@ -325,7 +325,7 @@ The additional factor $ h=O(\log(n+2)) $ is absorbed by the polylogarithmic fact
 
 \begin{proof}[Completion of the proof of~\cref{lem:explicit.consensus.clustering}]
 The approximation guarantee follows from \cref{lem:explicit.selected.cost}.
-By \eqref{eq:explicit.consensus.parameters},
+By \eqref{eq:explicit.dynamic.consensus.K} and \eqref{eq:explicit.consensus.parameters},
 \begin{align}
     K&=O\!\left(\eps^{-1}\log\frac{2n}{\zeta}\right),
     &L&=O\!\left(\log\frac{2n}{\zeta}\right),
@@ -562,13 +562,13 @@ Finally, we report $ (v_t,\ell_t(v_t)) $, followed by every $ (w,\ell_t(w)) $ wi
     $ \piecesToMerge\gets\piecesToMerge\cup\{P(x)\} $, where $ P(x) $ is the \piece{} containing $ x $\; \nllabel{line:labelsync.piecesToMerge.include.addt}
   }
   \ForEach{$ \pieceToMerge \in\piecesToMerge $}{
-    $ \mathrm{key}(\pieceToMerge )\gets\comp{x_P} $\;
+    $ \mathrm{key}(\pieceToMerge )\gets\comp{x_P} $\;\nllabel{line:labelsync.assign.key}
   }
   \ForEach{distinct key $ \kappa $ represented in $ \piecesToMerge $}{
-    $ \piecesToMerge_\kappa\gets\{\pieceToMerge \in\piecesToMerge:\mathrm{key}(\pieceToMerge )=\kappa\} $\;
+    $ \piecesToMerge_\kappa\gets\{\pieceToMerge \in\piecesToMerge:\mathrm{key}(\pieceToMerge )=\kappa\} $\;\nllabel{line:labelsync.group.key}
     Choose $ \pieceToMerge^*\in\arg\max_{\pieceToMerge \in\piecesToMerge_\kappa} \card{\pieceToMerge} $\;
     $ L_\kappa\gets\lambda(\pieceToMerge ^*) $ if $ \lambda(\pieceToMerge ^*)\ne\bot $; otherwise let $ L_\kappa $ be a fresh label\;
-    $ \widehat\ell(\pieceToMerge )\gets L_\kappa $ for every $ \pieceToMerge \in\piecesToMerge_\kappa $\;
+    $ \widehat\ell(\pieceToMerge )\gets L_\kappa $ for every $ \pieceToMerge \in\piecesToMerge_\kappa $\;\nllabel{line:labelsync.assign.label}
   }\nllabel{line:labelsync.merge.end}
 
   \tcc{Apply the assignments and report changes.}
@@ -660,11 +660,11 @@ Conditioned on $ \successDA $, after every update $ t $, the classes maintained 
     By induction hypothesis, this \piece{} is a connected component of $ \sparseG{t-1} $.
     As no edges are added to this \piece{}, it remains a connected component of $ \sparseG{t} $ and keeps its label.
 
-    For each \piece{} $ \pieceToMerge \in \piecesToMerge $, they are assigned a key $ \mathrm{key}(\pieceToMerge) = \comp{x} $, for some $ x \in \pieceToMerge $. 
+    For each \piece{} $ \pieceToMerge \in \piecesToMerge $, \cref{line:labelsync.assign.key} assigns a key $ \mathrm{key}(\pieceToMerge) = \comp{x} $, for some $ x \in \pieceToMerge $.
     We have shown above that all vertices in $ \pieceToMerge $ are in the same connected component of $ \sparseG{t} $, and hence, they have the same component identifier.
     It follows that, two \piece{s} share the same key if and only if they are in the same connected component of $ \sparseG{t} $.
-    By grouping \piece{s} by their keys, the algorithm merges all \piece{s} which forms exactly one connected component of $ \sparseG{t} $.
-    These \piece{s} are assigned the same label.{\color{red} Add refer to the line in the algorithm where this is done (keys assignment, grouping, label assignment.}
+    By grouping \piece{s} by their keys in \cref{line:labelsync.group.key}, the algorithm merges all \piece{s} which forms exactly one connected component of $ \sparseG{t} $.
+    These \piece{s} are assigned the same label in \cref{line:labelsync.assign.label}.
 
     Finally, we argue that different components receive different labels. Indeed, each old label is inherited by exactly one retained \piece{}, and fresh labels are distinct and have never been used before.
     The classes after update $ t $ are therefore exactly the components of $ \sparseG{t} $.

@@ -10,7 +10,8 @@
 \usepackage{lmodern} % Scalable fonts for the compiled conference manuscript.
 \usepackage{xcolor}
 \definecolor{red}{HTML}{F88379}
-\usepackage[colorlinks=true]{hyperref}
+% Unique PDF destinations also cover shared theorem counters and restatements.
+\usepackage[colorlinks=true,hypertexnames=false]{hyperref}
 \hypersetup{
   linkcolor=blue,
   citecolor=orange,
@@ -784,7 +785,7 @@ on $H_Q(u)$. Therefore, \cref{thm:agree-blackbox} gives
     \eta\,|B_u|.
 \]
 Applying \eqref{eq:signed-comparison}, we obtain
-\[
+\begin{equation}\label{eq:oncon-history-distance}
     d(A_a(u),F_u)
     \leq
     \err_{H_Q(u)}(A_a(u))
@@ -792,7 +793,7 @@ Applying \eqref{eq:signed-comparison}, we obtain
     \err_{H_Q(u)}(F_u)
     \leq
     c\,|B_u|.
-\]
+\end{equation}
 
 Moreover, restriction cannot increase partition distance, so
 \[
@@ -896,14 +897,14 @@ the three pairs of sampled positions yields
     \leq 3p_e^2.
 \]
 By linearity of expectation,
-\[
+\begin{equation}\label{eq:oncon-majority-error}
     \E\!\left[
         |B_{Q_a}^t(F_t^*)|
         \,\middle|\,
         a\text{ is a triple candidate}
     \right]
     \leq 3X_t.
-\]
+\end{equation}
 Applying \cref{lem:oncon-history}, we obtain
 \begin{equation}
     \E[G_a(t)\mid a\text{ is a triple candidate}]
