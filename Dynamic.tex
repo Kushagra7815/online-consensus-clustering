@@ -70,7 +70,7 @@ Consensus clustering asks for a partition that minimizes its average pairwise di
 
 The static algorithm samples seven input clusterings, runs \Pivot{} on their majority graph through an implicit linear-size bucket oracle, and competes with an independently sampled input clustering.  Independent repetition and sample-based candidate evaluation give, with high probability, cost at most $(\gamma+O(\delta))\OPT$ in $\widetilde O(n)$ time for every fixed $\delta>0$.  Only $\polylog(n)$ input clusterings are read.  The analysis derives an exact pairwise identity for \Pivot{}, uses sampled unanimity to remove triangle charges from some erroneous pairs, and combines the remaining sampling loss with the structural charge.  An exact rational certificate establishes the constant and bounds a fixed randomized mixture of the two candidates.
 
-For an oblivious sequence of vertex insertions and deletions, with persistent input labels and random access to selected coordinates, we maintain this mixture in $O(\log(N+2))$ expected amortized time per update and linear space, where $N$ bounds the active set size.  At every fixed snapshot its expected cost is at most $\gamma\OPT$.  The dynamic algorithm maintains exact random-priority \Pivot{} on the sampled graph.  Separating a vertex's blocking certificate from its cluster owner lets us combine random-greedy sensitivity bounds with a potential argument for logarithmic update time.
+For an oblivious sequence of vertex insertions and deletions, with persistent input labels and random access to selected coordinates, we maintain a $(\gamma+O(\delta))$-approximation simultaneously at all snapshots with high probability.  For fixed $\delta$ and a sequence of polynomial length, the expected amortized update time is $O(\log^4(N+2))$, the membership-query time is $O(\log(n+2))$, and the space usage is $O((n+1)\log^2(N+2))$, where $n$ is the current size and $N$ bounds the active set size.  The algorithm maintains independent \Pivot{} candidates and their costs on a separate input sample.  A constant-size bucket representation identifies owner changes, and random-greedy sensitivity bounds control the work needed to update the cost counters.
 \end{abstract}
 
 \medskip
@@ -98,7 +98,7 @@ Direct use of these approaches requires constructing a dense instance.  There ar
 
 Fast algorithms are known for correlation clustering on unweighted $\pm1$ complete graphs.  Cohen-Addad et al.~\cite{cohen-addad-2024} give a combinatorial approximation below $1.847$ in $\widetilde O(n)$ time, while Cao et al.~\cite{cohen-addad-2025} approximately solve and round the cluster LP in $\widetilde O(2^{\operatorname{poly}(1/\varepsilon)}n)$ time, obtaining a $(1.485+\varepsilon)$-approximation.  Earlier work gives near-linear algorithms through sparse--dense decompositions~\cite{assadi-wang}, and agreement-based methods give constant-round and streaming guarantees~\cite{CLMNPT2021}.  These results assume access to an unweighted signed instance; they do not remove the cost of constructing the majority instance from the original clusterings.
 
-For dynamic random-greedy clustering, Censor-Hillel, Haramaty, and Karnin~\cite{censor-hillel-2016} show that a vertex update influences at most one vertex in expectation in their greedy-MIS repair closure.  Behnezhad et al.~\cite{behnezhad-2019} prove that the expected number of vertices whose earliest blocking pivot changes is $O(\log n)$, and give polylogarithmic algorithms for general dynamic graphs.  These sensitivity bounds alone do not bound the time needed to find and repair affected vertices.  Our sampled graph has a constant-size clique-bucket representation, which makes this repair possible in logarithmic expected amortized time.  The use of delayed blocking certificates is related to delayed leaders in dynamic $k$-center clustering~\cite{bateni-2023}.
+For dynamic random-greedy clustering, Censor-Hillel, Haramaty, and Karnin~\cite{censor-hillel-2016} show that a vertex update influences at most one vertex in expectation in their greedy-MIS repair closure.  Behnezhad et al.~\cite{behnezhad-2019} prove that the expected number of vertices whose earliest blocking pivot changes is $O(\log n)$, and give polylogarithmic algorithms for general dynamic graphs.  These sensitivity bounds alone do not bound the time needed to find and repair affected vertices.  Our sampled graph has a constant-size clique-bucket representation, which permits logarithmic expected amortized maintenance of one \Pivot{} candidate.  Maintaining sampled costs for several independent candidates gives the high-probability approximation guarantee with polylogarithmic update time.  The use of delayed blocking certificates is related to delayed leaders in dynamic $k$-center clustering~\cite{bateni-2023}.
 
 We work in the random-access model.  An input clustering can be sampled uniformly and read from its length-$n$ label array in $O(n)$ time.  Our aim is to make the dependence on $n$ near-linear without reading all $m$ inputs.  Consequently, the algorithm cannot estimate every one of the $\binom n2$ majority signs accurately.  It must use a small sample while controlling only the errors that matter to the final objective.  In the dynamic model, an update inserts or deletes one vertex, labels of surviving vertices remain fixed, and selected input coordinates can be read in constant time.  The update sequence is oblivious to the algorithm's randomness.
 
@@ -114,15 +114,25 @@ Let $L=\log((n+2)/\delta)$.  Its running time is $O(n\delta^{-3}L^2)$, its space
 \[
  O\!\left((\delta^{-1}+\delta^{-2})L\right)
 \]
-input clusterings.  In particular, for fixed $\delta$ the time is $\widetilde O(n)$ and only $\polylog(n)$ input clusterings are read.  High probability means $1-(n+2)^{-c}$ for any fixed $c>0$, with constants depending on~$c$.
+input clusterings.  The output is a label array, so a membership query or a same-cluster query takes $O(1)$ time after construction.  In particular, for fixed $\delta$ the time is $\widetilde O(n)$ and only $\polylog(n)$ input clusterings are read.  High probability means $1-(n+2)^{-c}$ for any fixed $c>0$, with constants depending on~$c$.
 \end{theorem}
 
 \begin{theorem}[Dynamic]\label{thm:dynamic-intro}
-Starting from an empty ground set, consider an oblivious sequence of $U$ vertex insertions and deletions among $m\ge1$ input partitions with persistent labels.  Assume constant-time random access to a selected input label.  There is a randomized algorithm using at most eight sampled input indices that maintains a clustering $C_t$ such that, at every fixed time~$t$,
+Fix $0<\delta\le1$, $0<\eta<1$, and an update bound $U\ge1$.  Starting from an empty ground set, consider an oblivious sequence of at most $U$ vertex insertions and deletions among $m\ge1$ input partitions with persistent labels.  Assume constant-time random access to a selected input label, and put
 \[
- \E[\cost_t(C_t)]\le\frac{34058}{20101}\OPT_t.
+ \Lambda=\log\frac{U+2}{\eta\delta},
+ \qquad \gamma=\frac{34058}{20101}<1.6944.
 \]
-If $N$ bounds the active set size, the expected total update time is $O(U\log(N+2))$, the space at a snapshot with $n$ active vertices is $O(n+1)$, and a vertex's cluster can be queried in $O(\log(n+2))$ time.  The maintained partition is represented through these membership queries.
+There is a randomized algorithm that maintains a clustering $\widehat x_t$ satisfying, with probability at least $1-\eta$,
+\[
+ \cost_t(\widehat x_t)\le(\gamma+O(\delta))\OPT_t
+ \qquad\text{simultaneously after all updates.}
+\]
+If $N$ bounds the active set size, its expected amortized update time is
+\[
+ O\!\left(\delta^{-3}\Lambda^2\log^2(N+2)\right).
+\]
+At a snapshot with $n$ active vertices, returning a vertex's block label or testing whether two vertices share a block takes $O(\log(n+2))$ worst-case time.  Listing all memberships takes $O(n+1)$ time, and space usage is $O((n+1)\delta^{-3}\Lambda^2)$.  The algorithm retains $O((\delta^{-1}+\delta^{-2})\Lambda)$ sampled input indices.  For fixed $\delta$, $U\le(N+2)^{O(1)}$, and $\eta=(N+2)^{-c}$ for fixed $c>0$, this gives a high-probability approximation with $O(\log^4(N+2))$ expected amortized update time and $O(\log(n+2))$ membership-query time.
 \end{theorem}
 
 Our approach is inspired by the local-to-global sampling framework of Carmel, Das, and Nguyen~\cite{carmel-das-nguyen}.  One trial samples seven input clusterings and runs \textsc{Pivot} on their majority graph $G_Q$.  The graph is not constructed explicitly.  Because the sample size is constant, a vertex's neighbors are determined by the seven cluster labels assigned to it.  Grouping vertices by four-coordinate label patterns gives a linear-size oracle that enumerates the current neighborhood of a pivot in time proportional to the number of vertices it removes.  Over the entire run, every vertex is removed once, and hence one trial takes $O(n)$ time.  The dependence on the original number of inputs~$m$ disappears: a trial reads seven inputs, not all~$m$ of them.
@@ -141,7 +151,7 @@ One trial also keeps an independently sampled input clustering~$y'$.  If $y$ den
 \]
 The same bound holds for the expected minimum of the two costs.  Repeating the trial and evaluating all candidates on a fresh independent sample gives \cref{thm:main}.
 
-For \cref{thm:dynamic-intro}, we sample the seven inputs and one additional input once, and choose a fixed randomized branch with probabilities $\beta$ and $1-\beta$.  The branch outputs either exact random-priority \Pivot{} or the sampled input partition at each snapshot.  The dynamic analysis separates the true cluster owner from a blocking certificate.  A certificate is repaired only when its blocking pivot disappears; membership queries recover the true owner directly from the constant number of buckets.  A potential argument pays for delayed certificate repairs, while the greedy-MIS influence bound pays for priority-queue work.  This yields logarithmic expected amortized updates without candidate scoring.  The dynamic guarantee is in expectation at each fixed snapshot, whereas the static guarantee is amplified to high probability.
+For \cref{thm:dynamic-intro}, we retain independent trials throughout the update sequence and maintain the costs of all candidates on a separate input sample.  Each trial has the static distribution at every fixed snapshot, so repetition ensures that a good candidate is present.  The evaluation sample then selects a good candidate simultaneously over the prescribed sequence.  The main additional issue is maintaining these empirical costs.  Blocking certificates suffice to repair the pivots, but costs depend on the actual cluster owners.  We therefore keep owner lists and order each bucket by owner priority.  These indexes report the vertices affected by a pivot change without scanning a whole neighborhood.  Cluster-size and intersection counters update the empirical costs, and random-greedy sensitivity bounds control their expected total maintenance time.  The maintained partition is exposed through membership queries, whose time is stated separately from the update time.
 
 \section{The Algorithm}
 \label{sec:algorithm}
@@ -738,17 +748,37 @@ This proves \cref{thm:main}.
 \section{Dynamic Consensus Clustering}
 \label{sec:dynamic}
 
-We now allow the ground set to change by vertex insertions and deletions.  The dynamic algorithm retains one constant-size sample and maintains exact random-priority \Pivot{} on its majority graph.  The stronger mixture guarantee in \cref{thm:one-trial} then supplies the approximation bound without evaluating candidates after an update.
+We now allow the ground set to change by vertex insertions and deletions.  The dynamic algorithm maintains the same two candidates per trial as the static algorithm, together with their costs on an independent evaluation sample.  All samples are chosen before the update sequence and retained throughout it.  We first describe how one \Pivot{} candidate is maintained, then account for changes in its empirical cost, and finally prove \cref{thm:dynamic-intro} for the candidate selected after each update.
 
 \subsection{Update model and graph representation}
 
-There are $m\ge1$ indexed input partitions.  At time~$t$, their restrictions to the active set $V_t$ form the current instance $P_t$.  Inserting a vertex provides random access to its input labels; deleting it removes it from every partition.  Labels of surviving vertices do not change.  Each selected label is a machine-word value available in constant time.  The number and identities of the input partitions are fixed.  The vertex identities, labels, and deletion choices form an \emph{oblivious} sequence: they are independent of all sampled input indices, branch choices, and random priorities.  Write
+There are $m\ge1$ indexed input partitions.  At time~$t$, their restrictions to the active set $V_t$ form the current instance $P_t$.  Inserting a vertex provides random access to its input labels; deleting it removes it from every partition.  Labels of surviving vertices do not change.  Each selected label is a machine-word value available in constant time.  The number and identities of the input partitions are fixed.  The vertex identities, labels, and deletion choices form an \emph{oblivious} sequence: they are independent of the candidate samples, the evaluation sample, and the random priorities.  Write
 \[
  \cost_t(x)=\frac1m\sum_{i=1}^m d(x,C_i|_{V_t}),
  \qquad
  \OPT_t=\min_x\cost_t(x).
 \]
-Each vertex lifetime receives an independent continuous priority $\rho(v)$, retained until deletion.  A reinsertion may begin a new lifetime.  We use the usual random-ranking model in which priority comparisons take constant time.  Since the stream is oblivious, the active priorities induce a uniform random order at every fixed snapshot.
+Let $U$ be an upper bound on the number of updates, fixed before the stream begins.  For the parameters in \cref{thm:dynamic-intro}, set
+\begin{equation}\label{eq:dynamic-sample-sizes}
+ T=\Theta(\delta^{-1}\Lambda),
+ \qquad s=\Theta(\delta^{-2}\Lambda),
+ \qquad \Lambda=\log\frac{U+2}{\eta\delta},
+\end{equation}
+with sufficiently large constants.  In each of $T$ independent trials, sample seven inputs $Q_i$ and an additional independent uniform input $J_i$.  Independently sample $S=(D_1,\ldots,D_s)$ as the evaluation inputs.  At time~$t$, the candidate multiset is
+\[
+ \mathcal Y_t=\{Y_{i,t},Y'_{i,t}:i\in[T]\},
+ \qquad Y_{i,t}=\Pivot(G_{Q_i,t}),
+ \quad Y'_{i,t}=C_{J_i}|_{V_t}.
+\]
+After each update, retain a candidate of minimum empirical cost
+\begin{equation}\label{eq:dynamic-choice}
+ \widehat x_t\in\arg\min_{x\in\mathcal Y_t}\cost_t(x,S),
+ \qquad
+ \cost_t(x,S)=\frac1s\sum_{j=1}^s d(x,D_j|_{V_t}).
+\end{equation}
+Candidate generation does not use the evaluation sample or the identity of the selected candidate.
+
+Each vertex lifetime receives an independent continuous priority in each trial, retained until deletion.  These priorities are independent across trials and independent of all sampled input indices.  A reinsertion may begin a new lifetime.  We use the usual random-ranking model in which priority comparisons take constant time.  Since the stream is oblivious, the active priorities induce a uniform random order at every fixed snapshot.  In the maintenance argument below, fix one trial and write $Q$ and $\rho$ for its sample and priorities.
 
 Fix seven sampled input indices $Q$ throughout the stream.  By \cref{obs:buckets}, two distinct vertices are adjacent in $G_{Q,t}$ exactly when they share a key
 \[
@@ -855,7 +885,9 @@ Next consider a surviving vertex whose owner changes.  Each refresh follows the 
 An inserted vertex contributes one initial refresh.  If it is initially blocked, no propagated repair starts and its certificate is its owner.  Otherwise it becomes the first new pivot and is permanent.  Its final potential contribution is zero in either case.  A deleted vertex is not refreshed, and discarding its potential contribution provides a nonnegative credit.  Summing these per-vertex bounds proves \cref{eq:refresh-bound}.
 \end{proof}
 
-\begin{theorem}[Dynamic \Pivot{} in clique-bucket graphs]\label{thm:dynamic-pivot}
+The following bound concerns the pivot and certificate records of a single trial.  The additional work for maintaining its empirical cost is analyzed in \cref{sec:dynamic-scores}.
+
+\begin{theorem}[Maintaining one \Pivot{} candidate]\label{thm:dynamic-pivot}
 Starting empty, exact random-priority \Pivot{} in a graph represented by at most $K\ge1$ clique-bucket incidences per vertex can be maintained under an oblivious sequence of $U$ vertex insertions and deletions in expected total time
 \begin{equation}\label{eq:dynamic-time}
  O\!\left(K^2\sum_{t=1}^U\log(n_t+2)\right).
@@ -877,28 +909,135 @@ The logarithmic terms cover heap operations and dictionary work for the arriving
 There are at most $Kn$ bucket incidences, $n$ follower entries, and $n$ queued vertices.  Empty bucket records are discarded.  This gives the space bound.  The query bound follows by inspecting the bucket-pivot values after locating the vertex.
 \end{proof}
 
-A nonempty initial set of $n_0$ vertices can be processed in increasing priority, assigning every certificate to its true owner.  Sorting and building the bucket dictionaries cost $O(Kn_0\log(Kn_0+2))$ time and give $\Phi_0=0$, after which the same update bound applies.  For constant $K=35$ and maximum active size~$N$, \cref{eq:dynamic-time} is $O(U\log(N+2))$.  In particular, $N$ arrivals starting empty cost $O(N\log(N+2))$ in expectation.
+A nonempty initial set of $n_0$ vertices can be processed in increasing priority, assigning every certificate to its true owner.  Sorting and building the bucket dictionaries cost $O(Kn_0\log(Kn_0+2))$ time and give $\Phi_0=0$, after which the same single-candidate update bound applies.  For constant $K=35$ and maximum active size~$N$, \cref{eq:dynamic-time} is $O(U\log(N+2))$ for one candidate before adding the cost counters.  The complete algorithm maintains $T$ trials and selects among their candidates.
 
-\subsection{Approximation at each snapshot}
+\subsection{Maintaining candidate costs}
+\label{sec:dynamic-scores}
 
-At initialization, sample $Q$ as seven independent uniform input indices and sample one more independent uniform index~$J$.  Independently choose a branch~$B$ with
+To select a candidate after every update, we maintain its empirical cost.  A vertex can change owner while its blocking certificate remains valid, so we keep the true owners explicitly alongside the certificate records.  This additional information does not affect the pivot choices or the order of the repair queue.
+
+\paragraph{Reporting owner changes.}
+For each current pivot~$p$, keep its owner list
 \[
- \Prb[B=1]=\beta=\frac{6144}{20101}.
+ \mathcal O(p)=\{v:e(v)=p\}.
 \]
-Retain these choices throughout the stream.  When $B=1$, maintain the exact \Pivot{} partition of $G_{Q,t}$ using \cref{thm:dynamic-pivot}.  When $B=0$, output the restriction of the sampled input~$C_J$ to~$V_t$.  Maintaining the latter partition requires only its selected label and dictionary operations for each arriving or departing vertex.  Thus only a constant number of selected input labels need to be accessed per arrival.
+Each bucket also has a balanced tree containing its active vertices, ordered by the priority of their current owner and then by vertex identifier.  During a repair, a vertex with no current neighboring pivot has owner priority $+\infty$.  It is treated as a separate singleton until it receives an owner.  Thus the counters always describe a partition, including during intermediate repair steps.
 
-\begin{proof}[Proof of \cref{thm:dynamic-intro}]
-Fix a time~$t$.  The instance $P_t$ is independent of the retained random choices.  Conditional on~$Q$, its sampled graph is fixed and its active priorities are uniformly ordered.  By \cref{lem:dynamic-correctness}, the first branch has exactly the static distribution $Y_t=\Pivot(G_{Q,t})$.  The other branch is an independent uniform input partition $Y_t'=C_J|_{V_t}$.  The one-trial mixture bound gives
+After removing a pivot~$p$, visit its owner list and recompute each surviving member's owner from its bucket-pivot values.  Update its owner-list position and its entries in the bucket trees.  After installing a new pivot~$p$, first assign $p$ to itself, then inspect its bucket trees for vertices whose owner priority exceeds~$\rho(p)$.  Each such vertex now has owner~$p$.  Reassign it and continue until no such entry remains in any of these buckets.  Updating the tree entries as a vertex is reassigned prevents duplicate reports from overlapping buckets.  A vertex's own record is handled explicitly, including when it has no bucket incidences.
+
+These owner repairs are performed after each individual pivot removal and installation in the procedure above.  Certificate refreshes still take place after all conflicting pivots have been removed and the new pivot has been installed.  An arriving vertex is first given its minimum-priority current neighboring pivot, or a temporary singleton if none exists.  A departing vertex is removed from the owner lists and bucket trees before surviving owners are repaired.
+
+Removing a pivot only affects vertices in its owner list.  Installing a pivot only affects its neighbors whose previous owner has larger priority.  The two reporting rules therefore maintain the minimum-priority current owner exactly.  With $K=35$, each reported owner change takes $O(\log(n+2))$ time for the owner indexes, while the initial tree searches cost $O(\log(n+2))$ per pivot change.  Each tree search reports vertices whose owners actually change.
+
+\begin{lemma}[Owner changes during repair]\label{lem:owner-change-work}
+For one trial and update~$t$, let $B_t$ be the number of owner changes reported during the repair, also counting the creation or removal of the updated vertex's owner record.  Then
 \[
- \E[\cost_t(C_t)]
- =\beta\E[\cost_t(Y_t)]+(1-\beta)\E[\cost_t(Y_t')]
- \le\gamma\OPT_t,
- \qquad \gamma=\frac{34058}{20101}<1.6944.
+ B_t=O\!\left(K(R_t+1)\right),
+ \qquad
+ \E[B_t]=O(\log(n_t+2))\quad\text{for }K=35.
 \]
-The time, space, and query bounds follow from \cref{thm:dynamic-pivot} with $K=35$ and the cheaper sampled-input branch.  The random choices need not be independent across snapshots: the proof uses their correct marginal distribution at each fixed time.
+\end{lemma}
+
+\begin{proof}
+Consider a surviving vertex with the same owner~$p$ before and after the update.  By \cref{lem:dynamic-correctness}, $p$ is never removed during the repair.  There was no earlier old neighboring pivot, and no new earlier neighboring pivot can appear: every new pivot is permanent for this update and would change the final owner.  Hence the owner remains~$p$ throughout, and the vertex is never reported.
+
+For a vertex whose owner changes, all intermediate owners belong to the old pivot set or to the newly installed pivots.  Each of these two sets is independent, so each contributes at most $K$ pivots to the vertex's closed neighborhood.  An old pivot is removed at most once, and a new pivot remains until the update ends.  Consequently, an owner change can be caused by at most $K$ old-pivot removals and at most $K$ new-pivot installations.  Temporary singleton assignments occur only when a removal leaves no neighboring pivot and are already counted among these changes.  The inserted or deleted vertex contributes $O(K)$ further changes.  This proves the deterministic bound; \cref{lem:dynamic-sensitivity} gives the expectation.
 \end{proof}
 
-The dynamic guarantees are expected approximation at each fixed snapshot and expected amortized update time.  Enumerating the entire maintained partition takes $O(n)$ time for constant~$K$; the logarithmic update bound uses the membership-query representation.
+\paragraph{Updating empirical costs.}
+Fix a candidate partition~$x$ and the evaluation sample $S=(D_1,\ldots,D_s)$.  For a candidate block label~$p$ and an input label~$b$, maintain
+\[
+ a_p=|\{v:c_x(v)=p\}|,
+ \qquad
+ b_{j,p,b}=|\{v:c_x(v)=p,\ c_{D_j}(v)=b\}|.
+\]
+The score
+\begin{equation}\label{eq:dynamic-score}
+ \sigma_t(x)=s\sum_p\binom{a_p}{2}
+              -2\sum_{j=1}^s\sum_{p,b}\binom{b_{j,p,b}}{2}
+\end{equation}
+orders candidates exactly as their empirical costs.  Indeed, \cref{eq:linear-distance} gives
+\[
+ \cost_t(x,S)=\frac{\sigma_t(x)}s+
+ \frac1s\sum_{j=1}^s\sum_{B\in D_j|_{V_t}}\binom{|B|}{2},
+\]
+and the second term is common to every candidate.
+
+For each $j$, store the nonzero intersection counts in a separate balanced dictionary, which has at most $n$ entries.  The block-size dictionary also has at most $n$ entries.  Adding a vertex to a block changes one block size and one intersection count for each evaluation input.  If the old counts are $a_p$ and $b_{j,p,c_{D_j}(v)}$, its score increment is
+\[
+ s a_p-2\sum_{j=1}^s b_{j,p,c_{D_j}(v)}.
+\]
+Deletion applies the reverse change using the remaining counts.  A move between blocks consists of a deletion followed by an insertion.  Each operation therefore takes $O(s\log(n+2))$ time, using the cached evaluation labels of the vertex.  Empty count records are discarded.  Temporary singletons use distinct block labels, separate from all pivot labels.
+
+For a \Pivot{} candidate, apply these counter updates whenever the owner-reporting procedure changes a vertex's block.  For an input candidate $Y'_{i,t}$, surviving vertices keep their labels, so only the inserted or deleted vertex changes the counters.  Once all scores have been updated, inspect the $2T$ scores and retain a minimizer as in \cref{eq:dynamic-choice}.
+
+\begin{lemma}[Maintaining a candidate and its score]\label{lem:dynamic-scores}
+For $K=35$ and a fixed evaluation sample of size $s\ge1$, one \Pivot{} candidate and its score can be maintained in expected total time
+\[
+ O\!\left(s\sum_{t=1}^U\log^2(n_t+2)\right)
+\]
+and $O((n+1)s)$ space at a snapshot with $n$ active vertices.  Given a vertex identifier, its membership can be queried in $O(\log(n+2))$ worst-case time.  One sampled-input candidate and its score can be maintained in $O(s\log(n_t+2))$ time per update, with the same space and membership-query bounds.
+\end{lemma}
+
+\begin{proof}
+The pivot and certificate work is bounded by \cref{thm:dynamic-pivot}.  In addition, the owner indexes take $O((B_t+F_t+1)\log(n_t+2))$ time, and the score counters take $O(s(B_t+1)\log(n_t+2))$ time.  Here $F_t$ counts pivot changes and the additional constant covers the arriving or departing vertex.  Apply \cref{lem:dynamic-sensitivity,lem:owner-change-work} and sum over the updates.  Since $s\ge1$, the resulting bound also covers the pivot and certificate work.
+
+There are $O(n)$ bucket-tree entries and owner-list positions for constant~$K$, and $O(ns)$ nonzero intersection counts and cached evaluation labels.  The dictionaries and sample records use $O((n+1)s)$ space.  A membership query locates the vertex in a balanced dictionary and reads its stored owner or input label.  For a sampled-input candidate, labels of surviving vertices remain fixed, so each update changes only the arriving or departing vertex's counters.
+\end{proof}
+
+\subsection{Approximation and running time}
+
+We can now analyze the selected candidate over the whole update sequence.  The samples are retained, so a trial's outputs at different times may be correlated.  The proof uses independence between trials at a fixed time and a union bound over the prescribed updates.
+
+\begin{proof}[Proof of \cref{thm:dynamic-intro}]
+Fix an update time~$t$.  Conditional on a trial's seven sampled inputs, its current sampled graph is fixed and its active priorities induce a uniform random order.  By \cref{lem:dynamic-correctness}, $Y_{i,t}$ has exactly the distribution of static \Pivot{} on that graph.  The other candidate $Y'_{i,t}$ is an independent uniform input partition restricted to~$V_t$.  Define
+\[
+ Z_{i,t}=\min\{\cost_t(Y_{i,t}),\cost_t(Y'_{i,t})\}.
+\]
+By \cref{thm:one-trial}, $\E[Z_{i,t}]\le\gamma\OPT_t$.
+
+If $\OPT_t=0$, then $Z_{i,t}=0$ almost surely.  Otherwise, apply Markov's inequality to $Z_{i,t}-\OPT_t\ge0$, as in \cref{eq:success-prob}, to obtain
+\[
+ \Prb[Z_{i,t}\le(\gamma+\delta)\OPT_t]
+ \ge\frac{\delta}{\gamma-1+\delta}
+ =\Omega(\delta).
+\]
+The trials are independent.  Thus, for a suitable constant $c_0>0$, the probability that no candidate at time~$t$ has cost at most $(\gamma+\delta)\OPT_t$ is at most $\exp(-c_0\delta T)$.  With the choice of~$T$ in \cref{eq:dynamic-sample-sizes}, make this at most $\eta/(2U)$.  A union bound shows that, with probability at least $1-\eta/2$,
+\begin{equation}\label{eq:dynamic-good-candidate}
+ \min_{x\in\mathcal Y_t}\cost_t(x)\le(\gamma+\delta)\OPT_t
+ \qquad\text{for every update time }t.
+\end{equation}
+
+Next condition on all candidate trajectories $(\mathcal Y_t)_{t\le U}$.  They are independent of~$S$: the stream is oblivious, and candidate generation uses neither the evaluation sample nor the selected candidate.  Apply \cref{lem:evaluation} at each time with failure probability $\eta/(2U)$.  Since $|\mathcal Y_t|\le2T$, it is enough that
+\[
+ s\ge18\delta^{-2}\left(\log(2T)+\log\frac{2U}{\eta}\right).
+\]
+The choice $s=\Theta(\delta^{-2}\Lambda)$ with a sufficiently large constant meets this requirement.  A second union bound, followed by averaging over the candidate trajectories, gives probability at least $1-\eta/2$ that
+\[
+ \cost_t(\widehat x_t)\le(1+\delta)
+        \min_{x\in\mathcal Y_t}\cost_t(x)
+ \qquad\text{for every update time }t.
+\]
+Combining this event with \cref{eq:dynamic-good-candidate}, with probability at least $1-\eta$ we have simultaneously
+\[
+ \cost_t(\widehat x_t)
+ \le(1+\delta)(\gamma+\delta)\OPT_t
+ =(\gamma+O(\delta))\OPT_t.
+\]
+The union bound applies even though the same evaluation sample is reused across snapshots.
+
+It remains to account for the update and query costs of the complete algorithm.  Let $u\le U$ be the actual number of updates.  By \cref{lem:dynamic-scores}, maintaining all $T$ \Pivot{} candidates and their sampled-input candidates takes expected total time
+\[
+ O\!\left(Ts\sum_{t=1}^u\log^2(n_t+2)\right)
+ =O\!\left(u\delta^{-3}\Lambda^2\log^2(N+2)\right).
+\]
+This includes reading and caching the selected labels on arrival, updating all candidate scores, and choosing a minimum among the $2T$ scores after an update.  Dividing by~$u$ gives the expected amortized update bound for any nonempty sequence.  Initializing the empty records and samples takes $O(Ts)$ time, which is covered by the total bound when $u\ge1$.  Storing all candidates, owner indexes, counters, and selected labels uses $O((n+1)Ts)=O((n+1)\delta^{-3}\Lambda^2)$ space.  The number of retained input indices is
+\[
+ 8T+s=O\!\left((\delta^{-1}+\delta^{-2})\Lambda\right).
+\]
+
+The index of the selected candidate is stored after each update.  A membership query therefore needs only one vertex lookup and one stored-label lookup in that candidate, taking $O(\log(n+2))$ worst-case time.  A same-cluster query performs two such lookups and compares their labels, with the same asymptotic bound.  With direct vertex references, either query takes $O(1)$ time.  Iterating through the active records lists all memberships in $O(n+1)$ time.  These queries refer to the implicit partition selected after the most recently completed update.  The probability guarantee concerns approximation simultaneously over the sequence; the update bound is expected amortized and the stated query bounds are worst case.
+\end{proof}
 
 \bibliographystyle{plain}
 \bibliography{ref}

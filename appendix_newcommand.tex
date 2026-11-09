@@ -1,0 +1,105 @@
+\newcommand{\boolNo}{\text{No}} % boolean No
+\newcommand{\boolYes}{\text{Yes}} % boolean Yes
+
+\NewDocumentCommand{\localG}{g}{%
+    \IfNoValueTF{#1}
+    {G}%
+    {G_{#1}}%
+}
+\NewDocumentCommand{\sparseG}{g}{%
+    \IfNoValueTF{#1}
+    {\widetilde{G}}%
+    {\widetilde{G}_{#1}}%
+} % sparsified graph in dynamic agreement (DA)
+\NewDocumentCommand{\dyCC}{g}{%
+    \IfNoValueTF{#1}
+    {C}%
+    {C_{#1}}%
+} % dynamic data structure for connected components
+\NewDocumentCommand{\journal}{g}{%
+    \IfNoValueTF{#1}
+    {\mathcal{J}}%
+    {\mathcal{J}_{#1}}%
+}
+\newcommand{\epsDA}{\varepsilon_{\rm DA}} % accuracy parameter for dynamic agreement
+\NewDocumentCommand{\interestSet}{g}{%
+    \IfNoValueTF{#1}
+    {\mathcal{I}}%
+    {\mathcal{I}_{#1}}%
+} % interesting set in DA
+\NewDocumentCommand{\anchorSet}{g}{%
+    \IfNoValueTF{#1}
+    {\Phi}%
+    {\Phi_{#1}}%
+} % anchor set in DA
+
+
+\newcommand{\openN}[2]{N_{#1}(#2)} % open neighborhood of vertex #2 in graph #1
+\newcommand{\closedN}[2]{N_{#1}[#2]} % open neighborhood of vertex #2 in graph #1
+\newcommand{\snapshotN}[1]{\widetilde{N}(#1)} % open neighborhood of vertex #2 in graph #1
+
+
+\newcommand{\explicitDA}{\mathrm{ExplicitDynamicAgreement}} % explicit dynamic agreement algorithm
+\NewDocumentCommand{\Notify}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{Notify}}%
+    {\mathrm{Notify}(#1)}%
+}
+\NewDocumentCommand{\Anchor}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{Anchor}}%
+    {\mathrm{Anchor}(#1)}%
+}
+\NewDocumentCommand{\Clean}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{Clean}}%
+    {\mathrm{Clean}(#1)}%
+}
+\NewDocumentCommand{\Connect}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{Connect}}%
+    {\mathrm{Connect}(#1)}%
+}
+\NewDocumentCommand{\LabelSync}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{LabelSync}}%
+    {\mathrm{LabelSync}(#1)}%
+}
+
+\newcommand{\delt}[1]{\mathrm{Del}_{#1}}
+\newcommand{\addt}[1]{\mathrm{Add}_{#1}}
+\newcommand{\delIncEdge}[1]{\delta(#1)} % number of edges incident on vertex #1 that are deleted (\in \delt)
+\NewDocumentCommand{\ccclass}{g}{%
+    \IfNoValueTF{#1}
+    {C}%
+    {C_{#1}}%
+} % connected component class
+\NewDocumentCommand{\ccclasses}{g}{%
+    \IfNoValueTF{#1}
+    {\mathcal C}%
+    {\mathcal{C}_{#1}}%
+} % connected component class
+\newcommand{\comp}[1]{\mathrm{comp}(#1)} % connected component of vertex #1
+\NewDocumentCommand{\piece}{ g }{%
+    \IfNoValueTF{#1}
+    {piece}%
+    {piece#1}%
+}
+\newcommand{\retainedPieces}[1]{R_{#1}} % retained pieces of class #1
+\newcommand{\piecesToMerge}{\mathcal{Z}} %
+\newcommand{\pieceToMerge}{P} %
+
+\newcommand{\successDA}{\mathcal{E}_{\rm DA}} % success event of dynamic agreement
+
+\newcommand{\edSolver}{\mathcal D}
+\newcommand{\edFactor}{\eta} % approximation factor of the explicit correlation-clustering algorithm
+\newcommand{\edTime}[1]{T_{\mathcal D}(#1)}
+\newcommand{\edcost}[1]{\widehat{\cost}_{#1}}
+\newcommand{\edmean}[2]{\widehat{\cost}^{(#1)}_{#2}}
+\newcommand{\edscore}[2]{\widehat f_{#1}(#2)}
+\newcommand{\edhistory}[2]{\widehat G_{#1}(#2)}
+\newcommand{\edminimum}[1]{\widehat M_{#1}}
+\newcommand{\edproxy}[2]{Z_{#1}(#2)}
+\newcommand{\edlog}[2]{\mathcal L_{#1}(#2)}
+\newcommand{\edbucket}[2]{B_{#1}(#2)}
+\newcommand{\edatom}[1]{B_{123}(#1)}

@@ -23,7 +23,6 @@
 }
 \usepackage{amsmath,amssymb,amsthm,amsfonts,graphicx,color,subcaption,
   enumerate,bm,array,mathtools}
-\usepackage[capitalise,nameinlink]{cleveref}
 \usepackage{multicol,multirow}
 \usepackage{thmtools,thm-restate}
 \usepackage{ragged2e}
@@ -39,6 +38,22 @@
 \IfFileExists{algorithm2e.sty}{
   \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 }{}
+
+\makeatletter
+\renewcommand{\nllabel}[1]
+ {{\let\@currentlabel\algocf@currentlabel
+  \let\@currentcounter\algocf@currentcounter
+  \label{#1}}}%
+
+\renewcommand{\algocf@nl@sethref}[1]{%
+  \renewcommand{\theHAlgoLine}{\thealgocfproc.#1}%
+  \hyper@refstepcounter{AlgoLine}%
+  \gdef\algocf@currentlabel{#1}%
+  \gdef\algocf@currentcounter{AlgoLine}%
+ }%
+\makeatother
+
+\usepackage[capitalise,nameinlink]{cleveref}
 
 \graphicspath{{graphics/}}
 \crefname{claim}{Claim}{Claims}
@@ -117,7 +132,43 @@
 \newcommand{\restr}[2]{#1|_{#2}}
 \newcommand{\same}{\mathsf{same}}
 \newcommand{\sep}{\mathsf{sep}}
-\newcommand{\kushagra}[1]{\textcolor{red}{#1}}
+\newcommand{\card}[1]{\left\lvert #1 \right \rvert}
+\newcommand{\Otilde}[1]{\widetilde{O}\left(#1\right)}
+
+
+% ---- command for algorithm2e ----------------------------------------------
+
+% ---- custom colors ---------------------------------------
+\definecolor{oldcol}{RGB}{110,110,110}
+\definecolor{newcol}{RGB}{0,90,200}
+% \Old{text}  -> comment on its own line
+% \Old*{text} -> end-of-line comment after a statement
+% end custom colors ---------------------------------------
+
+\NewDocumentCommand{\Old}{s m}{%
+  \IfBooleanTF{#1}
+    {\tcp*{\textcolor{oldcol}{#2}}}
+    {\tcp{\textcolor{oldcol}{#2}}}}
+
+% \New{code} -> a normal code line (ends with \; automatically), colored
+\NewDocumentCommand{\New}{m}{\textcolor{newcol}{#1}}
+
+
+\SetCommentSty{textit}
+\SetKwProg{On}{on}{:}{end}
+
+% end command for algorithm2e ----------------------------------------------
+
+
+
+
+% note commands
+\newcommand{\colnote}[3]{\textcolor{#1}{$\ll$\textsf{#2}$\gg$\marginpar{\tiny\bf #3}}}
+\newcommand{\kushagra}[1]{\colnote{red}{#1--Kushagra}{KC}}
+\newcommand{\anote}[1]{\colnote{blue}{#1--Amir}{AC}}
+\definecolor{greenlantern}{rgb}{0.0, 0.5, 0.0}
+\newcommand{\tienlong}[1]{\colnote{greenlantern}{#1--Long}{TL}}
+\newcommand{\bug}[1]{\colnote{red}{#1--Bug}{Bug}}
 \allowdisplaybreaks
 
 \title{Consensus Clustering below Two:\\
@@ -137,6 +188,66 @@ placeholder, To be completed
 placeholder, To be completed
 
 \section{Preliminaries}\label{sec:preliminaries}
+
+\tienlong{Need restructured to add the following:}
+- (Implicit) Dynamic model: only output when query, works for fully dynamic (insertion and deletion)
+
+- Explicit dynamic model: output updated vertics in every timestep, works for insertion only 
+
+State the main theorems:
+
+\begin{restatable}{theorem}{OnlineMain}\label{thm:online-main}
+There is a randomized online algorithm that, given a set of $n$ vertices and every oblivious vertex-arrival instance with $m$ input clusterings,
+has the following guarantees. For some parameter $\zeta \in (0, 1)$, with probability at least $1-\zeta$,
+its outputs satisfy
+\begin{equation}\label{eq:online-ratio}
+  \cost_t(C_t)
+  \le
+  \left(2-\frac{2}{3\eta+5}+\eps\right)\OPT_t
+  \qquad\text{simultaneously for all }t\in[n].
+\end{equation}
+where $\eta$ is the state-of-the-art competitive ratio of the online correlation clustering problem.
+For every realization of its random choices and every vertex $v$, it recourse is given by,
+\begin{equation}\label{eq:online-recourse-main}
+  \operatorname{rec}(v)
+  =
+  O_{\eta}\!\left(
+    \eps^{-2}
+    \log\frac{2n}{\zeta}\,
+    \log\frac{2mn}{\zeta}
+  \right).
+\end{equation}
+
+\end{restatable}
+
+\begin{restatable}{theorem}{NearLinearOffline}\label{thm:near-linear-offline}
+    Theorem for near-linear time offline algorithm, to be completed.
+\end{restatable}
+
+\begin{restatable}{theorem}{ImplicitDynamic}\label{thm:implicit-dynamic}
+    Theorem for implicit dynamic algorithm, to be completed.
+\end{restatable}
+
+\begin{restatable}{theorem}{ExplicitDynamic}\label{thm:explicit.dynamic}
+There is an absolute constant $ \eta\ge1 $ with the following property.
+For every known horizon $ n $, every oblivious vertex-arrival instance with $ m $ input partitions, every $ 0<\eps<2/(3\eta+5) $, and every $ \zeta\in(0,1) $, there is a randomized explicit dynamic consensus-clustering algorithm such that, with probability at least $ 1-\zeta $,
+\begin{align}
+    \cost_t(C_t)\le\left(2-\frac{2}{3\eta+5}+\eps\right)\OPT_t
+    \qquad\text{simultaneously for every }t\in[n].
+    \label{eq:explicit.dynamic.ratio}
+\end{align}
+The algorithm stores an output cluster identifier for every vertex and reports the arriving vertex's identifier and every change to an old vertex's identifier.
+Under the constant-time input-label access of \cref{subsec:dynamic-model}, its expected amortized update time, including these reports, is
+\begin{align}
+    O\!\left(
+        \eps^{-3}\log^2\frac{2n}{\zeta}
+        \log\frac{2n}{\eps\zeta}\cdot\polylog(n+2)
+    \right).
+    \nonumber
+\end{align}
+In particular, for fixed $ \eps $ and inverse-polynomial $ \zeta $, the expected amortized update time is $ \Otilde{1} $.
+\end{restatable}
+
 \kushagra{Written only for the Online part.}
 
 We first define the consensus-clustering objective, the vertex-arrival
@@ -337,40 +448,10 @@ algorithm's final output is evaluated by the full consensus objective
 \eqref{eq:prefix-objective}.
 
 \section{Online Consensus Clustering}\label{sec:online}
+In this section, we prove our guarantee for the online consensus clustering. Our main online result gives a competitive ratio strictly below $2$ with polylogarithmic recourse for every vertex. Let us restate the main result.
 
-Our main online result gives a competitive ratio strictly below $2$ with
-polylogarithmic recourse for every vertex.
-The approximation guarantee holds simultaneously at all prefixes with
-an explicitly controlled probability of failure, whereas the recourse
-guarantee holds for every outcome of the random choices.
-The achievable gap below $2$ depends only on the approximation constant
-$\eta$ of $\Agree$ from \cref{thm:agree-blackbox}.
-Let $\eps$ be an accuracy parameter satisfying
-$0<\eps<2/(3\eta+5)$, and let $\zeta\in(0,1)$ be the permitted probability
-of any approximation failure over the entire execution.
 
-\begin{theorem}[Online consensus clustering]\label{thm:online-main}
-There is a randomized online algorithm that, for every known horizon
-$n$ and every oblivious vertex-arrival instance with $m$ input partitions,
-has the following guarantees. With probability at least $1-\zeta$,
-its outputs satisfy
-\begin{equation}\label{eq:online-ratio}
-  \cost_t(C_t)
-  \le
-  \left(2-\frac{2}{3\eta+5}+\eps\right)\OPT_t
-  \qquad\text{simultaneously for all }t\in[n].
-\end{equation}
-For every realization of its random choices and every vertex $v$,
-\begin{equation}\label{eq:online-recourse-main}
-  \operatorname{rec}(v)
-  =
-  O_{\eta,q_{\rm A}}\!\left(
-    \eps^{-2}
-    \log\frac{2n}{\zeta}\,
-    \log\frac{2mn}{\zeta}
-  \right).
-\end{equation}
-\end{theorem}
+\OnlineMain*
 
 For fixed $\eta,q_{\rm A},\eps$, the bound in
 \eqref{eq:online-recourse-main} is polylogarithmic in the instance size
@@ -392,736 +473,2131 @@ partition $F$ of $V_t$,
 Following an input uses its persistent labels and incurs no recourse.
 We therefore assume $n\ge2$ and $m\ge3$ for the rest of the section.
 
-\paragraph{Proof overview.}
-The algorithm maintains a small family of candidate processes, each
-proposing a partition at every prefix.
-An input candidate follows a uniformly sampled input partition.
-A triple candidate runs a persistent copy of $\Agree$ on the signed
-graph obtained from three uniformly sampled input indices: a pair is
-positive precisely when at least two of these inputs join it.
-We generate each candidate by randomly choosing between these two types,
-with a fixed probability that depends only on $\eta$.
 
-The analysis fixes a terminal prefix and its optimal partition.
-For each vertex pair, we consider the fraction of inputs disagreeing with
-this optimum. The sum of the squared fractions appears with a negative
-coefficient in the expected cost of an input candidate and a positive
-coefficient in the bound for a triple candidate.
-Our choice of mixture probabilities cancels these terms, leaving an
-expected bound strictly below twice the optimum.
+\subsection{Algorithm}
+\label{sec:oncon-algorithm}
 
-To control changes to the output, we apply this cancellation to each
-candidate's \emph{history score}, meaning its maximum cost over all
-prefixes seen so far.
-The key step is to compare every earlier output of a triple candidate
-to a restriction of the same terminal optimum.
-Independent repetitions then ensure that a candidate with a good
-history exists at every prefix.
-A deterministic selection rule keeps the selected candidate until its
-history score crosses a fixed multiplicative threshold.
-History scores cannot decrease, so a candidate discarded at a threshold
-never becomes eligible again at that threshold.
-Few candidates and few thresholds imply few changes of the selected
-candidate.
+In this section, we describe our online consensus clustering algorithm,
+which we call \texttt{oncon}. The input consists of $m$ partitions
+$P_1,\ldots,P_m$ of a vertex set $V=\{v_1,\ldots,v_n\}$, revealed through
+vertex arrivals. The values of $n$ and $m$ are known in advance, but the
+partitions are not. When vertex $v_t$ arrives, the algorithm receives its
+cluster label $c_i(v_t)$ in each input partition $P_i$. These labels are
+persistent: $c_i(u)=c_i(v)$ if and only if $u$ and $v$ belong to the same
+cluster of $P_i$.
 
-\subsection{Majority graphs and the sampled candidate processes}
-\label{subsec:online-candidates}
+Let $V_t=\{v_1,\ldots,v_t\}$ and $P_i^t=P_i|_{V_t}$. After each arrival,
+the algorithm outputs a partition $C_t$ of $V_t$, represented by cluster
+identifiers $\lambda_t(v)$ for $v\in V_t$. Two vertices belong to the same
+output cluster precisely when their identifiers agree. The consensus
+cost of a partition $C$ of $V_t$ is
+\[
+    \operatorname{cost}_t(C)
+    =
+    \frac{1}{m}\sum_{i=1}^{m} d(C,P_i^t),
+\]
+where $d(C,P_i^t)$ counts the unordered vertex pairs on which the two
+partitions disagree. Our goal is to maintain a low-cost partition at
+every prefix while changing each vertex's identifier only a small
+number of times after its arrival. The approximation and recourse
+guarantees are established in the analysis.
 
-A \emph{candidate process} is a partition trajectory, together with
-persistent cluster identifiers, maintained at every arrival.
-Every process receives all arrivals, including those times when it is
-not selected for the output.
-Its trajectory is determined by its own initial sample and the input;
-selection never changes the evolution of a process.
+For a positive integer $r$, write $[r]=\{1,\ldots,r\}$. If $n=1$ or
+$m\leq 2$, the algorithm simply follows $P_1$, using its persistent
+labels as output identifiers. Henceforth, assume that $n\geq 2$ and
+$m\geq 3$. To describe the algorithm, we introduce the following
+definitions.
 
-For a triple $Q\in\binom{[m]}{3}$, the \emph{majority graph} $H_Q(t)$ is
-the complete signed graph on $V_t$ in which a pair is positive if at
-least two of the three indexed inputs join it, and negative otherwise.
-The indices within $Q$ are distinct, although the corresponding input
-partitions may coincide.
-The sequence $H_Q(1),\ldots,H_Q(n)$ is a valid vertex-arrival signed-graph
-sequence, since decisions on pairs of previously arrived vertices never
-change.
+\paragraph{Majority graph.}
+Let $Q=\{i,j,k\}\subseteq[m]$ be a set of three distinct input indices.
+At time $t$, the majority graph $H_Q(t)$ is the complete signed graph on
+$V_t$ in which a pair $\{u,v\}$ is positive if at least two of
+$P_i^t,P_j^t,P_k^t$ place $u$ and $v$ in the same cluster. Otherwise,
+the pair is negative. The indices in $Q$ are distinct, although the
+corresponding input partitions may coincide.
 
-We now specify the sampling distribution and the number of candidates.
-Define
-\begin{equation}\label{eq:online-parameters}
-  c=\eta+1,\qquad
-  w=\frac{3c}{3c+2},\qquad
-  R_0=2-\frac{2}{3\eta+5},\qquad
-  R=R_0+\frac{\eps}{2}.
-\end{equation}
-Here $c$ is the error factor used to compare a triple candidate to a
-reference partition, $w$ is the probability of choosing an input
-candidate, $R_0$ is the target expected history ratio, and $R$ is the
-slightly larger threshold used for the probability bound.
-We have $0<w<1$ and $1<R_0<R<2$, using the assumed range of $\eps$.
+When a vertex arrives, its incident signs are determined from its
+labels in the three sampled inputs. Signs between previously arrived
+vertices remain unchanged. Thus,
+$H_Q(1),\ldots,H_Q(n)$ forms a valid vertex-arrival sequence of signed
+graphs.
 
-Let
-\begin{equation}\label{eq:candidate-count}
-  K=\left\lceil\frac4\eps\log\frac{2n}{\zeta}\right\rceil,
-  \qquad
-  \A=[K].
-\end{equation}
-Thus $K=O(\eps^{-1}\log(2n/\zeta))$.
-For each candidate index $a\in\A$, independently perform the following
-draw and initialize the corresponding process:
+\paragraph{Auxiliary clustering algorithm.}
+The positive pairs of a majority graph need not define a partition.
+We therefore use the deterministic online correlation-clustering
+algorithm \texttt{Agree} from the preliminaries to obtain a partition
+from this graph. A disagreement with a signed graph is a positive pair separated by a
+partition or a negative pair joined by it. Let $\eta\geq 1$ denote the
+approximation factor of \texttt{Agree}: at every prefix, its output has
+at most $\eta$ times the minimum possible number of disagreements.
+A persistent execution of \texttt{Agree} also changes each vertex's
+cluster identifier only $O(\log n)$ times.
+
+\paragraph{Parameters.}
+The algorithm takes an accuracy parameter
+\[
+    0<\varepsilon<\frac{2}{3\eta+5}
+\]
+and a failure parameter $\zeta\in(0,1)$. Define
+\[
+    K=
+    \left\lceil
+        \frac{4}{\varepsilon}\log\frac{2n}{\zeta}
+    \right\rceil,
+    \qquad
+    w=\frac{3(\eta+1)}{3\eta+5},
+    \qquad
+    \theta=\frac{\varepsilon}{4}.
+\]
+Here $K$ is the number of candidate processes, $w$ is the probability
+of sampling an input candidate, and $\theta$ determines the switching
+threshold. Logarithms are natural.
+
+\paragraph{Candidate processes.}
+A candidate process maintains a partition at every arrival, together
+with persistent cluster identifiers. We independently sample $K$
+candidate processes, indexed by $a\in[K]$. Each candidate is generated
+as follows.
 \begin{enumerate}
-  \item With probability $w$, choose an input index $i_a$ uniformly
-  from $[m]$. At time $t$, the candidate outputs
-  $A_a(t)=P_{i_a}^t$ and uses the persistent input labels as identifiers.
-  \item With probability $1-w$, choose a triple $Q_a$ uniformly from
-  $\binom{[m]}{3}$. Run one persistent copy of $\Agree$ on
-  $H_{Q_a}(1),\ldots,H_{Q_a}(n)$ and let $A_a(t)$ be its output at
-  time $t$.
+    \item With probability $w$, choose an index $i_a$ uniformly from
+    $[m]$. This is an \emph{input candidate}. At time $t$, it outputs
+    \[
+        A_a(t)=P_{i_a}^t
+    \]
+    and uses the input labels $c_{i_a}(v)$ as its cluster identifiers.
+
+    \item With probability $1-w$, choose a three-element set
+    $Q_a\subseteq[m]$ uniformly at random. This is a
+    \emph{triple candidate}. Initialize one persistent copy of
+    \texttt{Agree} on the sequence
+    \[
+        H_{Q_a}(1),\ldots,H_{Q_a}(n).
+    \]
+    At time $t$, let $A_a(t)$ be the partition produced by this copy.
 \end{enumerate}
-Each complete draw consists of the candidate type and its input index
-or triple. These complete draws are mutually independent.
-Different candidates may sample the same input or the same triple;
-such occurrences remain separately indexed processes.
+Write $\lambda_t^a(v)$ for the local identifier of vertex $v$ in
+candidate $a$ at time $t$.
 
-Let $\A_{\rm in}\subseteq\A$ and $\A_{\rm tri}\subseteq\A$ denote,
-respectively, the indices of the input and triple candidates generated
-by these draws. These two sets are random, disjoint, and cover $\A$.
-Either set may be empty. In every realization,
-$|\A_{\rm tri}|\le K$.
-All initial samples are retained for the entire execution, and the
-copies of $\Agree$ are deterministic.
+All samples are drawn once, before processing the arrivals, and are
+retained throughout the execution. Different candidates may sample
+overlapping inputs or the same triple. Every candidate processes every
+arrival, including while it is not selected for the output. In
+particular, selecting or leaving a candidate never restarts its copy
+of \texttt{Agree}.
 
-Write $\lambda_t^a(v)$ for the local identifier of $v$ in candidate $a$.
-For a vertex $v_s$, define its \emph{internal recourse} in that candidate by
+\paragraph{Current costs and history scores.}
+For each candidate $a$ and time $t$, define
 \[
-  \operatorname{rec}_a(v_s)
-  =\sum_{t=s+1}^n
-     \1[\lambda_t^a(v_s)\ne\lambda_{t-1}^a(v_s)].
+    f_a(t)=\operatorname{cost}_t(A_a(t)),
+    \qquad
+    G_a(t)=\max_{1\leq u\leq t} f_a(u),
+    \qquad
+    M_t=\min_{a\in[K]}G_a(t).
 \]
-Input candidates have zero internal recourse.
-For triple candidates, \cref{thm:agree-blackbox} gives
-\begin{equation}\label{eq:internal-recourse}
-  \operatorname{rec}_a(v)\le q_{\rm A}\lceil\log_2 n\rceil
-  \qquad(a\in\A_{\rm tri}).
-\end{equation}
-
-The selector uses the following exact scores:
-\begin{equation}\label{eq:history-scores}
-  f_a(t)=\cost_t(A_a(t)),\qquad
-  G_a(t)=\max_{1\le u\le t}f_a(u),\qquad
-  M_t=\min_{a\in\A}G_a(t).
-\end{equation}
-Thus $f_a(t)$ is a current cost, $G_a(t)$ is the history score, and
-$M_t$ is the smallest history score available at time $t$.
-Set $G_a(0)=0$.
-We update scores by $G_a(t)=\max\{G_a(t-1),f_a(t)\}$.
-All costs are evaluated against the complete collection $\Pp^t$,
-not only the inputs used to generate the candidate.
-
-History scores do not decrease, even when an auxiliary clustering
-changes. For an input candidate, the current cost already has this
-monotonicity.
-
-\begin{observation}\label{obs:history-monotonicity}
-For every $a\in\A$, $G_a(t)$ is nondecreasing in $t$, and so is $M_t$.
-For every $a\in\A_{\rm in}$, $G_a(t)=f_a(t)$ at every time.
-\end{observation}
-\begin{proof}
-The first assertion follows from taking a maximum over a growing set
-of times. A minimum of coordinatewise nondecreasing quantities is also
-nondecreasing, proving the assertion for $M_t$.
-For an input candidate, each distance $d(P_{i_a}^t,P_j^t)$ is
-nondecreasing as vertices arrive: old pair decisions remain fixed,
-and new pairs contribute nonnegative additional errors.
-Their average $f_a(t)$ is therefore nondecreasing and equals its own
-historical maximum.
-\end{proof}
-
-\subsection{Controlling a triple candidate's entire history}
-\label{subsec:online-history}
-
-We next compare a triple candidate to an arbitrary reference partition
-at a terminal prefix.
-The pairs on which the triple majority disagrees with that partition
-control the candidate's costs at all earlier prefixes.
-This comparison is the reason to use a persistent $\Agree$ execution.
-
-Fix $t\in[n]$ and a partition $F$ of $V_t$.
-For a triple $Q\in\binom{[m]}{3}$, define its majority-error set by
-\begin{equation}\label{eq:majority-errors}
-  B_Q^t(F)=E^+(H_Q(t))\triangle E^+(F).
-\end{equation}
-For every $u\in[t]$, let
+Thus, $f_a(t)$ is the candidate's current cost, $G_a(t)$ is its largest
+cost so far, and $M_t$ is the smallest available history score.
+The algorithm computes current costs exactly against all $m$ input
+partitions. Starting with $G_a(0)=0$, it updates history scores by
 \[
-  B_{Q,t,u}(F)=B_Q^t(F)\cap\binom{V_u}{2}
+    G_a(t)=\max\{G_a(t-1),f_a(t)\}.
 \]
-be the errors whose endpoints have both arrived by time $u$.
-Consistency of the input restrictions gives
-\begin{equation}\label{eq:restricted-majority-errors}
-  \err_{H_Q(u)}(F|_{V_u})=|B_{Q,t,u}(F)|,
-  \qquad
-  B_{Q,t,u}(F)\subseteq B_Q^t(F).
-\end{equation}
 
-Informally, $\Agree$ stays close to the restriction of $F$ at each
-earlier prefix whenever the terminal majority-error set is small.
-The following lemma bounds the whole history using that one error set.
+\paragraph{Selection phases.}
+While $M_t=0$, the algorithm follows a candidate with zero history
+score. Once $M_t$ becomes positive, selection proceeds in phases.
+A positive phase begins with baseline $B=M_t$ and threshold
+\[
+    T=(1+\theta)B.
+\]
+Both $B$ and $T$ remain fixed throughout that phase. A candidate $a$
+is \emph{eligible} at time $t$ if $G_a(t)<T$.
+
+The algorithm retains its selected candidate while that candidate
+remains eligible. If the selected candidate becomes ineligible while
+$M_t<T$, the algorithm switches to an eligible candidate. If
+$M_t\geq T$, it starts a new phase and selects a minimum-history
+candidate. A phase change is processed before checking the eligibility
+of the previously selected candidate.
+
+\paragraph{Algorithm \texttt{oncon}.}
+We now give the complete procedure. Whenever a choice is required,
+break ties by choosing the smallest candidate index.
+\begin{enumerate}
+    \item \textbf{Initialization.}
+    Sample and initialize the $K$ candidate processes according to
+    the distribution above. Set $G_a(0)=0$ for every $a\in[K]$.
+    Leave the selected index $a_0$ and the phase baseline $B$
+    undefined.
+
+    \item \textbf{Processing an arrival.}
+    When vertex $v_t$ arrives, perform the following steps.
+    \begin{enumerate}
+        \item \textbf{Advance all candidates.}
+        Supply the new vertex and its relevant input labels to every
+        candidate process. For each triple candidate, reveal the new
+        vertex and its incident signs to its persistent copy of
+        \texttt{Agree}. Obtain $A_a(t)$ and its local identifiers
+        $\lambda_t^a(v)$ for every $a\in[K]$.
+
+        \item \textbf{Update all scores.}
+        Compute
+        \[
+            f_a(t)=\frac{1}{m}\sum_{i=1}^{m}d(A_a(t),P_i^t)
+        \]
+        and set
+        \[
+            G_a(t)=\max\{G_a(t-1),f_a(t)\}
+        \]
+        for every $a\in[K]$. Then compute
+        \[
+            M_t=\min_{a\in[K]}G_a(t).
+        \]
+
+        \item \textbf{Select a candidate.}
+        Apply the first applicable case below.
+        \begin{enumerate}
+            \item If $M_t=0$, retain the previous candidate if
+            $a_{t-1}$ is defined and $G_{a_{t-1}}(t)=0$.
+            Otherwise, select a candidate $a_t$ with $G_{a_t}(t)=0$.
+
+            \item Otherwise, if $B$ is undefined or
+            $M_t\geq(1+\theta)B$, begin a new positive phase:
+            set
+            \[
+                B\leftarrow M_t,
+                \qquad
+                T\leftarrow(1+\theta)B,
+            \]
+            and choose
+            \[
+                a_t\in\operatorname*{arg\,min}_{a\in[K]}G_a(t).
+            \]
+
+            \item Otherwise, if $G_{a_{t-1}}(t)<T$, retain the
+            previous candidate by setting $a_t=a_{t-1}$.
+
+            \item Otherwise, switch to a candidate $a_t$ satisfying
+            \[
+                G_{a_t}(t)<T.
+            \]
+            Such a candidate exists because this case is reached
+            only when $M_t<T$.
+        \end{enumerate}
+
+        \item \textbf{Produce the output.}
+        Output the partition
+        \[
+            C_t=A_{a_t}(t),
+        \]
+        using the global cluster identifiers
+        \[
+            \lambda_t(v)=\bigl(a_t,\lambda_t^{a_t}(v)\bigr)
+            \qquad\text{for every }v\in V_t.
+        \]
+    \end{enumerate}
+\end{enumerate}
+
+Including the candidate index in each global identifier distinguishes
+identifiers belonging to different candidate processes. Changes to an
+old vertex's output identifier can therefore arise either from a
+switch of the selected candidate or from an internal identifier change
+within the selected candidate. All candidate processes continue
+running across switches and phase boundaries.
+
+\subsection{Analysis}
+\label{subsec:oncon-analysis}
+
+In this subsection, we analyse the algorithm \texttt{oncon} and prove
+\cref{thm:online-main}. To prove the theorem, we establish the following
+lemmas, proving each immediately after its statement.
+
+Throughout the analysis, fix an oblivious input instance with
+$n\geq 2$ and $m\geq 3$. We use the notation and parameters from
+\cref{sec:oncon-algorithm}. In particular,
+\[
+    0<\varepsilon<\frac{2}{3\eta+5},
+    \qquad
+    \theta=\frac{\varepsilon}{4}.
+\]
+Define
+\[
+    c=\eta+1,
+    \qquad
+    R_0=2-\frac{2}{3\eta+5},
+    \qquad
+    R=R_0+\frac{\varepsilon}{2}.
+\]
+These choices give $1<R_0<R<2$.
+
+Recall that each history score $G_a(t)$ is nondecreasing in $t$.
+Consequently, their minimum $M_t$ is also nondecreasing. These
+properties hold for every realization of the sampled candidates.
+
+Our first lemma bounds the entire history of a triple candidate
+using its majority errors against a single reference partition.
+For a time $t$, a partition $F$ of $V_t$, and a three-element set
+$Q\subseteq[m]$, define
+\[
+    B_Q^t(F)
+    =
+    E^+(H_Q(t))\triangle E^+(F).
+\]
+Thus, $B_Q^t(F)$ consists of the pairs on which the majority graph
+$H_Q(t)$ disagrees with $F$.
 
 \begin{lemma}[History bound for a triple candidate]
-\label{lem:triple-history-bound}
-For every realization of the sampled family, every
-$a\in\A_{\rm tri}$, every $t\in[n]$, and every partition $F$ of $V_t$,
-\begin{equation}\label{eq:triple-history-bound}
-  G_a(t)\le \cost_t(F)+c\,|B_{Q_a}^t(F)|.
-\end{equation}
+\label{lem:oncon-history}
+For every realization of the sampled candidates, every triple
+candidate $a$, every time $t\in[n]$, and every partition $F$ of $V_t$,
+\[
+    G_a(t)
+    \leq
+    \cost_t(F)+c\,|B_{Q_a}^t(F)|.
+\]
 In particular,
 \[
-  G_a(t)\le\OPT_t+c\,|B_{Q_a}^t(F_t^*)|.
+    G_a(t)
+    \leq
+    \OPT_t+c\,|B_{Q_a}^t(F_t^*)|.
 \]
 \end{lemma}
+
 \begin{proof}
-Fix $u\in[t]$ and write $Q=Q_a$.
-The restriction $F|_{V_u}$ is a feasible partition of $V_u$.
-By \cref{thm:agree-blackbox} and \eqref{eq:restricted-majority-errors},
+Fix a triple candidate $a$, a time $t$, and a partition $F$ of $V_t$.
+Write $Q=Q_a$. For every earlier time $u\leq t$, define
 \[
-  \err_{H_Q(u)}(A_a(u))
-  \le\eta\,\OPT_{\rm CC}(H_Q(u))
-  \le\eta\,\err_{H_Q(u)}(F|_{V_u})
-  =\eta|B_{Q,t,u}(F)|.
+    F_u=F|_{V_u},
+    \qquad
+    B_u=B_Q^t(F)\cap\binom{V_u}{2}.
 \]
-The comparison inequality \eqref{eq:signed-comparison} then gives
-\begin{equation}\label{eq:history-distance-bound}
-  d(A_a(u),F|_{V_u})
-  \le(\eta+1)|B_{Q,t,u}(F)|
-  =c|B_{Q,t,u}(F)|.
-\end{equation}
-Also, restricting every input distance gives
+Since signs between previously arrived vertices never change,
 \[
-  \cost_u(F|_{V_u})
-  =\frac1m\sum_{i=1}^m d(F|_{V_u},P_i^u)
-  \le\frac1m\sum_{i=1}^m d(F,P_i^t)
-  =\cost_t(F).
+    \err_{H_Q(u)}(F_u)=|B_u|.
 \]
-Combining this with \eqref{eq:cost-comparison} and
-\eqref{eq:history-distance-bound}, we obtain
+The partition $F_u$ is a feasible solution for correlation clustering
+on $H_Q(u)$. Therefore, \cref{thm:agree-blackbox} gives
+\[
+    \err_{H_Q(u)}(A_a(u))
+    \leq
+    \eta\,\OPT_{\rm CC}(H_Q(u))
+    \leq
+    \eta\,|B_u|.
+\]
+Applying \eqref{eq:signed-comparison}, we obtain
+\[
+    d(A_a(u),F_u)
+    \leq
+    \err_{H_Q(u)}(A_a(u))
+    +
+    \err_{H_Q(u)}(F_u)
+    \leq
+    c\,|B_u|.
+\]
+
+Moreover, restriction cannot increase partition distance, so
+\[
+    \cost_u(F_u)
+    =
+    \frac1m\sum_{i=1}^m d(F|_{V_u},P_i^u)
+    \leq
+    \frac1m\sum_{i=1}^m d(F,P_i^t)
+    =
+    \cost_t(F).
+\]
+Using \eqref{eq:cost-comparison}, we conclude that
 \begin{align*}
-  f_a(u)
-  &\le\cost_u(F|_{V_u})+d(A_a(u),F|_{V_u})\\
-  &\le\cost_t(F)+c|B_{Q,t,u}(F)|\\
-  &\le\cost_t(F)+c|B_Q^t(F)|.
+    f_a(u)
+    &=
+    \cost_u(A_a(u))\\
+    &\leq
+    \cost_u(F_u)+d(A_a(u),F_u)\\
+    &\leq
+    \cost_t(F)+c\,|B_u|\\
+    &\leq
+    \cost_t(F)+c\,|B_Q^t(F)|.
 \end{align*}
-The right-hand side is independent of $u$.
-Taking the maximum over $u\in[t]$ proves the first assertion.
-Choosing $F=F_t^*$ proves the second.
+The right-hand side is independent of $u$. Taking the maximum over
+all $u\leq t$ proves the first assertion. Choosing $F=F_t^*$ proves
+the second assertion.
 \end{proof}
 
-The same terminal reference is used throughout the comparison.
-Its restrictions need not be optimal at earlier prefixes.
-The proof uses only their feasibility and the fact that restriction
-cannot increase pairwise disagreement.
-In particular, this lemma bounds a maximum over the whole history
-before any expectation over the initial samples is taken.
+The next lemma combines the complementary expected history bounds
+of input and triple candidates. The sampling probability $w$ is
+chosen so that the additional terms in these two bounds cancel.
 
-\subsection{Direct pairwise analysis of the randomized mixture}
-\label{subsec:online-mixture}
-
-We now show that the two candidate types have complementary expected
-history bounds. Their mixture cancels the extra terms, giving an
-expected history ratio strictly below $2$ by elementary pair counting.
-
-Fix a time $t\in[n]$ and the optimal partition $F_t^*$ chosen in the
-preliminaries. For a pair $e=\{u,v\}\in\binom{V_t}{2}$, let
+\begin{lemma}[Expected history score]
+\label{lem:oncon-expectation}
+For every fixed time $t\in[n]$ and candidate index $a\in[K]$,
 \[
-  k_e^t
-  =\bigl|\{i\in[m]:
-       \1[u\sim_{P_i^t}v]\ne\1[u\sim_{F_t^*}v]\}\bigr|,
-  \qquad
-  p_e^t=\frac{k_e^t}{m}.
+    \E[G_a(t)]\leq R_0\OPT_t.
 \]
-Thus $k_e^t$ is the number of inputs disagreeing with $F_t^*$ on $e$,
-and $p_e^t$ is their fraction.
-Define
-\begin{equation}\label{eq:pair-error-moments}
-  X_t=\sum_{e\in\binom{V_t}{2}}(p_e^t)^2.
-\end{equation}
-Counting errors first by input and then by pair gives
-\begin{equation}\label{eq:pair-error-opt}
-  \sum_{e\in\binom{V_t}{2}}p_e^t
-  =\frac1m\sum_{i=1}^m d(P_i^t,F_t^*)
-  =\OPT_t.
-\end{equation}
-The nonnegative quantity $X_t$ is used only in the analysis; the
-algorithm does not compute it or the reference optimum.
-
-For any fixed candidate index, conditioning on its type leaves a
-uniform input or a uniform triple, respectively.
-The next lemma shows that a large $X_t$ helps the input candidate,
-whereas a small $X_t$ helps the triple candidate.
-
-\begin{lemma}[Expected histories of the two candidate types]
-\label{lem:conditional-histories}
-For every fixed $t\in[n]$ and $a\in\A$,
-\begin{align}
-  \E[G_a(t)\mid a\in\A_{\rm in}]
-     &=2\OPT_t-2X_t, \label{eq:input-history-expectation}\\
-  \E[G_a(t)\mid a\in\A_{\rm tri}]
-     &\le\OPT_t+3cX_t. \label{eq:triple-history-expectation}
-\end{align}
 \end{lemma}
+
 \begin{proof}
-Condition first on $a\in\A_{\rm in}$.
-By \cref{obs:history-monotonicity}, the history score is the
-current input cost, so
+Fix a time $t$ and a candidate index $a$. For each pair
+$e\in\binom{V_t}{2}$, let $k_e$ be the number of input partitions
+whose decision on $e$ disagrees with that of $F_t^*$, and define
 \[
-  \E[G_a(t)\mid a\in\A_{\rm in}]
-  =\frac1m\sum_{i=1}^m\cost_t(P_i^t)
-  =\frac1{m^2}\sum_{i=1}^m\sum_{j=1}^m d(P_i^t,P_j^t).
+    p_e=\frac{k_e}{m},
+    \qquad
+    X_t=\sum_{e\in\binom{V_t}{2}}p_e^2.
 \]
-For a fixed pair $e$, two independent uniform input indices disagree
-with one another on $e$ exactly when one disagrees with $F_t^*$ and
-the other agrees. The probability is
-$2p_e^t(1-p_e^t)$.
-Summing over pairs and using \eqref{eq:pair-error-opt} gives
+Counting disagreements pair by pair gives
 \[
-  \E[G_a(t)\mid a\in\A_{\rm in}]
-  =\sum_{e\in\binom{V_t}{2}}2p_e^t(1-p_e^t)
-  =2\OPT_t-2X_t.
+    \sum_{e\in\binom{V_t}{2}}p_e
+    =
+    \frac1m\sum_{i=1}^m d(F_t^*,P_i^t)
+    =
+    \OPT_t.
 \]
 
-Next condition on $a\in\A_{\rm tri}$.
-Represent the uniform triple $Q_a$ by three uniformly sampled,
-distinct indices in a random order.
-For a fixed pair $e$, the probability that the inputs in two specified
-positions both disagree with $F_t^*$ on $e$ is
-\begin{equation}\label{eq:two-vote-error-probability}
-  \frac{k_e^t(k_e^t-1)}{m(m-1)}
-  \le\left(\frac{k_e^t}{m}\right)^2
-  =(p_e^t)^2.
-\end{equation}
-For $k_e^t=0$ both sides are zero.
-For $k_e^t\ge1$, the inequality follows from
-$(k_e^t-1)/(m-1)\le k_e^t/m$, since $k_e^t\le m$.
+First, condition on $a$ being an input candidate. For any fixed
+input index $i$, the quantity $\cost_u(P_i^u)$ is nondecreasing in
+$u$: decisions on old pairs remain unchanged, and newly revealed
+pairs contribute nonnegative additional cost. Hence an input
+candidate satisfies $G_a(t)=f_a(t)$.
 
-A majority error on $e$ requires errors in at least one of the three
-pairs of sampled positions. A union bound therefore gives
+For two independent uniform input indices $i,j\in[m]$, the
+partitions $P_i^t$ and $P_j^t$ disagree on a pair $e$ precisely when
+one agrees with $F_t^*$ on $e$ and the other disagrees. This event
+has probability $2p_e(1-p_e)$. Consequently,
+\begin{align}
+    \E[G_a(t)\mid a\text{ is an input candidate}]
+    &=
+    \frac{1}{m^2}
+    \sum_{i=1}^m\sum_{j=1}^m d(P_i^t,P_j^t)\notag\\
+    &=
+    \sum_{e\in\binom{V_t}{2}}2p_e(1-p_e)\notag\\
+    &=
+    2\OPT_t-2X_t.
+    \label{eq:oncon-input-history}
+\end{align}
+
+Next, condition on $a$ being a triple candidate. View its uniformly
+sampled triple as three distinct input indices in a uniformly
+random order. For a fixed pair $e$, the probability that the inputs
+in two specified positions both disagree with $F_t^*$ on $e$ is
 \[
-  \Prb[e\in B_{Q_a}^t(F_t^*)\mid a\in\A_{\rm tri}]
-  \le3(p_e^t)^2.
+    \frac{k_e(k_e-1)}{m(m-1)}
+    \leq
+    \left(\frac{k_e}{m}\right)^2
+    =
+    p_e^2.
+\]
+A majority error on $e$ requires at least two of the three sampled
+inputs to disagree with $F_t^*$ on $e$. Taking a union bound over
+the three pairs of sampled positions yields
+\[
+    \Prb\!\left[
+        e\in B_{Q_a}^t(F_t^*)
+        \,\middle|\,
+        a\text{ is a triple candidate}
+    \right]
+    \leq 3p_e^2.
 \]
 By linearity of expectation,
-\begin{equation}\label{eq:majority-error-expectation}
-  \E[|B_{Q_a}^t(F_t^*)|\mid a\in\A_{\rm tri}]
-  \le3X_t.
+\[
+    \E\!\left[
+        |B_{Q_a}^t(F_t^*)|
+        \,\middle|\,
+        a\text{ is a triple candidate}
+    \right]
+    \leq 3X_t.
+\]
+Applying \cref{lem:oncon-history}, we obtain
+\begin{equation}
+    \E[G_a(t)\mid a\text{ is a triple candidate}]
+    \leq
+    \OPT_t+3cX_t.
+    \label{eq:oncon-triple-history}
 \end{equation}
-Applying \cref{lem:triple-history-bound} with $F=F_t^*$ proves
-\eqref{eq:triple-history-expectation}.
-\end{proof}
 
-The probability $w$ was chosen so that the coefficient of $X_t$
-vanishes when we average the two conditional bounds.
-This cancellation yields a bound for a single sampled candidate's
-entire history.
-
-\begin{lemma}[Expected history of a mixture candidate]
-\label{lem:mixture-history}
-For every fixed $t\in[n]$ and $a\in\A$,
-\begin{equation}\label{eq:mixture-history}
-  \E[G_a(t)]\le R_0\OPT_t.
-\end{equation}
-\end{lemma}
-\begin{proof}
-By the law of total expectation and \cref{lem:conditional-histories},
+Combining \eqref{eq:oncon-input-history} and
+\eqref{eq:oncon-triple-history} according to the sampling
+probabilities gives
 \begin{align*}
-  \E[G_a(t)]
-  &\le w(2\OPT_t-2X_t)
-       +(1-w)(\OPT_t+3cX_t)\\
-  &=(1+w)\OPT_t+\bigl(-2w+3c(1-w)\bigr)X_t.
+    \E[G_a(t)]
+    &\leq
+    w(2\OPT_t-2X_t)
+    +(1-w)(\OPT_t+3cX_t)\\
+    &=
+    (1+w)\OPT_t
+    +\bigl(-2w+3c(1-w)\bigr)X_t.
 \end{align*}
-Since $w=3c/(3c+2)$,
+Since
 \[
-  -2w+3c(1-w)=0,
-  \qquad
-  1+w=2-\frac2{3c+2}
-      =2-\frac2{3\eta+5}
-      =R_0.
+    w=\frac{3c}{3c+2},
 \]
-Substitution proves the claim.
+we have
+\[
+    -2w+3c(1-w)=0,
+    \qquad
+    1+w
+    =
+    2-\frac{2}{3c+2}
+    =
+    R_0.
+\]
+Substitution proves the lemma.
 \end{proof}
 
-The reference optimum is fixed independently of all candidate samples.
-The argument takes expectation only after controlling each triple
-candidate's full history. It does not interchange expectation and
-a maximum over times.
+We next use independent sampling to ensure that a candidate with
+a sufficiently small history score exists at every prefix.
 
-\subsection{A good history at every prefix}\label{subsec:online-sampling}
-
-We next turn the expected history guarantee into a simultaneous
-probability guarantee.
-The threshold $R=R_0+\eps/2$ from \eqref{eq:online-parameters} leaves
-enough room above the expectation for a single candidate to succeed
-with probability proportional to $\eps$.
-Independent repetition then makes failure at any fixed prefix unlikely.
-
-\begin{lemma}[A good candidate at a fixed prefix]\label{lem:fixed-prefix}
-For every fixed $t\in[n]$ and every $a\in\A$,
-\begin{equation}\label{eq:single-candidate-success}
-  \Prb[G_a(t)\le R\OPT_t]\ge\frac{\eps}{4}.
-\end{equation}
-Consequently,
-\begin{equation}\label{eq:fixed-prefix-success}
-  \Prb[M_t\le R\OPT_t]\ge1-\frac{\zeta}{2n}.
-\end{equation}
+\begin{lemma}[A good history at every prefix]
+\label{lem:oncon-good-history}
+With probability at least $1-\zeta$,
+\[
+    M_t\leq R\OPT_t
+    \qquad\text{simultaneously for every }t\in[n].
+\]
 \end{lemma}
+
 \begin{proof}
-First suppose $\OPT_t=0$.
-Every input partition $P_i^t$ equals $F_t^*$, because the nonnegative
-distances in the optimum's cost sum to zero.
-Input candidates therefore have history score zero by
-\cref{obs:history-monotonicity}.
-Every triple has $B_Q^t(F_t^*)=\varnothing$, so
-\cref{lem:triple-history-bound} gives history score zero for each
-triple candidate as well.
-Thus both assertions hold with success probability $1$.
+Fix a time $t\in[n]$.
 
-Suppose $\OPT_t>0$.
-Markov's inequality and \cref{lem:mixture-history} give
-\[
-  \Prb[G_a(t)>R\OPT_t]
-  \le\frac{\E[G_a(t)]}{R\OPT_t}
-  \le\frac{R_0}{R}.
-\]
-Taking complements and using $R-R_0=\eps/2$ and $R<2$,
-\[
-  \Prb[G_a(t)\le R\OPT_t]
-  \ge1-\frac{R_0}{R}
-  =\frac{\eps}{2R}
-  >\frac{\eps}{4}.
-\]
-This proves \eqref{eq:single-candidate-success}.
+First suppose that $\OPT_t=0$. Every input partition $P_i^t$ then
+coincides with $F_t^*$. Input candidates have history score zero,
+and every triple has $B_Q^t(F_t^*)=\varnothing$. By
+\cref{lem:oncon-history}, triple candidates also have history score
+zero. Hence $M_t=0$ for every realization of the samples.
 
-For fixed $t$, each history score is a deterministic function of its
-candidate's own initial draw and the fixed input sequence.
-The candidate draws are independent, so their success events at time
-$t$ are independent.
-By \eqref{eq:candidate-count},
+Now suppose that $\OPT_t>0$. By Markov's inequality and
+\cref{lem:oncon-expectation}, each candidate $a$ satisfies
 \[
-  \Prb[M_t>R\OPT_t]
-  \le\left(1-\frac{\eps}{4}\right)^K
-  \le\exp\!\left(-\frac{\eps K}{4}\right)
-  \le\frac{\zeta}{2n}.
+    \Prb[G_a(t)>R\OPT_t]
+    \leq
+    \frac{\E[G_a(t)]}{R\OPT_t}
+    \leq
+    \frac{R_0}{R}.
 \]
-This proves \eqref{eq:fixed-prefix-success}.
+Therefore,
+\[
+    \Prb[G_a(t)\leq R\OPT_t]
+    \geq
+    1-\frac{R_0}{R}
+    =
+    \frac{\varepsilon}{2R}
+    \geq
+    \frac{\varepsilon}{4},
+\]
+where we used $R<2$.
+
+At this fixed time $t$, each history score is a deterministic
+function of its candidate's initial sample and the fixed input
+instance. Every candidate runs independently of the selection rule,
+and the copies of \texttt{Agree} are deterministic. Since the
+initial candidate samples are independent, their success events
+at time $t$ are independent. It follows that
+\begin{align*}
+    \Prb[M_t>R\OPT_t]
+    &\leq
+    \left(1-\frac{\varepsilon}{4}\right)^K\\
+    &\leq
+    \exp\left(-\frac{\varepsilon K}{4}\right)\\
+    &\leq
+    \frac{\zeta}{2n}.
+\end{align*}
+The same bound holds when $\OPT_t=0$, since the failure probability
+is then zero.
+
+Taking a union bound over all $n$ prefixes gives
+\[
+    \Prb\!\left[
+        \exists t\in[n]:M_t>R\OPT_t
+    \right]
+    \leq
+    n\cdot\frac{\zeta}{2n}
+    =
+    \frac{\zeta}{2}
+    \leq
+    \zeta.
+\]
+No independence between different prefixes is needed.
 \end{proof}
 
-Define the event that some good history exists at every prefix by
-\begin{equation}\label{eq:simultaneous-event}
-  \mathcal E=\{M_t\le R\OPT_t\text{ for all }t\in[n]\}.
-\end{equation}
-The same sampled family is used throughout the execution.
-A union bound obtains the simultaneous guarantee; independence
-between different times is unnecessary.
+The next lemma shows that the selection rule converts a small
+minimum history score into a low-cost output. Its guarantee is
+deterministic once the candidate processes are fixed.
 
-\begin{lemma}[Simultaneous history guarantee]
-\label{lem:simultaneous-history-event}
-The event $\mathcal E$ has probability at least $1-\zeta$.
-Equivalently, with this probability, for every $t\in[n]$ there is a
-candidate index $b_t\in\A$ such that
+\begin{lemma}[Selection guarantee]
+\label{lem:oncon-selection}
+For every realization of the sampled candidates, the selection
+rule of \texttt{oncon} always has a valid candidate to choose and
+satisfies
 \[
-  \max_{1\le u\le t}\cost_u(A_{b_t}(u))\le R\OPT_t.
+    \cost_t(C_t)\leq(1+\theta)M_t
+    \qquad\text{for every }t\in[n].
 \]
 \end{lemma}
+
 \begin{proof}
-By \cref{lem:fixed-prefix}, the probability that any of the $n$ prefixes
-violates $M_t\le R\OPT_t$ is at most
-$n\cdot\zeta/(2n)=\zeta/2\le\zeta$.
-The equivalent formulation follows from
-\eqref{eq:history-scores}.
+Fix any realization of the sampled candidates.
+
+If $M_t=0$, a candidate with history score zero exists by the
+definition of $M_t$. The selection rule chooses such a candidate,
+whose current cost is also zero.
+
+Consider a positive phase with baseline $B$ and threshold
+$T=(1+\theta)B$. At the start of the phase, the algorithm sets
+$B=M_t$ and selects a candidate attaining this minimum. Its history
+score is $B<T$, so it is eligible.
+
+At a later time when the same phase continues, we have $M_t<T$;
+otherwise, the algorithm would first start a new phase.
+Consequently, a candidate attaining $M_t$ is eligible. Thus,
+whenever the selected candidate becomes ineligible, an eligible
+replacement exists.
+
+Throughout the phase, the selected candidate has history score
+strictly below $T$. Moreover, monotonicity of $M_t$ gives $B\leq M_t$.
+Therefore,
+\[
+    \cost_t(C_t)
+    =
+    f_{a_t}(t)
+    \leq
+    G_{a_t}(t)
+    <
+    T
+    =
+    (1+\theta)B
+    \leq
+    (1+\theta)M_t.
+\]
+At a phase boundary, the baseline is reset before the output is
+chosen, so the same argument applies to the new phase. Together
+with the zero-score case, this proves the lemma.
 \end{proof}
 
-The witness $b_t$ may change with the terminal time $t$.
-The statement does not require a single candidate to serve all
-terminal times.
-The known horizon determines the sample size, and the oblivious-instance
-assumption makes the fixed-prefix expectation and independence
-arguments applicable.
+Finally, we bound the recourse by counting switches between
+candidates and identifier changes within the candidate processes.
 
-\subsection{Selecting a candidate with few changes}\label{subsec:online-selection}
-
-It remains to turn the existence of a good candidate history into one
-online output trajectory. The selection rule below is deterministic
-once the candidate processes are fixed. Its validity and recourse bound
-do not depend on the event $\mathcal E$.
-
-Set $\theta=\eps/4$.
-Let $a_t\in\A$ denote the selected candidate at time $t$.
-The output partition and its identifiers are
-\begin{equation}\label{eq:output-identifiers}
-  C_t=A_{a_t}(t),
-  \qquad
-  \lambda_t(v)=(a_t,\lambda_t^{a_t}(v))
-  \quad(v\in V_t).
-\end{equation}
-Including the candidate index makes identifiers from distinct processes
-different, even if their local names happen to coincide.
-An \emph{outer switch} is a time $t\ge2$ with $a_t\ne a_{t-1}$.
-
-The \emph{zero stage} consists of prefixes with $M_t=0$.
-During this stage, retain the selected candidate while its history
-score remains zero, and replace it with any zero-score candidate
-otherwise.
-
-After $M_t$ becomes positive, group consecutive prefixes into
-\emph{positive phases}. A phase begins at a time $t_0$ with
-\emph{baseline} $B=M_{t_0}>0$, and its baseline stays fixed.
-Its \emph{threshold} is $(1+\theta)B$.
-A candidate is \emph{eligible} in this phase at time $t$ if
-$G_a(t)<(1+\theta)B$.
-At the start of a phase, choose a candidate minimizing $G_a(t_0)$.
-Within a phase, keep the selected candidate until it is no longer
-eligible, then replace it with an eligible candidate.
-A candidate removed in this way is \emph{discarded} for that phase;
-let $D\subseteq\A$ denote the set of discarded candidates.
-When $M_t$ reaches the threshold, start a new phase before choosing
-the output. In particular, phase changes take precedence over
-discarding individual candidates.
-Fix any deterministic tie-breaking rule for all selections.
-
-% Bottom placement keeps the pseudocode after the definitions it uses.
-\begin{paperalgorithm}[!b]
-\centering
-\fbox{\begin{minipage}{0.94\linewidth}
-\textbf{Initialization.}
-Sample the candidate family as in \cref{subsec:online-candidates}.
-Initialize every process, set $G_a(0)=0$ for each $a\in\A$, and leave
-the selected index and phase undefined.
-
-\medskip
-\textbf{On arrival of $v_t$.}
-\begin{enumerate}
-  \item Advance every candidate process to time $t$.
-  Compute $f_a(t)$, update $G_a(t)$, and compute $M_t$.
-  \item If $M_t=0$, retain the previous index if one exists and has
-  history score zero; otherwise choose any index with history score zero.
-  Output the partition and identifiers from
-  \eqref{eq:output-identifiers}, and finish this arrival.
-  \item If no positive phase has started, begin one with
-  $B=M_t$ and $D=\varnothing$, and choose an index minimizing $G_a(t)$.
-  \item Otherwise, if $M_t\ge(1+\theta)B$, begin a new phase with
-  $B=M_t$ and $D=\varnothing$, and choose an index minimizing $G_a(t)$.
-  \item Otherwise, retain the previous index if it is eligible.
-  If it is not, add it to $D$ and choose any eligible index outside $D$.
-  \item Output the partition and identifiers from
-  \eqref{eq:output-identifiers}.
-\end{enumerate}
-Steps 3--5 are mutually exclusive branches.
-Every copy of $\Agree$ persists throughout all phases.
-\end{minipage}}
-\caption{Selection by monotone history scores.}
-\label{alg:online-selection}
-\end{paperalgorithm}
-
-The rule is stated explicitly in \cref{alg:online-selection}.
-At a zero-score prefix it outputs cost zero.
-At a positive prefix, its cost is at most a factor $1+\theta$ above
-the smallest available history score.
-
-\begin{lemma}[Deterministic selection guarantee]\label{lem:online-phase-cost}
-The selection rule always has a valid candidate to choose, and its
-output satisfies
-\begin{equation}\label{eq:selection-cost}
-  \cost_t(C_t)\le(1+\theta)M_t
-  \qquad\text{for every }t\in[n].
-\end{equation}
-This statement holds for every realization of the sampled family.
-\end{lemma}
-\begin{proof}
-If $M_t=0$, a zero-score candidate exists by the definition of a minimum.
-Its current cost is at most its history score and hence is zero.
-
-Suppose $M_t>0$.
-At a phase start, a minimizing candidate has score $M_t=B<(1+\theta)B$,
-so it is eligible. At any subsequent time at which the phase continues,
-$M_t<(1+\theta)B$, so some minimizing candidate is still eligible.
-A discarded candidate had score at least $(1+\theta)B$ when removed.
-By \cref{obs:history-monotonicity}, it never becomes eligible again
-during this phase. Thus whenever a replacement is needed, an eligible
-candidate outside $D$ exists.
-
-The selected candidate satisfies $G_{a_t}(t)<(1+\theta)B$.
-Moreover, monotonicity gives $B\le M_t$ throughout the phase.
-Therefore
+\begin{lemma}[Per-vertex recourse]
+\label{lem:oncon-recourse}
+For every realization of the sampled candidates and every vertex $v$,
 \[
-  \cost_t(C_t)=f_{a_t}(t)\le G_{a_t}(t)
-  <(1+\theta)B\le(1+\theta)M_t.
-\]
-This argument also applies at phase boundaries because a new baseline
-is set before the output is chosen.
-\end{proof}
-
-\subsection{Bounding switches and per-vertex recourse}
-\label{subsec:online-recourse}
-
-We first bound outer switches, separately from the changes inside the
-candidate processes.
-Let $S$ be the total number of outer switches, and let $s$ be the
-number of positive phases. If $s>0$, write their successive baselines
-as $B_1,\ldots,B_s$.
-Define
-\begin{equation}\label{eq:phase-count-parameter}
-  H=1+\left\lceil
-       \log_{1+\theta}\!\left(m\binom n2\right)
-     \right\rceil.
-\end{equation}
-The expression is well defined because $n\ge2$, $m\ge3$, and $\theta>0$.
-Every positive score is at least $1/m$, while every score is at most
-$\binom n2$. Multiplicative increases between phase baselines therefore
-permit only logarithmically many phases.
-
-\begin{lemma}[Number of outer switches]\label{lem:outer-switches}
-For every realization of the sampled family,
-\[
-  s\le H=O\!\left(\eps^{-1}\log(2mn)\right),
-  \qquad
-  S\le K(1+H).
+    \operatorname{rec}(v)
+    =
+    O_{\eta}\!\left(
+        \varepsilon^{-2}
+        \log\frac{2n}{\zeta}
+        \log\frac{2mn}{\zeta}
+    \right).
 \]
 \end{lemma}
+
 \begin{proof}
-Each distance is an integer between $0$ and $\binom t2$.
-Consequently every current cost, history score, and minimum history score
-belongs to the grid
+Fix any realization of the sampled candidates. An \emph{outer switch}
+is a time $t\geq 2$ at which $a_t\neq a_{t-1}$. Let $S$ be the total
+number of outer switches, and let $h$ be the number of positive
+phases. Define
 \[
-  \left\{\frac jm:
-     j\in\{0,1,\ldots,m\binom n2\}\right\}.
+    H=
+    1+
+    \left\lceil
+        \log_{1+\theta}\left(m\binom{n}{2}\right)
+    \right\rceil.
 \]
-Every positive baseline therefore lies in $[1/m,\binom n2]$.
+We first bound $h$ and $S$.
+
+Each partition distance is an integer. Since consensus costs are
+averages of $m$ such distances, every current cost, history score,
+and minimum history score belongs to the grid
+\[
+    \left\{
+        \frac{j}{m}:
+        j=0,1,\ldots,m\binom{n}{2}
+    \right\}.
+\]
+In particular, every positive phase baseline lies between $1/m$
+and $\binom{n}{2}$.
+
+If $h>0$, let $B_1,\ldots,B_h$ be the successive phase baselines.
 The rule for starting a new phase gives
-$B_{j+1}\ge(1+\theta)B_j$ for $1\le j<s$.
-If there is a positive phase, it follows that
 \[
-  (1+\theta)^{s-1}\frac1m
-  \le B_s\le\binom n2,
+    B_{j+1}\geq(1+\theta)B_j
+    \qquad\text{for }j<h.
 \]
-and hence $s\le H$. The same conclusion is immediate if $s=0$.
-Since $0<\theta=\eps/4<1$ and
-$\log(1+\theta)\ge\theta/2$, the stated asymptotic bound on $H$ follows.
+Consequently,
+\[
+    \frac{(1+\theta)^{h-1}}{m}
+    \leq
+    B_h
+    \leq
+    \binom{n}{2},
+\]
+which implies $h\leq H$. This bound is immediate when $h=0$.
+Since $\theta=\varepsilon/4$ and
+$\log(1+\theta)\geq\theta/2$ for $0<\theta<1$, we have
+\[
+    H=O\!\left(\varepsilon^{-1}\log(2mn)\right).
+\]
 
-During the zero stage, a selected candidate is replaced only when
-its history score becomes positive. It can never be selected again
-during that stage. Thus there are at most $K-1$ switches within
-the zero stage.
-Within a positive phase, a selected candidate is replaced only after
-becoming ineligible; it is then discarded and cannot return in that phase.
-There are at most $K-1$ switches within each positive phase.
-Allow one additional switch for entry into each positive phase.
-Altogether,
+During the zero-score stage, a selected candidate is replaced only
+when its history score becomes positive. That candidate can never
+again have history score zero. Therefore, there are at most $K-1$
+switches during this stage.
+
+Within a positive phase, a selected candidate is replaced only
+when its history score reaches the fixed threshold of that phase.
+Since history scores do not decrease, it can never become eligible
+again during the same phase. Hence there are at most $K-1$ switches
+within each positive phase. Allowing one additional switch upon
+entry into each positive phase gives
 \[
-  S\le (K-1)+sK\le K(1+H).
+    S
+    \leq
+    (K-1)+hK
+    \leq
+    K(1+H).
 \]
-This upper bound also covers executions with an empty zero stage or
-with no positive phase.
+
+We next account for changes within the candidate processes. For a
+vertex $v=v_r$ and a candidate $a$, define its internal recourse by
+\[
+    \operatorname{rec}_a(v)
+    =
+    \sum_{t=r+1}^{n}
+    \1[\lambda_t^a(v)\neq\lambda_{t-1}^a(v)].
+\]
+Input candidates have zero internal recourse. By
+\cref{thm:agree-blackbox}, every triple candidate satisfies
+\[
+    \operatorname{rec}_a(v)
+    \leq
+    q_{\rm A}\lceil\log_2 n\rceil.
+\]
+
+Recall that the output identifier is
+\[
+    \lambda_t(v)
+    =
+    \bigl(a_t,\lambda_t^{a_t}(v)\bigr).
+\]
+If this identifier changes when the selected candidate changes,
+charge the event to that outer switch. Otherwise, the selected
+candidate remains the same, so its local identifier for $v$ must
+have changed. Charge the event to that internal identifier change.
+No internal event is charged more than once. Therefore,
+\begin{align*}
+    \operatorname{rec}(v)
+    &\leq
+    S+\sum_{a=1}^{K}\operatorname{rec}_a(v)\\
+    &\leq
+    K(1+H)+Kq_{\rm A}\lceil\log_2 n\rceil.
+\end{align*}
+This accounting uses the fact that all candidate processes persist
+throughout the execution. Returning to a previously selected
+candidate does not restart its internal recourse budget.
+
+Finally, substitute
+\[
+    K=O\!\left(
+        \varepsilon^{-1}\log\frac{2n}{\zeta}
+    \right),
+    \qquad
+    H=O\!\left(
+        \varepsilon^{-1}\log(2mn)
+    \right).
+\]
+Since $\varepsilon<1$ and
+$\log n,\log(2mn)\leq\log(2mn/\zeta)$, we obtain
+\[
+    \operatorname{rec}(v)
+    =
+    O_{\eta}\!\left(
+        \varepsilon^{-2}
+        \log\frac{2n}{\zeta}
+        \log\frac{2mn}{\zeta}
+    \right).
+\]
+Here the absolute constant $q_{\rm A}$ of the fixed implementation
+of \texttt{Agree} is absorbed into the implicit constant.
+The argument holds for every realization of the samples.
 \end{proof}
 
-An outer switch may change every previously assigned vertex's identifier,
-so it is charged once to each such vertex.
-All other identifier changes come from the internal trajectory of the
-currently selected process. Because every process persists even while
-unselected, returning to a candidate does not restart its internal
-recourse budget.
-
-\begin{lemma}[Per-vertex recourse]\label{lem:online-recourse}
-For every realization of the sampled family and every vertex $v$,
-\begin{align}
-  \operatorname{rec}(v)
-  &\le S+\sum_{a\in\A}\operatorname{rec}_a(v) \notag\\
-  &\le K(1+H)+Kq_{\rm A}\lceil\log_2 n\rceil
-       \label{eq:recourse-decomposition}\\
-  &=O_{\eta,q_{\rm A}}\!\left(
-       \eps^{-2}
-       \log\frac{2n}{\zeta}\,
-       \log\frac{2mn}{\zeta}
-     \right). \notag
-\end{align}
-\end{lemma}
-\begin{proof}
-Consider a time after $v$ has arrived at which its output identifier
-changes. If the selected candidate changes, charge this change to that
-outer switch. Otherwise the candidate index in
-\eqref{eq:output-identifiers} stays fixed, so the local identifier
-of $v$ in that candidate must have changed. Charge this change to the
-corresponding internal-recourse event.
-No internal event is charged more than once, proving the first inequality.
-
-Input candidates have no internal recourse.
-For triple candidates, apply \eqref{eq:internal-recourse}; there are
-at most $K$ such candidates in every realization.
-Combining with \cref{lem:outer-switches} gives
-\eqref{eq:recourse-decomposition}.
-Finally, substitute \eqref{eq:candidate-count} and the bound on $H$.
-Since $\eps<1$,
-$\log n\le\log(2mn/\zeta)$, and
-$\log(2mn)\le\log(2mn/\zeta)$, the internal-recourse term is absorbed
-by the displayed asymptotic bound.
-\end{proof}
-
-\subsection{Proof of the main theorem}\label{subsec:online-main-proof}
-
-We can now combine the probabilistic existence of good candidate
-histories with the deterministic selection and recourse guarantees.
-The remaining multiplicative loss in selection is absorbed by the
-accuracy parameter $\eps$.
+We are now ready to prove \cref{thm:online-main}.
 
 \begin{proof}[Proof of \cref{thm:online-main}]
-The cases $n=1$ and $m\le2$ were handled immediately after the theorem.
-For $n\ge2$ and $m\ge3$, sample and maintain the candidate family from
-\cref{subsec:online-candidates} and use
-\cref{alg:online-selection} for the output.
+The cases $n=1$ and $m\leq 2$ were handled before the description
+of the algorithm: following the indicated input is optimal and
+incurs no recourse. Assume that $n\geq 2$ and $m\geq 3$.
 
-By \cref{lem:simultaneous-history-event}, the event $\mathcal E$ holds
-with probability at least $1-\zeta$.
-On this event, \cref{lem:online-phase-cost} gives, simultaneously for
-all $t\in[n]$,
+By \cref{lem:oncon-good-history}, with probability at least
+$1-\zeta$,
 \[
-  \cost_t(C_t)
-  \le(1+\theta)M_t
-  \le(1+\theta)R\OPT_t.
+    M_t\leq R\OPT_t
+    \qquad\text{for every }t\in[n].
 \]
-Using $\theta=\eps/4$, $R=R_0+\eps/2$, and $R<2$, we have
+On this event, \cref{lem:oncon-selection} gives
 \[
-  (1+\theta)R
-  =R+\frac{\eps}{4}R
-  <R_0+\frac{\eps}{2}+\frac{\eps}{2}
-  =2-\frac{2}{3\eta+5}+\eps.
+    \cost_t(C_t)
+    \leq
+    (1+\theta)M_t
+    \leq
+    (1+\theta)R\OPT_t
+    \qquad\text{for every }t\in[n].
 \]
-This proves \eqref{eq:online-ratio}, including prefixes with
-$\OPT_t=0$.
-For every realization of the samples, independently of $\mathcal E$,
-\cref{lem:online-recourse} proves \eqref{eq:online-recourse-main}.
+Since $\theta=\varepsilon/4$, $R=R_0+\varepsilon/2$, and $R<2$,
+\[
+    (1+\theta)R
+    =
+    R_0+\frac{\varepsilon}{2}
+    +\frac{\varepsilon R}{4}
+    <
+    R_0+\varepsilon.
+\]
+It follows that, simultaneously for all $t\in[n]$,
+\[
+    \cost_t(C_t)
+    \leq
+    \left(
+        2-\frac{2}{3\eta+5}+\varepsilon
+    \right)\OPT_t.
+\]
+This includes prefixes with $\OPT_t=0$.
+
+Independently of this event, \cref{lem:oncon-recourse} bounds the
+recourse of every vertex for every realization of the random samples.
+These are the two guarantees asserted in \cref{thm:online-main}.
 \end{proof}
 
-\paragraph{Scope of the result.}
-The algorithm uses a known horizon and an oblivious input sequence.
-Its randomness is confined to the initial candidate sampling.
-Exact scoring uses all input partitions, and all auxiliary processes
-are updated at every arrival. The theorem does not claim a fast-update
-implementation. The role of $\Agree$ is precisely its simultaneous,
-deterministic approximation guarantee together with persistent
-per-vertex recourse; these properties are used separately in the
-history bound and in the final recourse accounting.
+\section{A Near-Linear-Time Offline Algorithm}\label{sec:offline}
+
+In this section, we present a near-linear-time offline algorithm for consensus clustering and establish its approximation guarantee. This algorithm forms the basis of our dynamic approach. In the next section, we maintain a collection of candidate clusterings under vertex insertions and deletions. At every fixed time, these candidates have the same distribution as those generated by independent offline trials on the current instance. We can therefore apply the offline approximation analysis at each snapshot. By choosing the sample sizes appropriately and taking a union bound, we obtain the same approximation guarantee simultaneously after all updates with high probability. The main additional task is to maintain the candidates and their estimated costs efficiently and bound the expected total update time.
+
+\subsection{Algorithm Overview}
+\label{subsec:offline-overview}
+
+Let $\mathcal{P}=(P_1,\ldots,P_m)$ be the input partitions of a
+vertex set $V$ of size $n$. Each partition $P_i$ is represented by
+cluster labels $c_i(v)\in[n]$ stored in machine words.
+We assume constant-time random access to each label. In one trial, we sample seven input indices
+$i_1,\ldots,i_7$ independently and uniformly from $[m]$, with
+replacement. Write $Q=(i_1,\ldots,i_7)$.
+The sampled majority graph $G_Q$ has vertex set $V$, with
+\[
+    \{u,v\}\in E(G_Q)
+    \quad\Longleftrightarrow\quad
+    \sum_{j=1}^{7}
+    \mathbf{1}\bigl[c_{i_j}(u)=c_{i_j}(v)\bigr]\geq 4.
+\]
+We run \textsc{Pivot} on this graph: repeatedly choose a uniformly
+random remaining vertex, form a cluster consisting of that vertex
+and its remaining neighbors, and remove the cluster.
+The resulting partition is our first candidate.
+Our second candidate is an independently and uniformly sampled input
+partition. The approximation analysis bounds the expected cost
+of the better of these two candidates. We repeat this trial independently $T$ times and collect the resulting
+$2T$ candidates in a multiset $\mathcal{Y}$.
+To select the output, we draw an independent evaluation sample
+$S=(P_{j_1},\ldots,P_{j_s})$, with each index sampled uniformly
+from $[m]$, with replacement.
+For each candidate $C$, its estimated cost is
+\[
+    \widehat{\operatorname{cost}}_S(C)
+    = \frac{1}{s}\sum_{\ell=1}^{s}d(C,P_{j_\ell}).
+\]
+We return a candidate of minimum estimated cost. For an accuracy parameter $0<\delta\leq 1$, we set
+\[
+    L=\log\frac{n+2}{\delta},
+    \qquad
+    T=\Theta(\delta^{-1}L),
+    \qquad
+    s=\Theta(\delta^{-2}L),
+\]
+with sufficiently large constants.
+The repeated trials ensure that a good candidate is present with
+high probability. The evaluation sample controls the additional
+approximation loss from selecting the output.
+Algorithm~\ref{alg:offline-consensus} summarizes the procedure.
+The next subsection shows how to implement each call to
+\textsc{Pivot} in $O(n)$ time without explicitly constructing $G_Q$.
+
+\RestyleAlgo{boxed}
+\begin{algorithm}[t]
+\caption{Near-linear-time offline consensus clustering}
+\label{alg:offline-consensus}
+\DontPrintSemicolon
+\KwIn{Input partitions $\mathcal{P}=(P_1,\ldots,P_m)$ on $V$
+      and an accuracy parameter $0<\delta\leq 1$.}
+\KwOut{A clustering $\widehat{C}$ of $V$.}
+
+Set $T$ and $s$ as above, and initialize
+$\mathcal{Y}\gets\emptyset$\;
+
+\For{$t=1,\ldots,T$}{
+    Sample $Q_t$ as seven independent uniform indices from $[m]$,
+    with replacement\;
+    Run \textsc{Pivot} on $G_{Q_t}$ to obtain $C_t$\;
+    Independently sample a uniform index $J_t\in[m]$\;
+    Add $C_t$ and $P_{J_t}$ to $\mathcal{Y}$\;
+}
+
+Draw an evaluation sample $S$ of $s$ independent uniform input
+partitions, independently of all trials\;
+
+Compute $\widehat{\operatorname{cost}}_S(C)$
+for every $C\in\mathcal{Y}$\;
+
+\KwRet{$\displaystyle
+    \widehat{C}\in
+    \operatorname*{arg\,min}_{C\in\mathcal{Y}}
+    \widehat{\operatorname{cost}}_S(C)$}\;
+\end{algorithm}
+\subsection{An Implicit Representation of the Majority Graph}
+\label{subsec:offline-buckets}
+
+A straightforward implementation of \textsc{Pivot} scans the remaining
+vertices to find the neighbors of each pivot. Although each adjacency
+test takes constant time, these scans can require $\Theta(n^2)$ time
+in total. We use the structure of the sampled partitions to represent
+each neighborhood as the union of a constant number of buckets. Fix a sampled tuple $Q=(i_1,\ldots,i_7)$.
+For each four-element set $R\subseteq[7]$, group vertices according
+to their labels in the sampled positions indexed by $R$.
+For a vertex $u$, define its bucket
+\[
+    B_R(u)
+    = \bigl\{v\in V :
+       c_{i_j}(v)=c_{i_j}(u)
+       \text{ for every }j\in R\bigr\}.
+\]
+Any two distinct vertices in the same bucket agree in at least four
+sampled positions, so every bucket is a clique in $G_Q$.
+Conversely, every neighbor of $u$ shares such a bucket with $u$.
+This gives the following exact representation.
+
+\begin{observation}
+\label{obs:offline-bucket-neighborhood}
+For every vertex $u\in V$,
+\[
+    N_{G_Q}[u]
+    = \bigcup_{R\in\binom{[7]}{4}} B_R(u).
+\]
+\end{observation}
+
+There are $\binom{7}{4}=35$ choices of $R$, and each vertex belongs
+to one bucket for each choice. Thus, the total number of bucket
+memberships is $35n$.
+For each $R$, we construct its buckets by radix-sorting the vertices
+by the four-coordinate key $(c_{i_j}(v))_{j\in R}$.
+Since the labels lie in $[n]$, each such sort takes $O(n)$ time.
+The entire representation therefore takes $O(n)$ time and space. Store each bucket as a doubly linked list of remaining vertices,
+with one deletion handle per vertex membership.
+A swap array supports uniform sampling and deletion in constant time,
+and timestamps remove duplicates during bucket enumeration.
+
+\RestyleAlgo{boxed}
+\begin{algorithm}[t]
+\caption{\textsc{Pivot} using the bucket representation}
+\label{alg:implicit-pivot}
+\DontPrintSemicolon
+Initialize the remaining-vertex array $A\gets V$\;
+\While{$A\neq\emptyset$}{
+    Choose a uniformly random vertex $p$ from $A$\;
+    Enumerate
+    $\displaystyle C=\bigcup_{R\in\binom{[7]}{4}}
+       \bigl(B_R(p)\cap A\bigr)$,
+    discarding duplicates\;
+    Output $C$ as a cluster\;
+    Remove every vertex of $C$ from its bucket lists and from $A$\;
+}
+\end{algorithm}
+
+\begin{lemma}
+The bucket representation simulates \textsc{Pivot} on $G_Q$
+exactly in $O(n)$ time and space.
+\end{lemma}
+
+\begin{proof}
+By Observation~\ref{obs:offline-bucket-neighborhood}, each iteration
+outputs the remaining closed neighborhood of a uniformly random pivot.
+Every enumerated vertex belongs to the cluster being removed and
+appears in at most $35$ inspected lists. Thus, finding and removing
+a cluster $C$ takes $O(|C|)$ time.
+Since the clusters partition $V$, the total time is $O(n)$,
+including initialization. The lists and auxiliary arrays use $O(n)$ space.
+\end{proof}
+
+It remains to show that candidate costs can be evaluated efficiently. We use the following folklore identity for the Mirkin distance, with each unordered pair counted once.
+For two clusterings $C$ and $D$, let $Z$ be the partition formed
+by the nonempty intersections of their clusters. Then
+\[
+    d(C,D)
+    = \sum_{A\in C}\binom{|A|}{2}
+      + \sum_{B\in D}\binom{|B|}{2}
+      - 2\sum_{H\in Z}\binom{|H|}{2}.
+\]
+Counting cluster labels and radix-sorting the label pairs
+$(c_C(v),c_D(v))$ gives all cluster and intersection sizes in
+$O(n)$ time and space.
+Thus, each distance takes $O(n)$ time to compute, and evaluating
+all $2T$ candidates against the $s$ sampled inputs takes $O(nTs)$ time.
+Combining candidate generation and evaluation, the total running time is
+\[
+    O(nT+nTs)
+    = O\bigl(n\delta^{-3}L^2\bigr).
+\]
+
+\subsection{Approximation Guarantee}
+\label{subsec:offline-analysis}
+
+We now analyze the approximation guarantee. We first bound the expected cost of the better of the two candidates
+produced by one trial. The analysis accounts for both the randomness of the sampled inputs and the random choices of \textsc{Pivot}. We then use independent repetition and evaluation to obtain the high-probability guarantee for the selected output.
+
+For the analysis, write $\operatorname{cost}(C)$ for
+$\operatorname{cost}_{\mathcal{P}}(C)$ and $\mathrm{OPT}$ for
+$\mathrm{OPT}(\mathcal{P})$. Fix an optimal clustering $C^\star$. For each pair $e=\{u,v\}$, define
+\[
+    w_e^+
+    = \frac{1}{m}\sum_{i=1}^{m}
+      \mathbf{1}\bigl[c_i(u)=c_i(v)\bigr],
+    \qquad
+    w_e^- = 1-w_e^+.
+\]
+Thus, placing the endpoints of $e$ together contributes $w_e^-$
+to the consensus cost, while separating them contributes $w_e^+$. Let $G^\star$ be the majority graph of all input partitions,
+with ties broken arbitrarily, and set
+\[
+    m_e=\min\{w_e^+,w_e^-\},
+    \qquad
+    u_e=1-2m_e.
+\]
+Following the sign of $e$ in $G^\star$ costs $m_e$, while
+opposing it costs $1-m_e$. Hence, $u_e$ is the additional cost
+of opposing the majority decision. Let $c_e^\star$ denote the contribution of $e$ to the cost of
+$C^\star$. Since every clustering either joins or separates
+the endpoints of each pair,
+\[
+    c_e^\star\in\{m_e,1-m_e\},
+    \qquad
+    \mathrm{OPT}
+    =\sum_{e\in\binom{V}{2}}c_e^\star
+    \geq \sum_{e\in\binom{V}{2}}m_e.
+\]
+
+A triplet is \emph{bad} in a graph if exactly two of its three
+pairs are edges. Such a pattern cannot be realized by a partition:
+joining the endpoints of both edges forces all three vertices
+into the same cluster. For the full majority graph, this gives the following inequality.
+
+\begin{lemma}
+\label{lem:majority-triangle}
+For every bad triplet $t$ in $G^\star$,
+$\sum_{e\in\binom{t}{2}}m_e\geq 1$.
+\end{lemma}
+
+\begin{proof}
+Let $t=\{u,v,w\}$, with edges $uw,vw$ and nonedge $uv$.
+In any input partition, separating $u$ from $v$ requires separating
+at least one of them from $w$. Averaging over the inputs gives
+$w_{uv}^-\leq w_{uw}^-+w_{vw}^-$.
+By the majority signs,
+\[
+    m_{uv}+m_{uw}+m_{vw}
+    =1-w_{uv}^-+w_{uw}^-+w_{vw}^-
+    \geq 1.
+\]
+\end{proof}
+
+Fix the seven sampled input partitions indexed by $Q$, and let
+$G_Q$ be their majority graph. We analyze \textsc{Pivot} on this
+fixed graph, taking probability only over its random pivot choices.
+Recall that each step chooses a uniformly random remaining vertex
+and removes that vertex and its remaining neighbors as one cluster. Let $\mathcal{B}(G_Q)$ denote the bad triplets of $G_Q$.
+For each such triplet $t$, let $p_t$ be the probability that
+all three vertices are still present when a vertex of $t$
+is first chosen as a pivot.
+
+\begin{lemma}
+\label{lem:pair-disagreement}
+For each pair $e$, the probability that \textsc{Pivot} decides
+$e$ against its sign in $G_Q$ is
+\[
+    D_e
+    = \frac{1}{3}
+      \sum_{\substack{t\in\mathcal{B}(G_Q)\\
+                      e\in\binom{t}{2}}} p_t.
+\]
+\end{lemma}
+
+\begin{proof}
+Consider $e=\{u,v\}$. The first pivot whose cluster contains
+either endpoint decides the pair.
+If that pivot is $u$ or $v$, the decision follows the sign of $e$.
+Suppose a third vertex $w$ pivots while both endpoints remain.
+If $uv$ is a nonedge, the decision contradicts its sign when
+$w$ is adjacent to both endpoints, placing them in the same cluster. If $uv$ is an edge, the decision contradicts its sign when
+$w$ is adjacent to exactly one endpoint, separating them.
+These are precisely the cases in which $\{u,v,w\}$ is a bad triplet. While all three vertices remain, each is equally likely to be
+chosen as the next pivot. Thus, $w$ causes this disagreement
+with probability $p_t/3$.
+For a fixed pair, these events are disjoint because the first
+such event permanently decides the pair. Summing gives the formula.
+\end{proof}
+Let $C$ be the output of \textsc{Pivot} on the fixed sampled graph
+$G_Q$. For each pair $e$, let $s_e$ be its contribution to the
+consensus cost when the output follows its sign in $G_Q$:
+$s_e=w_e^-$ if $e$ is an edge, and $s_e=w_e^+$ otherwise.
+Opposing its sign costs $1-s_e$.
+
+\begin{lemma}[Exact pair identity]
+\label{lem:pair-cost}
+Taking expectation over the random pivots,
+\[
+    \mathbb{E}_{\mathrm{piv}}[\operatorname{cost}(C)]
+    = \sum_e s_e+\sum_e D_e(1-2s_e).
+\]
+\end{lemma}
+\begin{proof}
+By Lemma~\ref{lem:pair-disagreement}, pair $e$ follows its sign
+with probability $1-D_e$ and opposes it with probability $D_e$.
+Its expected contribution is therefore
+\[
+    (1-D_e)s_e+D_e(1-s_e)
+    =s_e+D_e(1-2s_e).
+\]
+Summing over all pairs proves the identity.
+\end{proof}
+
+We next isolate the additional loss caused by sampling. Let $F_e$ indicate that $G_Q$ disagrees with $G^\star$ on $e$,
+and put $\varepsilon_e=1-2F_e\in\{+1,-1\}$.
+When $F_e=0$, following the sampled sign agrees with the full
+majority decision and costs $m_e$.
+When $F_e=1$, it opposes the full majority decision and costs
+$1-m_e=m_e+u_e$, since $u_e=1-2m_e$.
+Therefore,
+\[
+    s_e=m_e+F_eu_e,
+    \qquad
+    1-2s_e=u_e\varepsilon_e.
+\]
+Next, We use the bad triplets shared by $G_Q$ and $G^\star$ as a reference, and collect the changes caused by sampling. Let
+\[
+    T_Q=\mathcal{B}(G_Q),
+    \qquad
+    B=\mathcal{B}(G_Q)\cap\mathcal{B}(G^\star).
+\]
+Substituting the expressions for $s_e$ and $D_e$ into
+Lemma~\ref{lem:pair-cost}, and grouping
+the contributions by triplets, gives
+\[
+    \mathbb{E}_{\mathrm{piv}}[\operatorname{cost}(C)]
+    = \sum_e m_e+\sum_e F_eu_e
+      +\sum_{t\in T_Q}\frac{p_t}{3}
+       \sum_{e\in\binom{t}{2}}u_e\varepsilon_e.
+\]
+We now insert zero in the form
+\[
+    \underbrace{
+      \sum_{t\in B}\frac{p_t}{3}
+      \sum_{e\in\binom{t}{2}}u_e
+    }_{\text{added}}
+    -
+    \underbrace{
+      \sum_{t\in B}\frac{p_t}{3}
+      \sum_{e\in\binom{t}{2}}u_e
+    }_{\text{subtracted}}
+    =0.
+\]
+Grouping the added term with $\sum_e m_e$ gives $(\mathrm{I})$.
+The direct sampling cost is $(\mathrm{II})$, and grouping the
+subtracted term with the bad-triplet sum gives $(\mathrm{III})$.
+\[
+    \mathbb{E}_{\mathrm{piv}}[\operatorname{cost}(C)]
+    =(\mathrm{I})+(\mathrm{II})+(\mathrm{III}),
+\]
+where
+\begin{align*}
+    (\mathrm{I})
+    &=\sum_e m_e
+      +\sum_{t\in B}\frac{p_t}{3}
+       \sum_{e\in\binom{t}{2}}u_e,\\
+    (\mathrm{II})
+    &=\sum_e F_eu_e,\\
+    (\mathrm{III})
+    &=\sum_{t\in T_Q}\frac{p_t}{3}X_t,
+\end{align*}
+and
+\[
+    X_t
+    =\sum_{e\in\binom{t}{2}}u_e\varepsilon_e
+     -\mathbf{1}[t\in\mathcal{B}(G^\star)]
+      \sum_{e\in\binom{t}{2}}u_e.
+\]
+Term $(\mathrm{II})$ is the direct cost of wrong sampled signs,
+while $(\mathrm{III})$ accounts for the change in bad-triplet
+contributions. If no pair of $t$ is mis-sampled, then $t$ is bad
+in both graphs and every $\varepsilon_e=1$, so $X_t=0$.
+
+We first bound the direct sampling cost by calculating the probability
+that the seven sampled inputs reverse a pair's majority sign. Define
+\[
+    \phi_7(x)
+    =\Pr[\operatorname{Bin}(7,x)\geq 4]
+    =\sum_{j=4}^{7}\binom{7}{j}x^j(1-x)^{7-j}.
+\]
+
+\begin{lemma}
+\label{lem:pair-sampling-error}
+For every pair $e$,
+\[
+    \Pr[F_e=1]=\phi_7(m_e),
+    \qquad
+    \mathbb{E}_Q[(\mathrm{II})]
+    =\sum_e\phi_7(m_e)u_e.
+\]
+\end{lemma}
+
+\begin{proof}
+A uniformly sampled input disagrees with the sign of $e$
+in $G^\star$ with probability $m_e$.
+Since the seven inputs are sampled independently, their majority
+disagrees with $G^\star$ exactly when at least four make this
+minority decision. This gives the first equality.
+The second follows from
+$(\mathrm{II})=\sum_e F_eu_e$ by linearity of expectation.
+\end{proof}
+
+We next show that each bad triplet contributes at most one
+positive unit to the sampling correction.
+
+\begin{lemma}
+\label{lem:triplet-correction}
+For every $t\in T_Q$, we have $X_t\leq 1$.
+Moreover, if $t\in B$, then
+\[
+    X_t=-2\sum_{\substack{e\in\binom{t}{2}\\F_e=1}}u_e
+    \leq 0.
+\]
+\end{lemma}
+
+\begin{proof}
+If $t$ is bad in both graphs, each pair contributes $u_e(\varepsilon_e-1)$ to $X_t$. A correctly sampled pair has $\varepsilon_e=1$ and contributes zero, while a mis-sampled pair has $\varepsilon_e=-1$ and contributes $-2u_e$. Since $u_e\geq 0$, we have $X_t\leq 0$.
+
+
+Now suppose $t$ is bad in $G_Q$ but not in $G^\star$.
+Write $t=\{u,v,w\}$, with edges $uw,vw$ and nonedge $uv$
+in $G_Q$.  Since $uv$ is a nonedge in $G_Q$, following its sign separates the endpoints and costs $s_{uv}=w_{uv}^+=1-w_{uv}^-$.
+The pairs $uw,vw$ are edges, so following their signs joins
+the endpoints and costs $s_{uw}=w_{uw}^-$ and $s_{vw}=w_{vw}^-$.
+Thus,
+\[
+    s_{uv}+s_{uw}+s_{vw}
+    =1+\underbrace{
+        w_{uw}^-+w_{vw}^- -w_{uv}^-
+      }_{\geq0}
+    \geq1
+\]
+Since $t$ is not bad in $G^\star$, there is no reference
+contribution to subtract. Thus,
+\[
+    X_t
+    =3-2(s_{uv}+s_{uw}+s_{vw})
+    \leq1.
+\]
+\end{proof}
+We now assign the positive triplet corrections to mis-sampled pairs. Every triplet with $X_t>0$ contains a mis-sampled pair, since
+$X_t=0$ when all three signs are sampled correctly.
+Assign each such triplet to one of its mis-sampled pairs, and define
+\[
+    \Gamma_e
+    =\sum_{t\text{ assigned to }e}\frac{p_t}{3}X_t.
+\]
+Discarding the nonpositive corrections gives
+\[
+    (\mathrm{III})\leq\sum_e\Gamma_e.
+\]
+By Lemma~\ref{lem:triplet-correction}, each assigned triplet has
+$0<X_t\leq1$. Since every triplet assigned to $e$ contains $e$,
+\[
+    0\leq\Gamma_e
+    \leq\sum_{\substack{t\in T_Q\\e\in\binom{t}{2}}}\frac{p_t}{3}
+    =D_e\leq1.
+\]
+Moreover, $\Gamma_e=0$ whenever $F_e=0$, because only mis-sampled
+pairs receive a charge. Next, unanimous sampled decisions allow us to sharpen the charge bound.
+
+\begin{lemma}
+\label{lem:sampled-unanimity}
+If all seven sampled inputs make the same decision on a pair $e$,
+then no bad triplet of $G_Q$ contains $e$. Consequently, $\Gamma_e=0$.
+\end{lemma}
+
+\begin{proof}
+Write $e=\{u,v\}$.
+If all sampled inputs separate $u,v$, each input can place a third
+vertex $w$ with at most one endpoint.
+Thus, the agreement counts for $uw$ and $vw$ sum to at most seven.
+They cannot both reach four, so $w$ cannot be adjacent to both
+endpoints in $G_Q$. This excludes a bad triplet containing
+the nonedge $uv$.
+
+If all sampled inputs join $u,v$, then in every input, $w$ is
+joined to $u$ if and only if it is joined to $v$.
+Hence $uw$ and $vw$ have identical agreement counts, so $w$ is
+adjacent to both endpoints or neither. This excludes a bad triplet
+containing the edge $uv$.
+\end{proof}
+
+The event that all seven sampled inputs disagree with $G^\star$
+on $e$ has probability $m_e^7$. It is a sampling error, but the
+lemma shows that its triplet charge is zero.
+Since $0\leq\Gamma_e\leq1$ and only sampling errors receive charges,
+\[
+    \mathbb{E}_Q[\Gamma_e]
+    \leq
+    \Pr[F_e=1\text{ and the sampled decision is not unanimous}]
+    =\phi_7(m_e)-m_e^7.
+\]
+We now combine the direct sign-error cost and the triplet charges
+into a single sampling bound. Using the preceding bounds,
+\begin{align*}
+    \mathbb{E}_Q[(\mathrm{II})+(\mathrm{III})]
+    &\leq \sum_e
+       \bigl[\phi_7(m_e)u_e+\phi_7(m_e)-m_e^7\bigr]\\
+    &=\sum_e
+       \bigl[\phi_7(m_e)(2-2m_e)-m_e^7\bigr].
+\end{align*}
+
+For $0\leq x\leq1/2$, define
+\[
+    \psi_7(x)=
+    \begin{cases}
+        \displaystyle
+        \frac{\phi_7(x)(2-2x)-x^7}{x},
+        & 0<x\leq1/2,\\[6pt]
+        0, & x=0.
+    \end{cases}
+\]
+Then
+\begin{equation}
+    \mathbb{E}_Q[(\mathrm{II})+(\mathrm{III})]
+    \leq\sum_e\psi_7(m_e)m_e.
+    \label{eq:sampling-price}
+\end{equation}
+We now bound the better of the two candidates using a fixed
+weighted average of their costs. Let $C'=P_J$ be the independently sampled input partition.
+For a pair $e$, it joins the endpoints with probability $w_e^+$
+and then pays $w_e^-$; otherwise, it separates them and pays $w_e^+$.
+Its expected contribution is therefore
+\[
+    z_e=w_e^+w_e^-+w_e^-w_e^+
+       =2m_e(1-m_e).
+\]
+
+For any fixed $0<\beta<1$, the smaller of two costs is at most
+their weighted average. Hence,
+\[
+    \mathbb{E}\bigl[\min\{\operatorname{cost}(C),
+                          \operatorname{cost}(C')\}\bigr]
+    \leq
+    \beta\,\mathbb{E}[\operatorname{cost}(C)]
+    +(1-\beta)\sum_e z_e.
+\]
+It therefore suffices to choose $\beta$ and bound the right-hand
+side by $\gamma\,\mathrm{OPT}$.
+We do this by charging the structural term $(\mathrm{I})$
+and the sampling bound together. Let $D'_e$ collect the contributions from common bad triplets:
+\[
+    D'_e
+    =\sum_{\substack{t\in B\\e\in\binom{t}{2}}}\frac{p_t}{3}
+    \leq D_e\leq1.
+\]
+The structural term can then be written as
+\[
+    (\mathrm{I})
+    =\sum_e(1-D'_e)m_e
+     +\sum_{t\in B}\frac{p_t}{3}
+      \sum_{e\in\binom{t}{2}}(1-m_e).
+\]
+This follows because each pair contributes
+$(1-D'_e)m_e+D'_e(1-m_e)=m_e+D'_eu_e$. The approximation bound now reduces to two inequalities: one for individual pairs and one for bad triplets.
+\begin{lemma}[Joint charging]
+\label{lem:joint-charging}
+Suppose $0<\beta<1$ and $\gamma>0$ satisfy
+\begin{equation}
+    \beta\bigl[x+\psi_7(x)x\bigr]
+    +(1-\beta)2x(1-x)
+    \leq\gamma x
+    \label{eq:joint-pair}
+\end{equation}
+for every $x\in[0,1/2]$, and
+\begin{equation}
+    \sum_{e\in\binom{t}{2}}
+    \Bigl[
+        \beta\bigl(1-m_e+\psi_7(m_e)m_e\bigr)
+        +(1-\beta)z_e
+    \Bigr]
+    \leq\gamma\sum_{e\in\binom{t}{2}}c_e^\star
+    \label{eq:joint-triplet}
+\end{equation}
+for every bad triplet $t$ in $G^\star$.
+Then
+\[
+    \beta\,\mathbb{E}[\operatorname{cost}(C)]
+    +(1-\beta)\,\mathbb{E}[\operatorname{cost}(C')]
+    \leq\gamma\,\mathrm{OPT}.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix $Q$. For each pair $e$, substitute $x=m_e$ into
+\eqref{eq:joint-pair} and multiply both sides by $1-D'_e$.
+For each common bad triplet $t\in B$, multiply both sides
+of \eqref{eq:joint-triplet} by $p_t/3$.
+Add all these inequalities. We obtain
+\begin{align*}
+    &\sum_e(1-D'_e)
+      \Bigl[\beta m_e+\beta\psi_7(m_e)m_e+(1-\beta)z_e\Bigr]\\
+    &\quad+
+      \sum_{t\in B}\frac{p_t}{3}
+      \sum_{e\in\binom{t}{2}}
+      \Bigl[\beta(1-m_e)+\beta\psi_7(m_e)m_e
+            +(1-\beta)z_e\Bigr]\\
+    &\leq
+      \gamma\sum_e(1-D'_e)m_e
+      +\gamma\sum_{t\in B}\frac{p_t}{3}
+       \sum_{e\in\binom{t}{2}}c_e^\star.
+\end{align*}
+Now, 
+\[
+    \beta\left[
+        \sum_e(1-D'_e)m_e
+        +\sum_{t\in B}\frac{p_t}{3}
+         \sum_{e\in\binom{t}{2}}(1-m_e)
+    \right]
+    =\beta(\mathrm{I}).
+\]
+The remaining, 
+\begin{align*}
+    &\sum_e(1-D'_e)
+      \Bigl[\beta\psi_7(m_e)m_e+(1-\beta)z_e\Bigr]\\
+    &\quad+
+      \sum_{t\in B}\frac{p_t}{3}
+      \sum_{e\in\binom{t}{2}}
+      \Bigl[\beta\psi_7(m_e)m_e+(1-\beta)z_e\Bigr]\\
+    &=\sum_e
+      \left[
+          (1-D'_e)
+          +\underbrace{
+              \sum_{\substack{t\in B\\e\in\binom{t}{2}}}
+              \frac{p_t}{3}
+           }_{D'_e}
+      \right]
+      \Bigl[\beta\psi_7(m_e)m_e+(1-\beta)z_e\Bigr]\\
+    &=\beta\sum_e\psi_7(m_e)m_e
+      +(1-\beta)\sum_e z_e.
+\end{align*}
+On the right, replacing $m_e$ by $c_e^\star$ can only increase
+the pair terms. The same weight identity then bounds the total
+by $\gamma\sum_e c_e^\star=\gamma\,\mathrm{OPT}$.
+Consequently,
+\[
+    \beta(\mathrm{I})
+    +\beta\sum_e\psi_7(m_e)m_e
+    +(1-\beta)\sum_e z_e
+    \leq\gamma\,\mathrm{OPT}.
+\]
+
+Finally, average over $Q$.
+By \eqref{eq:sampling-price}, the expected sampling loss is at most
+$\sum_e\psi_7(m_e)m_e$.
+Thus, the first two terms bound
+$\beta\,\mathbb{E}[\operatorname{cost}(C)]$.
+Since $\sum_e z_e=\mathbb{E}[\operatorname{cost}(C')]$,
+this proves the result.
+\end{proof}
+It remains to verify the two inequalities in
+Lemma~\ref{lem:joint-charging}. We choose
+\begin{equation}
+    \beta=\frac{6144}{20101},
+    \qquad
+    \gamma=\frac{34058}{20101}=2-\beta<1.6944.
+    \label{eq:approx-constants}
+\end{equation}
+For seven samples, expanding the definition of $\psi_7$ gives
+\[
+    \psi_7(x)
+    =70x^3-238x^4+308x^5-181x^6+40x^7.
+\]
+Thus, the remaining task is to verify polynomial inequalities.
+
+We use the Bernstein basis on $[0,1]$:
+\[
+    B_{j,d}(y)=\binom{d}{j}y^j(1-y)^{d-j},
+    \qquad j=0,\ldots,d.
+\]
+These basis polynomials are nonnegative and sum to one.
+Consequently, a polynomial written as
+$\sum_{j=0}^{d}a_jB_{j,d}(y)$ lies between its smallest
+and largest coefficients $a_j$.
+We use this property to verify the pair inequality first,
+and then the bad-triplet inequality.
+\paragraph{The pair inequality.}
+We verify \eqref{eq:joint-pair} by bounding the polynomial
+\[
+    H(x)=70x^2-238x^3+308x^4-181x^5+40x^6,
+\]
+so that $\psi_7(x)=xH(x)$. Set $y=2x$, which maps $[0,1/2]$ to $[0,1]$. Writing $H(y/2)$ in the degree-six Bernstein basis gives
+\[
+    H(y/2)=\sum_{j=0}^{6}b_jB_{j,6}(y),
+    \qquad
+    (b_0,\ldots,b_6)
+    =\left(0,0,\frac76,\frac{161}{80},
+                 \frac73,\frac{145}{64},\frac{63}{32}\right).
+\]
+The largest coefficient is $7/3$, so $H(x)\leq7/3$
+throughout $[0,1/2]$. Using $\gamma=2-\beta$, the right-hand side of
+\eqref{eq:joint-pair} minus its left-hand side is
+\begin{align*}
+    &\gamma x-\beta[x+\psi_7(x)x]-(1-\beta)2x(1-x)\\
+    &=x^2\bigl[2(1-\beta)-\beta H(x)\bigr]\\
+    &\geq x^2\left[2(1-\beta)-\frac73\beta\right]\\
+    &=\frac{13578}{20101}x^2
+    \geq0.
+\end{align*}
+Thus, \eqref{eq:joint-pair} holds.
+
+\paragraph{The bad-triplet inequality.}
+We check the five possible ways an optimal clustering can
+partition the vertices of a bad triplet. Let $t=\{u,v,w\}$ have edges $uw,vw$ and nonedge $uv$ in
+$G^\star$. Write
+\[
+    m_1=m_{uw},\qquad m_2=m_{vw},\qquad m_3=m_{uv}.
+\]
+By Lemma~\ref{lem:majority-triangle},
+\begin{equation}
+    0\leq m_i\leq\frac12,
+    \qquad m_1+m_2+m_3\geq1.
+    \label{eq:triplet-domain}
+\end{equation}
+The restriction of $C^\star$ to these vertices has one of the
+following five forms:
+\[
+\begin{array}{c|l}
+    \text{Clusters} & \text{Cost on the three pairs}\\
+    \hline
+    \{u,v,w\}
+        & C_1=m_1+m_2+(1-m_3)\\
+    \{u,w\},\{v\}
+        & C_2=m_1+(1-m_2)+m_3\\
+    \{v,w\},\{u\}
+        & C_3=(1-m_1)+m_2+m_3\\
+    \{u,v\},\{w\}
+        & C_4=(1-m_1)+(1-m_2)+(1-m_3)\\
+    \{u\},\{v\},\{w\}
+        & C_5=(1-m_1)+(1-m_2)+m_3.
+\end{array}
+\]
+
+Define
+\[
+    f(x)=\beta\bigl[1-x+\psi_7(x)x\bigr]
+         +(1-\beta)2x(1-x).
+\]
+The left-hand side of \eqref{eq:joint-triplet} is
+$f(m_1)+f(m_2)+f(m_3)$, while
+$\sum_{e\in\binom{t}{2}}c_e^\star$ equals one of the five costs above.
+It therefore suffices to prove
+\[
+    f(m_1)+f(m_2)+f(m_3)\leq\gamma C_j,
+    \qquad j=1,\ldots,5,
+\]
+throughout the domain \eqref{eq:triplet-domain}.
+We now change variables to locate the worst case of each
+of the five inequalities. Set $x_i=1-2m_i$. The constraints \eqref{eq:triplet-domain}
+become
+\begin{equation}
+    x_i\geq0,
+    \qquad x_1+x_2+x_3\leq1.
+    \label{eq:triplet-simplex}
+\end{equation}
+Define
+\[
+    h(x)=f\left(\frac{1-x}{2}\right).
+\]
+Then $f(m_1)+f(m_2)+f(m_3)=h(x_1)+h(x_2)+h(x_3)$.
+Expanding $h$ gives,
+\begin{align}
+    40202h(x)
+    &=26149-480x-29413x^2+16800x^3+10080x^4 \notag\\
+    &\quad-6048x^5-8736x^6+2016x^7+1920x^8.
+    \label{eq:h-polynomial}
+\end{align}
+We next bound the derivative of $h$; these bounds will determine
+where each gap $\gamma C_j-\sum_{i=1}^{3}h(x_i)$ is smallest. The degree-seven Bernstein coefficients of
+$40202(\gamma/2-h'(x))$ are
+\[
+    \left(
+        34538,\frac{300592}{7},\frac{342618}{7},
+        \frac{359780}{7},\frac{350062}{7},
+        \frac{334968}{7},\frac{362882}{7},55828
+    \right).
+\]
+The corresponding coefficients of
+$40202(\gamma/2+h'(x))$ are
+\[
+    \left(
+        33578,\frac{176220}{7},\frac{134194}{7},
+        \frac{117032}{7},\frac{126750}{7},
+        \frac{141844}{7},\frac{113930}{7},12288
+    \right).
+\]
+All coefficients are positive, so both polynomials are positive
+throughout $[0,1]$. Therefore,
+\begin{equation}
+    -\frac{\gamma}{2}<h'(x)<\frac{\gamma}{2},
+    \qquad 0\leq x\leq1.
+    \label{eq:h-derivative-bounds}
+\end{equation}
+We first consider $C_1$, where all three vertices lie in one cluster.
+After the change of variables,
+\[
+    C_1=m_1+m_2+1-m_3
+       =\frac32-\frac{x_1+x_2-x_3}{2}.
+\]
+Define the gap
+\[
+    D_1=\gamma C_1-h(x_1)-h(x_2)-h(x_3).
+\]
+By \eqref{eq:h-derivative-bounds},
+\[
+    \frac{\partial D_1}{\partial x_i}
+    =-\frac{\gamma}{2}-h'(x_i)<0
+    \quad(i=1,2),
+    \qquad
+    \frac{\partial D_1}{\partial x_3}
+    =\frac{\gamma}{2}-h'(x_3)>0.
+\]
+Thus, reducing $x_3$ decreases the gap, and increasing $x_1$
+or $x_2$ decreases it further. Its minimum therefore satisfies
+$x_3=0$ and $x_1+x_2=1$. Write $x_1=x$ and $x_2=1-x$, where $x\in[0,1]$.
+On this boundary, direct factorization gives
+\[
+    40202D_1(x,1-x,0)=(2x-1)^2R(x),
+\]
+where
+\[
+    R(x)=3530-7170x+570x^2+14160x^3
+         -9480x^4+2880x^5-960x^6.
+\]
+The degree-six Bernstein coefficients of $R$ are
+\[
+    (3530,\;2335,\;1178,\;767,\;1178,\;2335,\;3530).
+\]
+They are all positive, so $R(x)>0$ on $[0,1]$.
+Hence $D_1\geq0$ on this boundary, and therefore throughout
+the feasible domain. The bounds for $C_2$ and $C_3$ follow by permuting the coordinates,
+since the domain and $\sum_i h(x_i)$ are symmetric. For the remaining cases, write
+$D_j=\gamma C_j-\sum_{i=1}^{3}h(x_i)$. For $C_4$, the vertices $u,v$ share a cluster and $w$ is separate.
+Its cost becomes
+\[
+    C_4=\frac32+\frac{x_1+x_2+x_3}{2}.
+\]
+By \eqref{eq:h-derivative-bounds},
+\[
+    \frac{\partial D_4}{\partial x_i}
+    =\frac{\gamma}{2}-h'(x_i)>0,
+    \qquad i=1,2,3.
+\]
+Thus, the minimum occurs at $(0,0,0)$, where
+\[
+    D_4(0,0,0)
+    =\frac32\gamma-3h(0)
+    =\frac{23727}{40202}>0.
+\]
+For $C_5$, all three vertices lie in separate clusters, and
+\[
+    C_5=\frac32+\frac{x_1+x_2-x_3}{2}.
+\]
+The gap satisfies
+\[
+    \frac{\partial D_5}{\partial x_i}
+    =\frac{\gamma}{2}-h'(x_i)>0
+    \quad(i=1,2),
+    \qquad
+    \frac{\partial D_5}{\partial x_3}
+    =-\frac{\gamma}{2}-h'(x_3)<0.
+\]
+Its minimum therefore occurs at $(0,0,1)$, where
+\[
+    D_5(0,0,1)
+    =\gamma-2h(0)-h(1)
+    =\frac{1765}{20101}>0.
+\]
+Together with the bounds for $C_1,C_2,C_3$, this proves
+\eqref{eq:joint-triplet}. 
+
+We now show that repetition and independent evaluation give
+the claimed high-probability guarantee.
+
+\begin{lemma}[Amplification and selection]
+\label{lem:amplification-selection}
+Fix $0<\delta\leq1$ and $0<\eta<1$.
+Generate candidates using $T$ independent trials, and evaluate
+them on $s$ independent uniform inputs sampled independently
+of the trials. For sufficiently large constants in
+\[
+    T=\Theta\!\left(\delta^{-1}\log\frac{2}{\eta}\right),
+    \qquad
+    s=\Theta\!\left(\delta^{-2}\log\frac{2T}{\eta}\right),
+\]
+the candidate $\widehat C$ of minimum estimated cost satisfies,
+with probability at least $1-\eta$,
+\[
+    \operatorname{cost}(\widehat C)
+    \leq(1+\delta)(\gamma+\delta)\,\mathrm{OPT}
+    =(\gamma+O(\delta))\,\mathrm{OPT}.
+\]
+\end{lemma}
+
+\begin{proof}
+If $\mathrm{OPT}=0$, all input partitions coincide.
+The random-input candidates have zero cost, and empirical
+selection returns a zero-cost candidate.
+Assume henceforth that $\mathrm{OPT}>0$.
+
+For one trial, let
+$Z=\min\{\operatorname{cost}(C),\operatorname{cost}(C')\}$.
+The joint-charging bound gives $\mathbb E[Z]\leq\gamma\,\mathrm{OPT}$.
+Since $Z\geq\mathrm{OPT}$, Markov's inequality applied to
+$Z-\mathrm{OPT}$ gives
+\[
+    \Pr[Z\leq(\gamma+\delta)\,\mathrm{OPT}]
+    \geq\frac{\delta}{\gamma-1+\delta}.
+\]
+Thus, the probability that all $T$ trials fail is at most
+\[
+    \left(1-\frac{\delta}{\gamma-1+\delta}\right)^T
+    \leq\frac{\eta}{2}.
+\]
+
+It remains to justify empirical selection.
+Condition on the candidate family $\mathcal Y$, and let $C_0$
+be its minimum-true-cost candidate.
+For any candidate $C$ with
+$\operatorname{cost}(C)>(1+\delta)\operatorname{cost}(C_0)$,
+set
+\[
+    X(P)=d(C,P)-d(C_0,P),
+    \qquad R=d(C,C_0).
+\]
+The triangle inequalities give $|X(P)|\leq R$ and
+$R\leq\operatorname{cost}(C)+\operatorname{cost}(C_0)$.
+Consequently,
+\[
+    \frac{\mathbb E[X(P)]}{R}
+    \geq
+    \frac{\operatorname{cost}(C)-\operatorname{cost}(C_0)}
+         {\operatorname{cost}(C)+\operatorname{cost}(C_0)}
+    >\frac{\delta}{2+\delta}\geq\frac{\delta}{3}.
+\]
+Hoeffding's inequality therefore bounds the probability that
+such a candidate has estimated cost no larger than $C_0$ by
+$\exp(-s\delta^2/18)$.
+A union bound over the $2T$ candidates makes the selection
+failure probability at most $\eta/2$. With probability at least $1-\eta$, a candidate of cost at most
+$(\gamma+\delta)\mathrm{OPT}$ is present, and empirical selection
+loses a factor of at most $1+\delta$. Combining these two events
+proves the result.
+\end{proof}
+In particular, taking $\eta=(n+2)^{-c}$ for any fixed $c>0$,
+the sample sizes specified in the offline algorithm suffice
+to obtain the same approximation guarantee with probability
+at least $1-(n+2)^{-c}$.
 
 \section{Fully Dynamic Consensus Clustering}\label{sec:dynamic}
 
-placeholder, To be completed
+We maintain the offline candidates under vertex insertions and deletions, together with their costs on an independent evaluation sample. We first describe how to maintain one \textsc{Pivot} candidate, then maintain the candidate costs and bound the expected total update time.
 
-\subsection{Dynamic model and main results}
+\subsection{Update Model}\label{subsec:dynamic-model}
 
-placeholder, To be completed
+There are $m\geq1$ indexed input partitions. Starting from $V_0=\emptyset$, each update inserts or deletes one vertex. At time $t$, the active set is $V_t$, and the current input instance is
+\[
+    \mathcal P_t=(P_1|_{V_t},\ldots,P_m|_{V_t}).
+\]
+An insertion provides constant-time random access to any selected input label of the new vertex. A deletion removes the vertex from every input partition. Labels occupy one machine word, and labels of surviving vertices do not change. For a clustering $C$ of $V_t$, write
+\[
+    \operatorname{cost}_t(C)=\frac1m\sum_{i=1}^{m}d(C,P_i|_{V_t}),
+    \qquad
+    \mathrm{OPT}_t=\min_C\operatorname{cost}_t(C).
+\]
 
-\subsection{Dynamic algorithms and analysis}
+We assume an oblivious update sequence: the vertex identities, input labels, and deletion choices are fixed independently of the algorithm's randomness. An upper bound $U$ on the number of updates is known before the sequence begins. Fix $0<\delta\leq1$ and a failure probability $0<\eta<1$ for the entire sequence. To obtain a guarantee after every update, set
+\[
+    \Lambda=\log\frac{U+2}{\eta\delta},
+    \qquad
+    T=\Theta(\delta^{-1}\Lambda),
+    \qquad
+    s=\Theta(\delta^{-2}\Lambda),
+\]
+with sufficiently large constants. In each of $T$ independent trials, sample a tuple $Q_a$ of seven input indices and an additional independent uniform index $J_a$. Independently sample $S=(P_{j_1},\ldots,P_{j_s})$ for evaluation. All draws are uniform with replacement, and all sampled indices are retained throughout the sequence. At time $t$, trial $a$ maintains a \textsc{Pivot} candidate $C_{a,t}$ on $G_{Q_a,t}$, the majority graph of its seven sampled partitions restricted to $V_t$. Its second candidate is the sampled input restricted to $V_t$:
+\[
+    C'_{a,t}=P_{J_a}|_{V_t},
+    \qquad
+    \mathcal Y_t=\{C_{a,t},C'_{a,t}:a\in[T]\}.
+\]
+After each update, select a candidate of minimum estimated cost:
+\begin{align*}
+    \widehat{\operatorname{cost}}_{S,t}(C)
+    &=\frac1s\sum_{\ell=1}^{s}d(C,P_{j_\ell}|_{V_t}),\\
+    \widehat C_t
+    &\in\operatorname*{arg\,min}_{C\in\mathcal Y_t}
+       \widehat{\operatorname{cost}}_{S,t}(C).
+\end{align*}
+The candidate partitions are maintained independently of $S$; the evaluation sample is used to score them. Algorithm~\ref{alg:dynamic-consensus} summarizes the process. Its repair and cost-update steps are described below.
 
-placeholder, To be completed
+\RestyleAlgo{boxed}
+\begin{algorithm}[t]
+\caption{Fully dynamic consensus clustering (overview)}
+\label{alg:dynamic-consensus}
+\DontPrintSemicolon
+\KwIn{Input-label access, accuracy $\delta$, failure probability $\eta$, and update bound $U$.}
+\KwOut{An implicitly maintained clustering after each update.}
+Choose $T,s$, the trial samples $(Q_a,J_a)$, and the evaluation sample $S$ as above\;
+Initialize all candidate partitions as empty and their estimated costs as zero\;
+\ForEach{update involving vertex $v$ at time $t$}{
+    \For{$a=1,\ldots,T$}{
+        \If{the update inserts $v$}{
+            Draw an independent priority $\rho_a(v)$ uniformly from $(0,1)$\;
+        }
+        Update the bucket representation of $G_{Q_a,t}$\;
+        Repair $C_{a,t}$ to match \textsc{Pivot} in increasing priority order\;
+        Update $C'_{a,t}=P_{J_a}|_{V_t}$ for the inserted or deleted vertex\;
+        Update the estimated costs of both candidates on $S$\;
+    }
+    Store the index of a minimum-estimated-cost candidate $\widehat C_t$\;
+}
+\end{algorithm}
 
+\subsection{Maintaining a Pivot Candidate}\label{subsec:dynamic-pivot}
+
+We preserve the randomness of \textsc{Pivot} by keeping a random priority for each vertex throughout its lifetime. In trial $a$, an arriving vertex $v$ receives an independent priority $\rho_a(v)$ drawn uniformly from $(0,1)$. The priority remains fixed until deletion, and a reinsertion receives a fresh priority. All priorities are independent across vertex lifetimes and trials, and independent of the sampled input indices. We use the random-ranking model, in which priority comparisons take constant time.
+
+The candidate $C_{a,t}$ is defined by repeatedly choosing the lowest-priority remaining vertex as the pivot, forming its cluster, and removing that cluster. The repair procedure will maintain exactly this partition.
+Since the update sequence is oblivious, the active priorities at any fixed time are independent uniform random variables, even conditional on $Q_a$. Their relative order is therefore uniform. Choosing the first remaining vertex in this order is equivalent to choosing a uniformly random remaining pivot; after removing its cluster, the relative order of the remaining vertices is still uniform. Thus, $C_{a,t}$ has the same distribution as offline \textsc{Pivot} on $G_{Q_a,t}$.
+For the maintenance analysis, fix one trial and write $Q$ and $\rho$ for its sampled indices and priorities.
+
+\paragraph{Bucket representation.}
+We maintain $G_{Q,t}$ using the same buckets as in the offline algorithm. Fix $Q=(i_1,\ldots,i_7)$. Each active vertex $v$ has the bucket keys
+\[
+    \bigl(R,(c_{i_j}(v))_{j\in R}\bigr),
+    \qquad R\in\binom{[7]}{4}.
+\]
+Vertices with the same key belong to the same bucket. Two distinct vertices are adjacent in $G_{Q,t}$ exactly when they share a bucket.
+Each vertex belongs to $K=\binom74=35$ buckets, and every bucket is a clique. Since labels of surviving vertices remain fixed, inserting or deleting a vertex changes only its own $35$ bucket memberships. We must then repair the pivot choices and the resulting clusters. We analyze this repair more generally for graphs represented by clique buckets, where each vertex belongs to at most $K\geq1$ buckets and adjacency means sharing a bucket. We assume constant-time comparisons of bucket keys; the sampled majority graph satisfies these conditions with $K=35$. The pivots form an independent set: once a pivot is chosen, its remaining neighbors are removed before another pivot is chosen. Hence, each bucket contains at most one pivot, and each vertex has at most $K$ neighboring pivots.
+\paragraph{Pivots, owners, and blocking certificates.}
+Let $M$ be the greedy maximal independent set obtained by scanning vertices in increasing priority and selecting a vertex whenever it has no previously selected neighbor. These selected vertices are exactly the pivots of \textsc{Pivot} in that order. The cluster owner of a vertex $v$ is its earliest neighboring pivot, including $v$ itself when $v\in M$:
+\begin{equation}
+    e(v)=\operatorname*{arg\,min}_{p\in M\cap N[v]}\rho(p).
+    \label{eq:dynamic-owner}
+\end{equation}
+Two vertices belong to the same cluster exactly when they have the same owner. Each bucket stores its unique pivot, or a null value if it contains none. Inspecting the at most $K$ bucket-pivot values of $v$, together with $v$ itself when it is a pivot, determines $e(v)$ in $O(K)$ time. To repair the pivot set, we separately maintain a blocking certificate $\ell(v)$ satisfying
+\begin{equation}
+\begin{aligned}
+    \ell(v)&=v &&\text{if }v\in M,\\
+    \ell(v)&\in M\cap N(v),\qquad
+    \rho(\ell(v))<\rho(v) &&\text{if }v\notin M.
+\end{aligned}
+\label{eq:dynamic-certificate}
+\end{equation}
+For a nonpivot, the certificate may be any earlier neighboring pivot, whereas the owner is always the earliest one. Thus, a certificate can remain valid even when the owner changes. Membership queries use the owner in \eqref{eq:dynamic-owner}. For each pivot $p$, maintain its follower group
+\[
+    F(p)=\{v:\ell(v)=p\},
+\]
+including $p$ itself. When $p$ disappears from the pivot set, we refresh the certificates of its surviving followers. Each vertex stores references to its bucket records and its position in its follower group, so moving it between groups takes constant time.
+\paragraph{Update rule.}
+We use a minimum-priority queue $\mathcal H$ for vertices awaiting repair. The procedure \textsc{Refresh}$(v)$ clears the old certificate and unlinks $v$ from its old follower group. It then inspects the bucket-pivot values of $v$. If an earlier neighboring pivot exists, it chooses the earliest such pivot $p$, sets $\ell(v)=p$, and attaches $v$ to $F(p)$. Otherwise, it inserts $v$ into $\mathcal H$.
+Algorithm~\ref{alg:dynamic-pivot-update} implements the bucket update and pivot repair for one trial. A queued vertex is rechecked because an earlier pivot may have appeared while it was waiting.
+
+\RestyleAlgo{boxed}
+\begin{algorithm}[t]
+\caption{Updating one trial's pivots and blocking certificates}
+\label{alg:dynamic-pivot-update}
+\DontPrintSemicolon
+\KwIn{A vertex update at $v$, with $\rho(v)$ assigned on insertion.}
+\KwOut{Updated buckets, pivot set $M$, certificates $\ell$, and follower groups $F$.}
+Initialize $\mathcal H\gets\emptyset$\;
+
+\eIf{the update inserts $v$}{
+    Add $v$ and its bucket memberships\;
+    Apply \textsc{Refresh}$(v)$\;
+}{
+    \eIf{$v\notin M$}{
+        Remove $v$ from its follower group and its buckets\;
+    }{
+        Detach $F(v)$ and let $L=F(v)\setminus\{v\}$\;
+        Remove $v$ from $M$ and clear its bucket-pivot entries\;
+        Remove $v$ and its bucket memberships\;
+        Apply \textsc{Refresh} to every vertex in $L$\;
+    }
+}
+
+\While{$\mathcal H\neq\emptyset$}{
+    Remove the minimum-priority vertex $x$ from $\mathcal H$\;
+    Find the earliest neighboring pivot $p$ with $\rho(p)<\rho(x)$, if any\;
+    \eIf{such a pivot $p$ exists}{
+        Set $\ell(x)=p$ and attach $x$ to $F(p)$\;
+    }{
+        Let $R=M\cap N(x)$ and collect their follower groups in $L$\;
+        Remove every $p\in R$ from $M$, clear its bucket-pivot entries, and detach $F(p)$\;
+        Add $x$ to $M$, set $\ell(x)=x$, initialize $F(x)=\{x\}$, and store $x$ in its buckets\;
+        Apply \textsc{Refresh} to every vertex in $L$, including the removed pivots\;
+    }
+}
+\end{algorithm}
+All conflicting pivots are removed before any detached follower is refreshed. After the repair, cluster membership is determined by the owners in \eqref{eq:dynamic-owner}.
+
+Processing the queue in increasing priority makes newly installed pivots permanent for the rest of the update.
+
+\begin{lemma}[Exact maintenance]
+\label{lem:dynamic-pivot-correctness}
+After each update, Algorithm~\ref{alg:dynamic-pivot-update} restores \eqref{eq:dynamic-certificate} and maintains the exact greedy pivot set and its \textsc{Pivot} partition for the retained priorities. Each vertex enters $\mathcal H$ at most once during an update. Newly installed pivots remain pivots for the rest of that update; every removed pivot was present at its start and cannot return.
+\end{lemma}
+
+\begin{proof}
+The set $M$ remains independent because every conflicting pivot is removed before a new pivot is installed. Refreshing the affected followers ensures that, after each repair step, every nonpivot has either a valid earlier certificate or a queue entry.
+When $x$ becomes a pivot, each pivot $p$ it displaces and every follower $u$ of $p$ satisfy $\rho(u)\geq\rho(p)>\rho(x)$. Thus, all new queue entries come after $x$, and minimum-priority extraction processes vertices in strictly increasing order. Newly installed pivots therefore remain pivots for the rest of the update. Each displaced pivot stays blocked by its remover and cannot return, so all removed pivots were present at the start.
+
+A queued vertex belongs to no follower group, so it cannot be refreshed again while waiting. Any earlier pivot found when it is processed must have been installed since it was queued and is therefore permanent. Otherwise, the vertex itself becomes a permanent pivot. Hence each vertex enters the queue at most once, and the procedure terminates.
+At termination, every nonpivot has an earlier neighboring pivot. Inducting over the priority order, the greedy scan selects every vertex in $M$ and excludes every vertex outside $M$. Thus, $M$ is the exact greedy pivot set, and the owner rule \eqref{eq:dynamic-owner} gives its \textsc{Pivot} partition.
+\end{proof}
+
+\paragraph{Update-time analysis.}
+We first count the work needed to maintain the pivot set and certificates. For update $t$, let $n_t=\max\{|V_{t-1}|,|V_t|\}$. Let $A_t$ be the number of \textsc{Refresh} calls, including the initial call on insertion; $F_t$ the number of pivot insertions and removals; and $H_t$ the number of queue entries.
+Vertex records and nonempty bucket records are indexed by balanced dictionaries. Existing vertices retain their bucket and follower references, so refreshing them requires no dictionary lookup. Inserting or deleting a vertex incurs $O(K\log(Kn_t+2))$ dictionary work.
+Each refresh costs $O(K)$ outside the queue, and each pivot change updates $O(K)$ bucket-pivot entries. Extracting and rechecking a queued vertex costs $O(K+\log(n_t+2))$. Thus, the work for update $t$ is
+\begin{equation}
+    O\!\left(
+        KA_t+KF_t+KH_t
+        +H_t\log(n_t+2)
+        +K\log(Kn_t+2)
+    \right).
+    \label{eq:pivot-update-work}
+\end{equation}
+We also need to count changes in the actual cluster owners. Let $R_t$ be the number of surviving vertices whose owner changes between the completed states before and after update $t$.
+
+\begin{lemma}[Queue and owner sensitivity]
+\label{lem:dynamic-sensitivity}
+For each fixed update, conditional on the sampled indices $Q$,
+\[
+    \mathbb E[H_t]\leq1,
+    \qquad
+    \mathbb E[F_t]\leq1,
+    \qquad
+    \mathbb E[R_t]=O(\log(n_t+2)).
+\]
+\end{lemma}
+
+\begin{proof}
+Conditioning on $Q$ fixes the graphs before and after the update, while their priorities induce a uniform random order.
+Let $S_t$ be the influence set of Censor-Hillel, Haramaty, and Karnin~\cite[Theorem~1]{censor-hillel-2016}, which satisfies $\mathbb E[|S_t|]\leq1$. Its closure starts at the updated vertex when its pivot status requires a change. It includes an old pivot with an earlier influenced neighbor, and an old nonpivot once all its earlier old-pivot neighbors have entered the closure.
+
+Every displaced pivot in our repair has an earlier newly installed pivot as a neighbor. Every surviving old nonpivot enters the queue only after all its earlier old-pivot neighbors have been removed. Induction over the repair events therefore places all queued vertices and all vertices whose pivot membership changes in $S_t$. By Lemma~\ref{lem:dynamic-pivot-correctness}, each is counted at most once, so
+\[
+    H_t\leq|S_t|,
+    \qquad F_t\leq|S_t|.
+\]
+
+The owner $e(v)$ is the greedy eliminator studied by Behnezhad et al.~\cite[Theorem~3]{behnezhad-2019}. Their theorem bounds the expected number of eliminator changes after deleting a fixed vertex by $O(\log(n_t+2))$. Insertion compares the same two graphs in reverse, with a uniform ranking on their union, and obeys the same bound.
+\end{proof}
+We account for certificate refreshes using owner changes and a potential that counts vertices whose certificate differs from their owner:
+\[
+    \Phi_t=\bigl|\{v\in V_t:\ell_t(v)\neq e_t(v)\}\bigr|.
+\]
+
+\begin{lemma}[Certificate amortization]
+\label{lem:certificate-amortization}
+For every update $t$ and every fixed choice of distinct priorities,
+\begin{equation}
+    A_t\leq
+    \mathbf{1}[\text{update }t\text{ is an insertion}]
+    +(K+1)R_t+\Phi_{t-1}-\Phi_t.
+    \label{eq:certificate-amortization}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Consider a surviving vertex whose owner remains $p$. The pivot $p$ remains present throughout the repair. No newly installed neighboring pivot can be earlier than $p$, since it would remain present and change the final owner. Thus, $p$ stays the earliest neighboring pivot. If the certificate is already $p$, no refresh occurs. Otherwise, the first refresh chooses $p$, reducing the vertex's contribution to $\Phi$ from one to zero and preventing further refreshes.
+
+Now consider a surviving vertex whose owner changes. Each refresh follows the removal of an old blocking pivot, since newly installed pivots are permanent during the update. There are at most $K$ old pivots in its closed neighborhood, so it is refreshed at most $K$ times. Its contribution to $\Phi$ can increase by at most one. Thus, its refresh count plus its potential increase is at most $K+1$.
+An inserted vertex needs one initial refresh and ends with its certificate equal to its owner: it is either blocked immediately or becomes a permanent pivot. A deleted vertex is not refreshed and removes a nonnegative contribution from $\Phi$. Summing these per-vertex bounds proves the inequality.
+\end{proof}
+
+\begin{theorem}[Maintaining one Pivot candidate]
+\label{thm:single-pivot-maintenance}
+Starting empty, the pivot and certificate records of one trial can be maintained over any oblivious sequence of $1\leq u\leq U$ vertex updates in expected total time
+\[
+    O\!\left(K^2\sum_{t=1}^{u}\log(n_t+2)\right).
+\]
+At a snapshot with $n$ active vertices, the space usage is $O(K(n+1))$. An owner query takes $O(K)$ time given a vertex record, or $O(K+\log(n+2))$ worst-case time given its identifier.
+\end{theorem}
+
+\begin{proof}
+Since the process starts empty, $\Phi_0=0$. Summing \eqref{eq:certificate-amortization} and using $\Phi_u\geq0$ gives
+\[
+    \sum_{t=1}^{u}A_t
+    \leq u+(K+1)\sum_{t=1}^{u}R_t.
+\]
+Taking expectations and applying Lemma~\ref{lem:dynamic-sensitivity},
+\[
+    \mathbb E\!\left[\sum_{t=1}^{u}A_t\right]
+    =O\!\left(K\sum_{t=1}^{u}\log(n_t+2)\right).
+\]
+Substituting this bound, together with $\mathbb E[F_t]\leq1$ and $\mathbb E[H_t]\leq1$, into \eqref{eq:pivot-update-work} gives the claimed total time. The dictionary work also fits this bound because
+$\log(Kn_t+2)=O(K\log(n_t+2))$ for $K\geq1$.
+There are at most $Kn$ bucket memberships, $n$ follower entries, and $n$ queued vertices; empty bucket records are discarded. This gives the space bound. An owner query locates the vertex record and inspects its at most $K$ bucket-pivot values.
+\end{proof}
+For the sampled majority graph, $K=35$. If $N$ bounds the active set size, this gives $O(\log(N+2))$ expected amortized update time for the pivot and certificate records of one trial.
+\subsection{Maintaining Candidate Costs}\label{subsec:dynamic-costs}
+
+A vertex can change owner while its blocking certificate remains valid. To maintain the estimated costs, we therefore store the actual owners and report their changes separately.
+
+\paragraph{Reporting owner changes.}
+For each pivot $p$, maintain its owner list
+\[
+    O(p)=\{v:e(v)=p\}.
+\]
+Each bucket also maintains a balanced tree of its active vertices, ordered first by their current owner's priority and then by vertex identifier. If $M\cap N[v]=\emptyset$, temporarily assign $v$ a unique singleton label and owner priority $+\infty$. These temporary labels are distinct from pivot labels, so the intermediate assignments still define a partition.
+
+\emph{Removing a pivot.} After removing $p$, visit $O(p)$ and recompute each surviving member's owner from its bucket-pivot values. Update its owner-list position and its entries in all its bucket trees.
+
+\emph{Installing a pivot.} First assign $p$ to itself. Then search its bucket trees for vertices whose owner priority exceeds $\rho(p)$. Each such vertex now has owner $p$. Reassign it and update all its tree entries before continuing, which prevents duplicate reports from overlapping buckets.
+
+An arriving vertex is initially assigned its earliest current neighboring pivot, or a temporary singleton if none exists. A departing vertex is removed from these indexes before surviving owners are repaired. Perform the owner updates after each individual pivot removal and installation in Algorithm~\ref{alg:dynamic-pivot-update}; certificate refreshes still follow the order specified there.
+Removing a pivot affects only its owner list. Installing a pivot affects only neighboring vertices with later owners. Thus, these searches report precisely the required changes. Each reported change costs $O(K\log(n_t+2))$ time, and the initial searches for each installed pivot have the same bound.
+We now relate the intermediate owner changes to $R_t$, which counts only changes between the completed states before and after the update. Let $B_t$ count all reported owner changes during the repair, including creation or removal of the updated vertex's owner record.
+
+\begin{lemma}
+\label{lem:owner-reporting}
+For every update $t$,
+\[
+    B_t=O(K(R_t+1)).
+\]
+Consequently, for $K=35$,
+\[
+    \mathbb E[B_t]=O(\log(n_t+2)).
+\]
+\end{lemma}
+
+\begin{proof}
+Suppose a surviving vertex has the same owner $p$ before and after the update. The pivot $p$ remains present throughout the repair. No earlier neighboring pivot can be newly installed, since it would remain present and change the final owner. Thus, the owner stays $p$ throughout, and the vertex is never reported.
+
+For a vertex whose owner changes, each report is caused by removing its current owner or installing a new earlier neighboring pivot. Removed pivots belong to the old pivot set, and newly installed pivots remain until the repair ends. Both sets are independent, so each contributes at most $K$ pivots to the vertex's closed neighborhood. Hence, the vertex is reported at most $2K$ times. Temporary singleton assignments are already counted among these changes.
+The inserted or deleted vertex contributes $O(K)$ additional record changes. Summing gives $B_t=O(K(R_t+1))$. Taking expectations and applying Lemma~\ref{lem:dynamic-sensitivity} proves the second bound.
+\end{proof}
+
+\paragraph{Updating the estimated costs.}
+We use the Mirkin-distance identity to express each estimated cost through block sizes and intersections. For a candidate $C$ with block labels $c_C(v)$, maintain
+\[
+\begin{aligned}
+    a_p&=|\{v\in V_t:c_C(v)=p\}|,\\
+    b_{\ell,p,b}
+    &=|\{v\in V_t:c_C(v)=p,\ c_{j_\ell}(v)=b\}|.
+\end{aligned}
+\]
+Define the score
+\begin{equation}
+    \sigma_t(C)
+    =s\sum_p\binom{a_p}{2}
+     -2\sum_{\ell=1}^{s}\sum_{p,b}\binom{b_{\ell,p,b}}{2}.
+    \label{eq:dynamic-score}
+\end{equation}
+The distance identity gives
+\[
+    \widehat{\operatorname{cost}}_{S,t}(C)
+    =\frac{\sigma_t(C)}{s}
+     +\frac1s\sum_{\ell=1}^{s}
+      \sum_{B\in(P_{j_\ell}|_{V_t})}\binom{|B|}{2}.
+\]
+The final sum depends only on the evaluation inputs and the active set, so it is common to every candidate. Therefore, selecting a minimum-score candidate gives exactly the same choice as minimizing the estimated cost.
+These counters can be updated locally whenever a vertex enters or leaves a block. Since $\binom{q+1}{2}-\binom q2=q$, inserting $v$ into block $p$ changes its score by
+\[
+    \Delta_+\sigma
+    =sa_p-2\sum_{\ell=1}^{s}b_{\ell,p,c_{j_\ell}(v)},
+\]
+using the counts before insertion. Similarly, deleting $v$ from block $p$ changes the score by
+\[
+    \Delta_-\sigma
+    =-s(a_p-1)
+     +2\sum_{\ell=1}^{s}\bigl(b_{\ell,p,c_{j_\ell}(v)}-1\bigr),
+\]
+using the counts before deletion. Update the counters after applying the score change. Moving a vertex between blocks consists of a deletion from its old block followed by an insertion into its new block.
+
+Store the block sizes in one balanced dictionary and the nonzero intersection counts in a separate dictionary for each evaluation input. Each dictionary has at most $n$ entries, where $n$ is the current number of vertices. Cache the evaluation labels of each vertex upon arrival and discard empty count records. Each insertion, deletion, or move therefore takes $O(s\log(n_t+2))$ time, with $O((n+1)s)$ space.
+For a Pivot candidate, apply these updates whenever its owner changes, including assignments to temporary singletons. For a sampled-input candidate, only the inserted or deleted vertex changes the counters, since surviving input labels remain fixed. After updating all $2T$ scores, retain a minimum-score candidate.
+Each reported owner change updates the block-size counter and its intersections with the $s$ evaluation inputs. Combining these updates with the owner-reporting bound gives the following result.
+
+\begin{lemma}[Maintaining a candidate and its score]
+\label{lem:candidate-score-maintenance}
+For $K=35$ and a fixed evaluation sample of size $s\geq1$, one Pivot candidate and its score can be maintained over $u$ updates in expected total time
+\[
+    O\!\left(s\sum_{t=1}^{u}\log^2(n_t+2)\right).
+\]
+The space usage is $O((n+1)s)$ at a snapshot with $n$ active vertices, and a membership query given a vertex identifier takes $O(\log(n+2))$ worst-case time.
+
+One sampled-input candidate and its score require $O(s\log(n_t+2))$ worst-case time per update, with the same space and query bounds.
+\end{lemma}
+
+\begin{proof}
+Updating the owner lists and bucket trees takes $O((B_t+F_t+1)\log(n_t+2))$ time: each owner report updates its index entries, and each pivot change initiates bucket searches. Updating the score counters takes $O(s(B_t+1)\log(n_t+2))$ time. Thus, the additional work for update $t$ is
+\[
+    O\!\left(
+        (B_t+F_t+1)\log(n_t+2)
+        +s(B_t+1)\log(n_t+2)
+    \right).
+\]
+By Lemmas~\ref{lem:owner-reporting} and \ref{lem:dynamic-sensitivity}, $\mathbb E[B_t]=O(\log(n_t+2))$ and $\mathbb E[F_t]\leq1$. The expected additional work is therefore $O(s\log^2(n_t+2))$. Summing and adding the pivot-and-certificate work from Theorem~\ref{thm:single-pivot-maintenance} proves the total-time bound.
+
+The owner lists and bucket trees use $O(n)$ space. The intersection counters and cached evaluation labels use $O((n+1)s)$ space. A membership query locates the vertex record and reads its stored owner or input label.
+For a sampled-input candidate, surviving labels remain fixed, so each update changes only the inserted or deleted vertex's counters.
+\end{proof}
+\subsection{Approximation and Total Update Time}\label{subsec:dynamic-guarantee}
+
+We apply the offline guarantee at each fixed time, then take a union bound over the update sequence.
+
+\begin{theorem}[Fully dynamic consensus clustering]
+\label{thm:dynamic-consensus}
+Under the model and parameter choices above, the algorithm maintains a clustering $\widehat C_t$ satisfying, with probability at least $1-\eta$,
+\[
+    \operatorname{cost}_t(\widehat C_t)
+    \leq(\gamma+O(\delta))\,\mathrm{OPT}_t
+    \qquad\text{simultaneously after all updates}.
+\]
+If $N$ bounds the active set size, the expected amortized update time is
+\[
+    O\!\left(\delta^{-3}\Lambda^2\log^2(N+2)\right).
+\]
+At a snapshot with $n$ active vertices, the space usage is $O((n+1)\delta^{-3}\Lambda^2)$. Membership and same-cluster queries take $O(\log(n+2))$ worst-case time, and listing all memberships takes $O(n+1)$ time. The algorithm retains $O((\delta^{-1}+\delta^{-2})\Lambda)$ sampled input indices.
+\end{theorem}
+
+\begin{proof}
+Fix an update time $t$. The maintained candidates have the distribution of independent offline trials on $\mathcal P_t$, and their generation is independent of the evaluation sample. Lemma~\ref{lem:amplification-selection} therefore applies with failure probability $\eta/U$. Our sample sizes suffice because $\log(2TU/\eta)=O(\Lambda)$. A union bound over at most $U$ updates gives total failure probability at most $\eta$. This argument does not require independence between different update times.
+
+Let $u\leq U$ be the number of updates. By Lemma~\ref{lem:candidate-score-maintenance}, maintaining all candidates and scores takes expected total time
+\[
+    O\!\left(Ts\sum_{t=1}^{u}\log^2(n_t+2)\right)
+    =O\!\left(u\delta^{-3}\Lambda^2\log^2(N+2)\right).
+\]
+Initialization takes $O(Ts)$ time, and selecting a minimum among the $2T$ scores takes $O(T)$ time per update. Reading and caching the selected input labels also fits this bound. Dividing by $u$ gives the expected amortized update time for any nonempty sequence.
+
+The total space is $O((n+1)Ts)$. The selected candidate's index is stored, so a query locates the vertex record and reads its owner or input label. Iterating over its records lists all memberships in $O(n+1)$ time. Finally, the retained input indices number $8T+s=O((\delta^{-1}+\delta^{-2})\Lambda)$.
+\end{proof}
+
+For fixed $\delta$, polynomially bounded $U$, and $\eta=(N+2)^{-c}$ for a fixed $c>0$, the expected amortized update time is $O(\log^4(N+2))$.
 \ifusebiblatex
   \printbibliography
 \else
   \bibliographystyle{alpha}
   \bibliography{ref}
 \fi
+
+\newpage
+% add appendix
+\appendix
+\input{explicit_dynamic.tex}
+
 
 \end{document}
