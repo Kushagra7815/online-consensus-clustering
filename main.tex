@@ -620,15 +620,15 @@ In this section, we describe the online algorithm for consensus
 clustering. The algorithm maintains several candidate clusterings,
 which we call \emph{copies}, and publishes the clustering of one
 selected copy. Each copy is constructed from a fixed sample of input
-partitions. At designated arrival times, all copies are rebuilt using
+clusterings. At designated arrival times, all copies are rebuilt using
 the offline algorithm. Between rebuilds, a copy assigns labels to new
 vertices without changing any label it has already assigned. The
 selection rule uses the copies' estimated costs over their entire
 histories to limit how often the published copy changes.
 
 Write $V_t$ for the first $t$ arriving vertices and
-$f_t(C)=f_{V_t}(C)$ for the cost of a partition $C$ of $V_t$ on all
-input partitions. The notation $\OPT_t$ retains its meaning from
+$f_t(C)=f_{V_t}(C)$ for the cost of a clustering $C$ of $V_t$ on all
+input clusterings. The notation $\OPT_t$ retains its meaning from
 \cref{sec:preliminaries}. All input indices sampled below are uniform
 and sampled independently with replacement.
 
@@ -645,7 +645,7 @@ $52\delta^{-2}$, and define
 where $C$ is a sufficiently large absolute constant. The quantity $b$
 bounds the number of ranges of optimum values used in the analysis.
 For each $j\in\{1,\ldots,T\}$, independently sample $k$ input
-partitions, denoted by $P_{j,1},\ldots,P_{j,k}$. These partitions
+clusterings, denoted by $P_{j,1},\ldots,P_{j,k}$. These clusterings
 remain fixed throughout the execution. For a pair $e$, let $d_{j,e}$
 be the fraction of this sample that separates $e$, and put
 \[
@@ -653,7 +653,7 @@ be the fraction of this sample that separates $e$, and put
  B_j(t)=\sum_{e\in\binom{V_t}{2}}p_{j,e},\qquad
  D_j(t)=\sum_{e\in\binom{V_t}{2}}d_{j,e}(1-d_{j,e}).
 \]
-For any partition $C$ of $V_t$, its cost on copy $j$'s sample is
+For any clustering $C$ of $V_t$, its cost on copy $j$'s sample is
 \[
  f_t^j(C)=\frac1k\sum_{i=1}^k d(C,P_{j,i}|_{V_t}).
 \]
@@ -688,9 +688,9 @@ the same label. These new labels are distinct from the initial cluster
 labels. In particular, no existing label changes during this
 extension. Its cost is bounded in \cref{sig:extend}.
 
-If $D_j(s)<1/4$, copy $j$ instead maintains the partition consistent
+If $D_j(s)<1/4$, copy $j$ instead maintains the clustering consistent
 with all majority decisions of its sample while $D_j(t)<1/4$.
-Such a partition exists and is optimal, as explained in
+Such a clustering exists and is optimal, as explained in
 \cref{sec:preliminaries}. Label each cluster by the smallest arrival
 index of one of its vertices; these labels persist while this rule
 applies.
@@ -708,12 +708,12 @@ no further assignments until the next rebuild. If at least $q$
 copies become inactive, rebuild all copies on $V_t$ before publishing
 the answer at time $t$. All copies are then active again. The initial
 rebuilding time is $s=0$, with every copy on the empty vertex set.
-Write $C_t^j$ for the partition of copy $j$ whenever it is active at
+Write $C_t^j$ for the clustering of copy $j$ whenever it is active at
 time $t$.
 
 \paragraph{Independent cost estimates.}
 Independently of all copies, sample $L$ evaluation collections, each
-containing $g$ input partitions, where
+containing $g$ input clusterings, where
 \[
  L=4\left\lceil C\delta^{-1}\log\frac{16b}{\zeta}\right\rceil,
  \qquad g=\lceil128\delta^{-3}\rceil,
@@ -805,7 +805,7 @@ once per selection. \Cref{alg:online} summarizes the algorithm.
   \State Update $D_j(t)$ for every copy and mark threshold violations inactive
   \If{at least $q$ copies are inactive}
     \State Rebuild every copy on $V_t$ and mark every copy active
-    \State Prepare each offline clustering with $D_j(t)\ge1/4$; otherwise use the majority partition
+    \State Prepare each offline clustering with $D_j(t)\ge1/4$; otherwise use the majority clustering
   \Else
     \State Extend each active copy to include the arriving vertex
   \EndIf
@@ -834,7 +834,7 @@ combine the guarantees in the proof of \cref{on:loglog}.
 
 \subsubsection{Preparing and extending an initial clustering}
 
-We first work with a single fixed sample of $k$ input partitions.
+We first work with a single fixed sample of $k$ input clusterings.
 In this part of the analysis, suppress the copy index: write $d_e$
 for the sample separation fraction, $p_e=\min\{d_e,1-d_e\}$,
 $B_t=\sum_{e\in\binom{V_t}{2}}p_e$, and
@@ -854,8 +854,8 @@ can be performed in linear time for fixed $k$.
 
 \begin{lemma}[Preparing an initial clustering]
 \label{sig:prepare}
-Given an initial clustering on $s$ vertices and a sample of $k$ input partitions, we can obtain
-in $O(ks)$ expected time a partition of no greater cost with two
+Given an initial clustering on $s$ vertices and a sample of $k$ input clusterings, we can obtain
+in $O(ks)$ expected time a clustering of no greater cost with two
 properties. All vertices with the same label tuple lie in a single
 cluster. For a cluster $C$ and a tuple $x$, let $C_x$ consist of the
 vertices of $C$ with tuple $x$. If $C$ contains more than one label
@@ -964,7 +964,7 @@ using cluster-intersection counts instead of enumerating all pairs.
 \begin{lemma}[One-copy guarantee]
 \label{sig:base}
 Suppose an offline algorithm supplies an $\alpha$-approximate
-clustering whenever it succeeds. Maintain the majority partition while
+clustering whenever it succeeds. Maintain the majority clustering while
 $D_t<1/4$. Thereafter, prepare and extend the most recent offline
 clustering, rebuilding when $D_t>(1+\tau/(18k))D_s$, where $s$ is
 the most recent rebuilding time. For $0<\tau\le1$, the extension algorithm
@@ -981,15 +981,15 @@ Recall that $D_t=\sum_{\{u,v\}\subset V_t}d_{uv}(1-d_{uv})$.
 For each pair, $p_{uv}/2\le d_{uv}(1-d_{uv})\le p_{uv}$, so
 $B_t/2\le D_t\le B_t$.
 The same inequalities hold for increments over nested vertex sets.
-Let $P_1,\ldots,P_k$ denote the sampled input partitions. The identity
+Let $P_1,\ldots,P_k$ denote the sampled input clusterings. The identity
 \[
  D_t=k^{-2}\sum_{i<j}d(P_i|_{V_t},P_j|_{V_t})
 \]
 follows pair by pair. Maintain the $k(k-1)/2$ distances using the cluster-intersection
 counts of \cref{sec:preliminaries}. This takes $O(k^2)$
-expected time per insertion. The cost of input partition $P_i$ is $k^{-1}\sum_j d(P_i,P_j)$. 
+expected time per insertion. The cost of input clustering $P_i$ is $k^{-1}\sum_j d(P_i,P_j)$.
 
-While $D_t<1/4$, we have $B_t<1/2$. The partition consistent with all majority decisions is optimal
+While $D_t<1/4$, we have $B_t<1/2$. The clustering consistent with all majority decisions is optimal
 and is attained by a lowest-cost input by \cref{sec:preliminaries}.
 Label each cluster by its smallest arrival index. The label persists
 because the majority decisions on old pairs are fixed.
@@ -1061,8 +1061,8 @@ and the ranges $[(1+\delta)^i/8,(1+\delta)^{i+1}/8)$ for $i\ge0$.
 There are at most $b$ occupied ranges, with $b$ as defined in
 \cref{sec:algorithms-online}.
 For each occupied range, call its last time $t$ an \emph{endpoint}.
-Fix an optimal partition $F_t$ of $V_t$, put $o=\OPT_t$, and
-write $F'_v=F_t|_{V_v}$ for every $v\le t$. The endpoints and their optimal partitions are fixed by the oblivious
+Fix an optimal clustering $F_t$ of $V_t$, put $o=\OPT_t$, and
+write $F'_v=F_t|_{V_v}$ for every $v\le t$. The endpoints and their optimal clusterings are fixed by the oblivious
 stream; the algorithm does not need to know them.
 
 The first selection lemma identifies many copies whose
@@ -1074,7 +1074,7 @@ the current time, since the selection rule uses the maxima $H_j$.
 Let $\gamma\in[1,1.42]$ and suppose a successful initial clustering has approximation
 ratio on the sample $\gamma+\delta$. With $k\ge52\delta^{-2}$ and
 $T=\lceil C\log(16b/\zeta)\rceil$ independent copies, each using $k$
-independently sampled input partitions, for a sufficiently large
+independently sampled input clusterings, for a sufficiently large
 absolute constant $C$, the following holds with
 probability at least $1-\zeta/4$. At each endpoint $t$, at least
 $3T/160$ copies satisfy
@@ -1086,7 +1086,7 @@ approximation ratio at most $a=\gamma+2\delta$ on its sample at every
 active time, by the cost argument in \cref{sig:base} with
 $\tau=\delta$. An earlier synchronized rebuild only restarts this
 guarantee sooner. Recall that $f_v^j$ is the cost on copy $j$'s sample.
-The triangle inequality for partitions gives
+The triangle inequality for clusterings gives
 $d(C^j_v,F'_v)\le(a+1)f^j_v(F'_v)$. Therefore
 \cref{lem:sample-difference} bounds the true cost excess at
 every such time $v\le t$ by
@@ -1109,7 +1109,7 @@ $(e/25)^{T/160}\le\zeta/8$. Discard these copies from those satisfying these eve
 \end{proof}
 
 We estimate the copies' costs using further independently sampled input
-partitions. The estimate $G_t$
+clusterings. The estimate $G_t$
 averages the lowest quarter of the estimated costs to control the cost of restrictions
 of $F_t$. The next lemma also controls differences between the estimates,
 which are what the selection proof needs.
@@ -1118,7 +1118,7 @@ which are what the selection proof needs.
 For the $L$ evaluation collections of size $g$ and the estimator $G_t$
 defined in \cref{sec:algorithms-online}, with
 probability at least $1-\zeta/4$, at each endpoint $t$ the estimate
-satisfies $G_t(F_t)\le2o$ and for all $v\le t$ and partitions
+satisfies $G_t(F_t)\le2o$ and for all $v\le t$ and clusterings
 $C,A$ of $V_v$,
 \[
  |G_v(C)-G_v(A)-f_v(C)+f_v(A)|\le 2\delta d(C,A)+\delta o .
@@ -1176,7 +1176,7 @@ There are at least $3T/160$ such copies, so their bound also
 holds for $M_u$.
 
 Because $M_u$ is nondecreasing, the threshold rule also gives
-$\beta_u\le(1+\delta)M_u$. For the partition $C$ of any eligible
+$\beta_u\le(1+\delta)M_u$. For the clustering $C$ of any eligible
 copy, it follows that $G_u(C)\le H_j(u)\le\beta_u\le(1+\delta)M_u$.
 Use the bound in \cref{lem:online-eval} and $d(C,F'_u)\le f_u(C)+o$ to obtain
 \[
@@ -1187,7 +1187,7 @@ Use the bound in \cref{lem:online-eval} and $d(C,F'_u)\le f_u(C)+o$ to obtain
 In a positive geometric range, $o\le(1+\delta)\OPT_u$ and
 $(1+\delta)(\gamma+23\delta)\le\gamma+25\delta$. In the first
 range, $d(C,F'_u)\le(\gamma+23\delta+1)o<1$, so $C=F'_u$.
-Any distinct partition $C'$ has $d(C',F'_u)\ge1$ and hence
+Any distinct clustering $C'$ has $d(C',F'_u)\ge1$ and hence
 $f_u(C')\ge1-f_u(F'_u)>f_u(F'_u)$. Thus $F'_u$ is optimal.
 \end{proof}
 
@@ -1210,7 +1210,7 @@ With this limit, every vertex changes its published label at most $A$
 times on every execution.
 \end{lemma}
 \begin{proof}
-Partition the arrival sequence at every rebuild and every change in
+Divide the arrival sequence at every rebuild and every change in
 $\beta_t$. By \cref{lem:online-rebuilds}, at most $J_0$ intervals
 are created by rebuilds. Every estimate $G_t(C)$ is a multiple of
 $1/(rg)$ and lies in $[0,\binom n2]$. The same holds for $M_t$.
@@ -1275,7 +1275,7 @@ where $Q=O_\delta(\log(2J_0))$ by the construction in the proof of
 probability $1/(4000J_0)$.
 
 For a fixed copy, maintain $D_j(t)$ through the $k(k-1)/2$
-partition distances in the proof of \cref{sig:base}, at $O(k^2)$
+clustering distances in the proof of \cref{sig:base}, at $O(k^2)$
 expected time per arrival. Tuple lookup and extension take $O(k)$
 expected time. The cluster-intersection counters from
 \cref{sec:preliminaries} update the candidate's distances to all
@@ -1316,9 +1316,9 @@ bounds at constant accuracy.
 
 The preceding analysis assumes an oblivious arrival sequence. We now
 record a supplementary guarantee for adaptive arrivals. The algorithm
-uses all input partitions and a deterministic extension of an initial
+uses all input clusterings and a deterministic extension of an initial
 clustering. In this subsubsection, $d_{uv}$, $p_{uv}$, $B_t$, and $f_t$
-always refer to the original collection of $m$ input partitions, rather
+always refer to the original collection of $m$ input clusterings, rather
 than to a sample. Recall that $p_{uv}=\min\{d_{uv},1-d_{uv}\}$ and
 $B_t=\sum_{\{u,v\}\subseteq V_t}p_{uv}$.
 
@@ -1347,10 +1347,10 @@ algorithm rebuilds when this bound would exceed its allowed error.
 \caption{Deterministic online consensus clustering}
 \label{alg:det-online}
 \begin{algorithmic}[1]
-\Require Accuracy $0<\varepsilon\le1$ and the original input partitions
+\Require Accuracy $0<\varepsilon\le1$ and the original input clusterings
 \For{each insertion at time $t$}
     \If{$B_t<1/2$}
-        \State Publish the partition consistent with all majority decisions, using persistent labels
+        \State Publish the clustering consistent with all majority decisions, using persistent labels
     \Else
         \If{there is no initial clustering or $B_t>(1+\varepsilon/(2C_0))B_s$}
             \State Set $s\gets t$ and compute a deterministic initial clustering at accuracy $\varepsilon/2$
@@ -1364,11 +1364,11 @@ algorithm rebuilds when this bound would exceed its allowed error.
 \end{algorithm}
 
 \paragraph{Preparing a locally optimal initial clustering.}
-A partition $\mathcal C$ of $S$ is \emph{locally optimal} if neither of
+A clustering $\mathcal C$ of $S$ is \emph{locally optimal} if neither of
 the following operations decreases its cost:
 \begin{enumerate}
 \item Split a cluster $C$ into $C\cap P$ and $C\setminus P$, where $P$
-      is a cluster of an original input partition.
+      is a cluster of an original input clustering.
 \item Merge two distinct clusters $C,D$ of $\mathcal C$.
 \end{enumerate}
 Empty pieces are discarded. Starting from the computed clustering,
@@ -1392,16 +1392,16 @@ every later vertex $v$,
 \]
 \end{lemma}
 \begin{proof}
-Write $x_u=d_{uv}$ for $u\in C$, and partition $C$ into
+Write $x_u=d_{uv}$ for $u\in C$, and divide $C$ into
 $L=\{u\in C:x_u\le1/2\}$ and $H=C\setminus L$.
-Choose an input partition uniformly, and let $U$ be the vertices of
-$C$ that share its cluster with $v$ in that partition. Every possible
+Choose an input clustering uniformly, and let $U$ be the vertices of
+$C$ that share its cluster with $v$ in that clustering. Every possible
 nonempty $U$ is an input-cluster intersection considered by the split
 condition. Consequently, the expected change in cost upon splitting
 $C$ into $U$ and $C\setminus U$ is nonnegative.
 
 For $a,b\in C$, let $r_{ab}$ be the probability that exactly one of
-$a,b$ belongs to $U$. This event implies that the sampled partition
+$a,b$ belongs to $U$. This event implies that the sampled clustering
 separates $a,b$, so $r_{ab}\le d_{ab}$. If $a,b$ are on the same side
 of $L,H$, a union bound gives $r_{ab}\le p_{av}+p_{bv}$ and hence
 \[
@@ -1450,7 +1450,7 @@ $j$ uniformly from $\{0,\ldots,m-1\}$ and set
 \[
  R=\frac1{16}+\frac{2j+1}{32m}.
 \]
-Independently choose a uniform input partition $P$. Keep both choices
+Independently choose a uniform input clustering $P$. Keep both choices
 fixed throughout the extension. An arriving vertex $v\notin S$ joins
 the initial cluster $C$ with $S_C(v)/|C|<R$, if such a cluster exists;
 its uniqueness follows from \cref{seedext:merge}. Otherwise, give $v$
@@ -1459,7 +1459,7 @@ all initial clusters. Each assignment depends only on $S$, $R$, $P$,
 and the arriving vertex. Thus no previously assigned label changes.
 
 For a fixed set $W$ of later vertices, let $\mathcal C^{\rm ext}$ be
-the resulting partition of $S\cup W$. The following bound concerns
+the resulting clustering of $S\cup W$. The following bound concerns
 only pairs involving a later vertex.
 
 \begin{lemma}
@@ -1535,7 +1535,7 @@ orders, including adaptive orders.
 \begin{proof}
 Let $Z$ denote the random extension in \cref{seedext:additional}, and
 let $a_{uv}$ be its probability of separating $u,v$. The separation
-indicators of every partition satisfy the triangle inequality, and
+indicators of every clustering satisfy the triangle inequality, and
 therefore their average $a$ satisfies it as well. When the second
 endpoint arrives, compute $a_{uv}$ by enumerating the $m^2$ equally
 likely threshold and input choices. Earlier pair weights remain fixed.
@@ -1549,7 +1549,7 @@ algorithm returns exactly the initial clustering, up to renaming.
 Reuse its original cluster labels.
 
 Fix any later arrival time and let $D$ be the algorithm's output.
-For a partition $X$ of the current vertices, its auxiliary cost is
+For a clustering $X$ of the current vertices, its auxiliary cost is
 $f_a(X)=\mathbb E_Z[d(X,Z)]$. Let $E$ denote the expected original
 cost of $Z$ on pairs with at least one endpoint outside $S$. If $Z'$
 is an independent copy of $Z$ and $P$ is an independent uniform
@@ -1573,7 +1573,7 @@ We can now combine this extension with geometric rebuilding to prove
 At rebuilding times, invoke \cref{off:det} with accuracy
 $\varepsilon/2$. Write $\alpha=601/500+\varepsilon/2$ for the offline
 approximation ratio and $\tau=\varepsilon/2$ for the extension error
-tolerance. While $B_t<1/2$, publish the exact majority partition with
+tolerance. While $B_t<1/2$, publish the exact majority clustering with
 persistent labels, as described in \cref{sec:preliminaries}.
 
 At the first time $s$ with $B_s\ge1/2$, compute an offline initial
@@ -1631,7 +1631,7 @@ true cost of every eligible copy at every arrival. By
 fallback is at most $\zeta/8$. No independence between these events
 is needed. With probability at least $1-5\zeta/8\ge1-\zeta$, the
 algorithm therefore publishes an eligible copy at every time $t$.
-Writing $C_t$ for its published partition, we obtain simultaneously
+Writing $C_t$ for its published clustering, we obtain simultaneously
 over all arrivals
 \[
  f_t(C_t)\le(\gamma+25\delta)\OPT_t
