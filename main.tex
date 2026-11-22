@@ -132,10 +132,13 @@ as specified in Section~\ref{sec:preliminaries}.
 
 \begin{restatable}{theorem}{OfflineMain}
 \label{off:linear}
-There is a randomized algorithm for consensus clustering on $n$ vertices
-and $m$ input partitions with approximation ratio $1.21+\varepsilon$,
-success probability at least $1-\zeta$, and
-$O_\varepsilon(n\log(2/\zeta))$ expected running time.
+Given $n$ vertices with $m$ input \clustering and parameters
+$\varepsilon\in(0,1]$ and $\zeta\in(0,1)$, there is a randomized algorithm
+for consensus clustering that returns a \clustering{} $\cls{C}$ of cost
+\[
+    \cost(\cls{C}) \le (1.21+\varepsilon)\,\mathrm{OPT}
+\]
+in expected time $O_{\varepsilon}(n\log(2/\zeta))$ with probability at least $1-\zeta$.
 \end{restatable}
 
 \Needspace{8\baselineskip}
@@ -240,8 +243,11 @@ In consensus clustering, access to the partitions determines which
 pair weights the algorithm can evaluate efficiently.
 
 \input{preliminaries.tex}
+
 \section{Offline algorithm}
 \label{sec:offline}
+In this section, we prove our offline approximation guaranty for consensus clustering. We first restate the theorem.
+
 \OfflineMain*
 
 Our offline routine solves a small sample of input partitions. It first groups
@@ -591,9 +597,9 @@ gives this construction. Appendix~\ref{app:near-linear} gives a
 second offline implementation with singly exponential dependence
 on inverse accuracy and a polylogarithmic factor in $n$.
 
-\section{Online algorithm}
+\section{Online Consensus Clustering}
 \label{joint:section}
-In this section, we study the online algorithm for consensus clustering. In particular, we achieve a competitive ratio of $(1.21 + \varepsilon)$ with high probability and $O(\log n)$ worst-case recourse for each vertex. More specifically, we state the result in the following theorem.
+In this section, we study the problem of online consensus clustering. In particular for this problem, we achieve a competitive ratio of $(1.21 + \varepsilon)$ with high probability and $O(\log n)$ worst-case recourse for each vertex. More specifically, we state the result in the following theorem.
 \OnlineMain*
 
 In the following subsections, we aim to prove \cref{on:loglog}.
