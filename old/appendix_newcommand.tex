@@ -1,3 +1,10 @@
+\makeatletter
+\newcommand{\setword}[2]{%
+  \phantomsection
+  #1\def\@currentlabel{\unexpanded{#1}}\label{#2}%
+}
+\makeatother
+
 \newcommand{\boolNo}{\text{No}} % boolean No
 \newcommand{\boolYes}{\text{Yes}} % boolean Yes
 
@@ -13,8 +20,8 @@
 } % sparsified graph in dynamic agreement (DA)
 \NewDocumentCommand{\dyCC}{g}{%
     \IfNoValueTF{#1}
-    {C}%
-    {C_{#1}}%
+    {\textsc{CC}}%
+    {\textsc{CC}_{#1}}%
 } % dynamic data structure for connected components
 \NewDocumentCommand{\journal}{g}{%
     \IfNoValueTF{#1}
@@ -40,6 +47,8 @@
 
 
 \newcommand{\explicitDA}{\mathrm{ExplicitDynamicAgreement}} % explicit dynamic agreement algorithm
+\newcommand{\ADA}{\mathrm{AmplifiedDynamicAgreement}} % explicit dynamic agreement algorithm
+\newcommand{\DA}{\mathrm{DynamicAgreement}} % explicit dynamic agreement algorithm
 \NewDocumentCommand{\Notify}{g}{%
     \IfNoValueTF{#1}
     {\mathrm{Notify}}%
@@ -65,6 +74,16 @@
     {\mathrm{LabelSync}}%
     {\mathrm{LabelSync}(#1)}%
 }
+\NewDocumentCommand{\ProbAgree}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{ProbablisticAgreement}}%
+    {\mathrm{ProbablisticAgreement}(#1)}%
+}
+\NewDocumentCommand{\Heavy}{g}{%
+    \IfNoValueTF{#1}
+    {\mathrm{Heavy}}%
+    {\mathrm{Heavy}(#1)}%
+}
 
 \newcommand{\delt}[1]{\mathrm{Del}_{#1}}
 \newcommand{\addt}[1]{\mathrm{Add}_{#1}}
@@ -85,11 +104,14 @@
     {piece}%
     {piece#1}%
 }
-\newcommand{\retainedPieces}[1]{R_{#1}} % retained pieces of class #1
+\newcommand{\retainedPiece}[1]{R_{#1}} % retained pieces of class #1
 \newcommand{\piecesToMerge}{\mathcal{Z}} %
 \newcommand{\pieceToMerge}{P} %
+\newcommand{\complabel}{\ell} %
 
 \newcommand{\successDA}{\mathcal{E}_{\rm DA}} % success event of dynamic agreement
+\newcommand{\jnTime}[1]{\card{\journal(#1)}} % length of the journal at time #1
+\newcommand{\nChangedVers}[1]{c_{#1}} % number of vertices whose labels changed at time #1
 
 \newcommand{\edSolver}{\mathcal D}
 \newcommand{\edFactor}{\eta} % approximation factor of the explicit correlation-clustering algorithm
@@ -103,3 +125,9 @@
 \newcommand{\edlog}[2]{\mathcal L_{#1}(#2)}
 \newcommand{\edbucket}[2]{B_{#1}(#2)}
 \newcommand{\edatom}[1]{B_{123}(#1)}
+
+% name for variable used in the implementation of LabelSync
+\newcommand{\setClasses}{\mathit{Set}_{\ccclasses}} % variable used in the
+\newcommand{\groupdict}{\mathit{group\_dict}} % variable used in the
+\newcommand{\compdict}{\mathit{comp\_dict}} % variable used in the
+\newcommand{\changedList}{\mathit{changed\_list}} % variable used in the

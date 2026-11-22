@@ -1,0 +1,1652 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,array,booktabs}
+\usepackage[hidelinks]{hyperref}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\setlength{\parskip}{0.25em}
+\setlength{\parindent}{1.2em}
+\allowdisplaybreaks
+\title{Improved Guarantees for Online Consensus Clustering}
+\author{Research notes accompanying the current draft}
+\date{November 16, 2026}
+\begin{document}
+\maketitle
+
+\section{Scope and main improvements}
+
+These notes give improvements to the current \texttt{main.tex}, with
+full proofs of the new inequalities and reductions. They use its
+input-label access model and its verified implicit Pivot maintenance
+lemmas. All input streams are oblivious. These notes are provided
+separately; no changes to existing manuscript files were made in
+preparing them.
+
+For partitions $C,P$ on a vertex set $V$, let $d(C,P)$ count unordered
+pairs whose together/separate decisions differ. Write
+\[
+ \operatorname{cost}_t(C)=\frac1m\sum_{i=1}^m d(C,P_i|_{V_t}),
+ \qquad \operatorname{OPT}_t=\min_C\operatorname{cost}_t(C).
+\]
+The offline notation omits $t$. Restricting a partition to fewer vertices
+cannot increase its cost. The pair-distance triangle inequality implies
+$d(C,F)\le\operatorname{cost}_t(C)+\operatorname{cost}_t(F)$.
+In the online statements, $\eta\ge1$ is the factor of the fixed
+deterministic Online Agreement solver with $O_\eta(\log n)$ per-vertex
+recourse, as in the draft and \cite{online}. It is not an assertion
+about the best possible factor of all online solvers.
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\textwidth}>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.37\textwidth}@{}}
+\toprule
+Quantity & Current draft & Improvement proved here\\
+\midrule
+Online competitive ratio
+ & $2-\dfrac{2}{3\eta+5}+\varepsilon$
+ & $2-\dfrac1{\eta+1}+\varepsilon$\\
+Deterministic online recourse
+ & $O_\eta(\varepsilon^{-2}\log(2n/\zeta)\log(2mn/\zeta))$
+ & $O_\eta(\varepsilon^{-2}\log(2n/\zeta)\log(2n/(\varepsilon\zeta)))$\\
+Offline and implicit approximation
+ & $1.6944+\varepsilon$
+ & $1.64+\varepsilon$ with the original seven samples\\
+Offline and implicit approximation with a larger sample
+ & $1.6944+\varepsilon$
+ & $11/7+\varepsilon$, with polynomial dependence on $1/\varepsilon$
+   (Theorem~\ref{thm:eleven-sevenths})\\
+Implicit update time
+ & $O(\varepsilon^{-3}\Lambda^2\log^2(N+2))$
+ & $O(\varepsilon^{-3}\Lambda^2\log(N+2))$ on a word RAM\\
+Membership / same-cluster query
+ & $O(\log(n+2))$ worst case
+ & $O(1)$ worst case on a word RAM\\
+\bottomrule
+\end{tabular}
+\end{center}
+Here $n$ denotes the horizon in online statements and the active size
+in query statements; $N$ is the maximum active size, $U$ is the update
+bound, and $\Lambda=\log((U+2)/(\varepsilon\zeta))$.
+The update bounds are expected amortized. A randomized phase selector
+also improves the switching contribution to online recourse from the
+number of candidates to its logarithm, in expectation and with high
+probability; see Theorem~\ref{thm:improved-random-recourse}.
+The table's $\varepsilon^{-3}$ update bound applies to the fixed-sample
+variants. The separate $11/7+\varepsilon$ result has
+$\varepsilon^{-O(1)}$ dependence, stated explicitly in
+Theorem~\ref{thm:eleven-sevenths}.
+
+The same centered charging argument gives $1.6+\varepsilon$ using
+fifteen sampled inputs. More substantially, it gives $11/7+\varepsilon$
+with \emph{polynomial} dependence on $1/\varepsilon$ in running time
+and space, improving the exponential dependence in the previous
+version of these notes. For fixed accuracy, the offline time remains
+near-linear in $n$ and the implicit dynamic update time remains
+polylogarithmic. The value $11/7$ itself is the classical consensus
+approximation of Ailon, Charikar, and Newman~\cite{acn}; the result here
+obtains its approximation from a sample of
+$O(\log(1/\varepsilon))$ input partitions and supports the bucket
+implementations. It does not assert a new unrestricted offline
+approximation record. The polynomial-accuracy proof has large absolute
+constants, including a minimum of 87 sampled inputs.
+
+The seven-sample $1.64+\varepsilon$ result uses exactly the draft's
+35 buckets per vertex, improving the previous $1.68+\varepsilon$
+bound while reducing its sample and bucket counts. A separate
+nine-sample construction gives factor $1.64$ without an accuracy
+parameter, eliminating the $\varepsilon^{-3}$ dependence when that
+fixed factor suffices. All these offline approximation improvements
+combine with the faster implicit implementation below.
+
+The explicit insertion-only transfer in Section~\ref{sec:conditional}
+is conditional on the stated correlation-clustering solver hypothesis.
+It does not resolve the unproved guarantees for the modified solver
+identified in \texttt{review.tex}. This caveat concerns the version
+assessed in that review; subsequent edits to the solver files are
+outside the scope of these notes.
+
+\section{A stronger online competitive ratio}
+\label{sec:improved-online}
+
+Write $c=\eta+1$, where $\eta$ is the approximation factor of the
+fixed deterministic Online Agreement algorithm used in the draft.
+Its persistent identifiers change at most $q_{\rm A}\lceil\log_2 n\rceil$
+times per vertex. The improvement below uses the same black box.
+Define
+\[
+ R_* = 2-\frac{1}{\eta+1}=2-\frac1c.
+\]
+The improvement over the draft's constant is
+\[
+ \left(2-\frac{2}{3\eta+5}\right)-R_*
+ =\frac{\eta+3}{(\eta+1)(3\eta+5)}>0.
+\]
+For example, the two expressions are $7/4$ and $3/2$ when $\eta=1$.
+This example illustrates the formula and makes no claim that an exact
+online correlation-clustering solver is available. As $\eta$ increases,
+the improvement below two increases by a factor tending to $3/2$.
+
+\subsection{A mixed majority with a weighted error bound}
+
+Put $r=1/\eta\in(0,1]$. Sample the size $k$ to be five with probability
+\[
+ a_r=\frac{2339-2048r}{2595}
+\]
+and fifteen with probability
+\[
+ b_r=\frac{256+2048r}{2595}=1-a_r.
+\]
+Both probabilities are positive for $0\le r\le1$.
+Independently sample $k$ input indices uniformly with replacement.
+Join a pair in the sampled signed graph if a strict majority of these
+$k$ input partitions joins it. Retain the sample throughout the
+vertex-arrival stream.
+
+\begin{lemma}\label{lem:improved-majority}
+For odd $k$, write
+\[
+ \phi_k(p)=\sum_{j=(k+1)/2}^k\binom{k}{j}p^j(1-p)^{k-j}.
+\]
+If a fraction $p$ of the inputs disagree with a reference decision on
+a pair, the sampled majority disagrees with probability
+\[
+ h_r(p)=a_r\phi_5(p)+b_r\phi_{15}(p).
+\]
+For all $0\le p,r\le1$,
+\[
+ {}[1+r(1-2p)]h_r(p)\le2p^2.
+\]
+Equivalently, with $r=1/\eta$ and $c=\eta+1$,
+\[
+ (c-2p)h_{1/\eta}(p)\le2\eta p^2.
+\]
+\end{lemma}
+\begin{proof}
+The binomial formula follows from independent sampling with replacement.
+We give an exact polynomial certificate for the inequality. Define
+$B_{i,d}(x)=\binom di x^i(1-x)^{d-i}$ and let $M$ be the following
+matrix, whose rows are indexed by $i=0,\ldots,12$ and columns by
+$j=0,1,2$,
+\[
+ M=\begin{pmatrix}
+71933400&71933400&71933400\\
+68895750&67215225&89189100\\
+66657150&67444125&117690300\\
+65955078&76436514&166396734\\
+68411924&102548054&254296728\\
+77927850&165781315&425523420\\
+80242530&183628395&350020980\\
+72594970&156728740&262939950\\
+63845040&126725060&196199640\\
+55750590&101452365&148444380\\
+48500550&81470025&114439500\\
+41961150&65938950&89916750\\
+35966700&53950050&71933400
+\end{pmatrix}.
+\]
+Direct polynomial expansion gives the identity
+\[
+ 2p^2-[1+r(1-2p)]h_r(p)
+ =\frac{p^2(2p-1)^2}{35966700}
+       \sum_{i=0}^{12}\sum_{j=0}^2 M_{i,j}B_{i,12}(p)B_{j,2}(r).
+\]
+Every factor on the right is nonnegative on the unit square. The
+smallest matrix entry is 35966700, so the Bernstein polynomial after
+division by 35966700 is at least one there. This proves the inequality,
+including $p=0$ and $p=1/2$.
+\end{proof}
+
+\paragraph{A smaller sample when $\eta\ge16/3$.}
+For $r=1/\eta\le3/16$, the same weighted inequality holds with the
+simpler error function
+\[
+ \widetilde h_r(p)
+   =\frac{3-16r}{5}\phi_5(p)+\frac{2+16r}{5}\phi_7(p).
+\]
+Thus only five or seven inputs need be sampled in this parameter range.
+Both mixture weights are nonnegative, and the exact factorization is
+\[
+ 2p^2-[1+r(1-2p)]\widetilde h_r(p)
+ =p^2(2p-1)^2\bigl(Q_0(p)+rQ_1(p)+r^2Q_2(p)\bigr),
+\]
+where
+\begin{align*}
+ Q_0(p)&=1+(1-p)(1+3p-2p^2),\\
+ Q_1(p)&=p\bigl(1+5(1-p)+16(1-p)^2+4(1-p)^3\bigr),\\
+ Q_2(p)&=32p(1-p)^3.
+\end{align*}
+Each expression is nonnegative on $[0,1]$. This proves the desired
+inequality directly and gives the same competitive ratio with smaller
+absolute constants for the graph representation.
+
+\subsection{A sharper history comparison}
+
+For a reference partition $F$ of $V_t$, let $p_e$ be the fraction of
+input partitions disagreeing with $F$ on pair $e$. Let $H$ be the signed
+graph of a persistent majority candidate, and let $B_H^t(F)$ be its
+pairs disagreeing with $F$.
+
+\begin{lemma}\label{lem:improved-weighted-history}
+For every deterministic Online Agreement candidate $A$ and every
+reference partition $F$ of $V_t$,
+\[
+ \max_{u\le t}\operatorname{cost}_u(A(u))
+ \le\operatorname{cost}_t(F)
+       +\sum_{e\in B_H^t(F)}(c-2p_e).
+\]
+More precisely, with $F_u=F|_{V_u}$,
+\[
+ \operatorname{cost}_u(A(u))-\operatorname{cost}_u(F_u)
+ \le\sum_{e\in B_H^t(F)\cap\binom{V_u}{2}}(c-2p_e)
+ \qquad(u\le t).
+\]
+\end{lemma}
+\begin{proof}
+Fix $u\le t$. For each pair in $V_u$, let $y_e$ indicate that $A(u)$
+disagrees with $F_u$, and let $b_e$ indicate that $H$ disagrees with
+$F_u$. The consensus-cost difference on this pair is $y_e(1-2p_e)$.
+The following inequality holds for both values of $b_e$ and $y_e$,
+\[
+ y_e(1-2p_e)\le \mathbf1[y_e\ne b_e]+b_e(1-2p_e).
+\]
+Indeed, when $b_e=0$ it is $y_e(1-2p_e)\le y_e$. When $b_e=1$,
+the case $y_e=1$ is equality and the case $y_e=0$ follows from
+$2-2p_e\ge0$. Summing and using the solver guarantee against $F_u$
+gives
+\begin{align*}
+ \operatorname{cost}_u(A(u))-\operatorname{cost}_u(F_u)
+ &\le \operatorname{err}_{H|_{V_u}}(A(u))
+          +\sum_e b_e(1-2p_e)\\
+ &\le \eta\sum_e b_e+\sum_e b_e(1-2p_e)
+ =\sum_{e\in B_H^t(F)\cap\binom{V_u}{2}}(c-2p_e).
+\end{align*}
+Here $F_u$ is a feasible correlation clustering with error $\sum_e b_e$.
+The values $p_e$ for surviving pairs are the same at both prefixes.
+Since $c\ge2$, all $c-2p_e$ are nonnegative. Restriction cannot increase
+$\operatorname{cost}_t(F)$, so the last sum and reference cost can both
+be bounded by their values at $t$. Taking the maximum proves the result.
+\end{proof}
+
+\subsection{Exact costs and the original recourse guarantee}
+
+\begin{theorem}\label{thm:improved-online-exact}
+For every oblivious vertex-arrival instance with $m$ input partitions,
+known horizon $n$, $\zeta\in(0,1)$, and
+$0<\varepsilon<1/(\eta+1)$, there is a randomized online algorithm such
+that, with probability at least $1-\zeta$,
+\[
+ \operatorname{cost}_t(C_t)
+ \le \left(2-\frac{1}{\eta+1}+\varepsilon\right)
+       \operatorname{OPT}_t
+ \qquad\text{simultaneously for all }t\le n.
+\]
+On every execution, each vertex has recourse
+\[
+ O_\eta\!\left(
+  \varepsilon^{-2}\log\frac{2n}{\zeta}\log\frac{2mn}{\zeta}
+ \right).
+\]
+\end{theorem}
+
+\paragraph{Algorithm.}
+The cases $n=1$ and $m\le2$ use the optimal input-following rule in the
+draft. In the remaining cases, use its candidate selection procedure with
+\[
+ w=\frac{\eta}{\eta+1},\qquad
+ K=\left\lceil\frac4\varepsilon\log\frac{2n}{\zeta}\right\rceil,
+ \qquad \theta=\frac\varepsilon4.
+\]
+Each candidate follows a uniform input with probability $w$, and otherwise
+runs one persistent copy of Online Agreement on an independently sampled
+mixed-majority graph. All candidate processes advance on every arrival.
+For candidate $a$, compute its exact current cost $f_a(t)$ and history
+$G_a(t)=\max_{u\le t}f_a(u)$, and put $M_t=\min_aG_a(t)$.
+While $M_t=0$, follow a candidate with zero history, retaining the current
+candidate whenever possible. A positive phase starts with $B=M_t$ and
+threshold $(1+\theta)B$. Retain the selected candidate while its history
+is below the threshold. If it becomes ineligible, select another eligible
+candidate. If $M_t$ reaches the threshold, first begin a new phase with
+baseline $M_t$ and select a candidate attaining this minimum. Break ties
+by a fixed rule. Prefix the selected candidate's local identifiers by its
+candidate index.
+
+\begin{proof}
+Fix a prefix $t$ and an optimal partition $F_t^*$. For every pair $e$,
+let $p_e$ be the fraction of inputs disagreeing with $F_t^*$ on $e$, and
+put $X_t=\sum_e p_e^2$. Then $\sum_e p_e=\operatorname{OPT}_t$.
+A uniform input candidate has nondecreasing cost and satisfies
+\[
+ \mathbb E[G_a(t)\mid\text{input}]
+ =2\operatorname{OPT}_t-2X_t.
+\]
+By Lemma~\ref{lem:improved-weighted-history} and then
+Lemma~\ref{lem:improved-majority}, a mixed-majority candidate satisfies
+\begin{align*}
+ \mathbb E[G_a(t)\mid\text{mixed majority}]
+ &\le\operatorname{OPT}_t+\sum_e(c-2p_e)h_{1/\eta}(p_e)\\
+ &\le\operatorname{OPT}_t+2\eta X_t.
+\end{align*}
+The choice $w=\eta/(\eta+1)$ cancels $X_t$ exactly,
+\[
+ \mathbb E[G_a(t)]
+ \le w(2\operatorname{OPT}_t-2X_t)
+ +(1-w)(\operatorname{OPT}_t+2\eta X_t)
+ =R_*\operatorname{OPT}_t.
+\]
+Let $R=R_*+\varepsilon/2<2$. If $\operatorname{OPT}_t>0$,
+Markov's inequality gives
+\[
+ \Pr[G_a(t)\le R\operatorname{OPT}_t]
+ \ge1-R_*/R=\varepsilon/(2R)\ge\varepsilon/4.
+\]
+If $\operatorname{OPT}_t=0$, all inputs coincide on the prefix and every
+candidate has history zero. Independence of the candidates and the choice
+of $K$ imply
+\[
+ \Pr[M_t>R\operatorname{OPT}_t]\le\zeta/(2n).
+\]
+A union bound gives this history bound simultaneously at every prefix.
+The phase rule ensures
+$\operatorname{cost}_t(C_t)\le(1+\theta)M_t$. On the event just obtained,
+\[
+ (1+\theta)R=R_*+\varepsilon/2+\varepsilon R/4
+ <R_*+\varepsilon.
+\]
+
+For completeness, exact histories belong to
+$m^{-1}\mathbb Z\cap[0,\binom n2]$. Positive phase baselines grow by at
+least $1+\theta$, so there are $O(\varepsilon^{-1}\log(2mn))$
+positive phases. Monotonicity of every history implies that, once a candidate becomes
+ineligible, it remains ineligible until the next phase.
+There are at most $K$ switches per positive phase and at most $K-1$ in
+the zero stage. For any vertex, add these switches to the at most
+$Kq_{\rm A}\lceil\log_2 n\rceil$ internal changes across all persistent
+solver copies. This proves the asserted recourse for every execution.
+\end{proof}
+
+\paragraph{Optimality of this pairwise certificate.}
+The constant $R_*$ is optimal within the following restricted analysis.
+Mix a uniform input with probability $w$ and a sampled-majority solver
+with probability $1-w$, use the weighted history comparison above, and
+require a bound separately for every $p\in[0,1]$. For any fixed finite
+mixture of odd majorities of size at least three, its error function
+satisfies $h(p)/p\to0$ as $p\to0$ and $h(1/2)=1/2$.
+The pairwise coefficient is
+\[
+ r_w(p)=w\,2(1-p)
+       +(1-w)\left(1+(c-2p)\frac{h(p)}p\right).
+\]
+Its supremum is at least
+\[
+ \max\{\lim_{p\downarrow0}r_w(p),r_w(1/2)\}
+ =\max\{1+w,\ 1+\eta(1-w)\}.
+\]
+Minimizing this maximum gives $w=\eta/(\eta+1)$ and $R_*$. This is a
+limitation of the stated certificate. It gives no lower bound on the
+online problem.
+
+\subsection{Removing the input-count dependence from recourse}
+
+The estimated-history construction in the explicit reduction of the draft
+also applies to deterministic Online Agreement. It gives the following
+stronger recourse bound while retaining the improved ratio.
+
+\begin{theorem}\label{thm:improved-online-estimated}
+Under the hypotheses of Theorem~\ref{thm:improved-online-exact}, one can
+achieve the same simultaneous competitive ratio and failure probability
+with per-vertex recourse
+\[
+ O_\eta\!\left(
+   \varepsilon^{-2}\log\frac{2n}{\zeta}
+                    \log\frac{2n}{\varepsilon\zeta}
+ \right)
+\]
+on every execution. This bound is independent of $m$.
+\end{theorem}
+
+\paragraph{Algorithm.}
+Use the same candidate distribution and set
+\[
+ \theta=\gamma=\varepsilon/40,\qquad
+ K=\left\lceil\frac4\varepsilon\log\frac{4n}{\zeta}\right\rceil,
+ \qquad L=\left\lceil\log_2\frac{4n}{\zeta}\right\rceil,
+ \qquad g=\left\lceil\frac{2}{\gamma^2}
+                   \log\frac{8Kn^2L}{\zeta}\right\rceil.
+\]
+Independently of the candidates, sample $L$ groups of $g$ independent
+uniform input indices, with replacement. For a partition $C$ of $V_t$,
+define
+\[
+ \widehat f_t^{(j)}(C)=\frac1g\sum_{b=1}^g d(C,P_{J_{j,b}}|_{V_t}),
+ \qquad \widehat f_t(C)=\min_{j\in[L]}\widehat f_t^{(j)}(C).
+\]
+Use histories
+$\widehat G_a(t)=\max_{u\le t}\widehat f_u(A_a(u))$ and
+$\widehat M_t=\min_a\widehat G_a(t)$ in the phase rule.
+Candidate processes themselves are independent of these evaluation samples.
+
+\begin{proof}
+Let $R=R_*+\varepsilon/2$. Define a proxy $Z_a(t)$ to be the true
+cost for an input candidate and
+$\operatorname{OPT}_t+\sum_{e\in B_{H_a}^t(F_t^*)}(c-2p_e)$ for a majority candidate.
+The preceding expectation calculation gives
+$\mathbb E Z_a(t)\le R_*\operatorname{OPT}_t$.
+Thus, with probability at least $1-\zeta/4$, every prefix has a candidate
+$b$ with $Z_b(t)\le R\operatorname{OPT}_t$.
+
+With probability at least $1-\zeta/2$, the independent evaluation groups
+simultaneously satisfy, for every $a$ and $u\le t$,
+\begin{align}
+ \widehat f_t(F_t^*)&\le2\operatorname{OPT}_t,
+ \label{eq:improved-eval-ceiling}\\
+ \left|\widehat f_u(A_a(u))-\widehat f_u(F_t^*|_{V_u})
+       -\bigl(\operatorname{cost}_u(A_a(u))
+              -\operatorname{cost}_u(F_t^*|_{V_u})\bigr)\right|
+ &\le\gamma d(A_a(u),F_t^*|_{V_u}).
+ \label{eq:improved-eval-comparison}
+\end{align}
+For the first inequality, each group mean exceeds
+$2\operatorname{OPT}_t$ with probability at most $1/2$ by Markov's
+inequality. Taking a minimum over the independent groups and then a union
+bound over prefixes costs at most $n2^{-L}\le\zeta/4$.
+For the second, condition on all candidate trajectories. Each variable
+$d(A_a(u),P|_{V_u})-d(F_t^*|_{V_u},P|_{V_u})$ lies in
+$[-d(A_a(u),F_t^*|_{V_u}),d(A_a(u),F_t^*|_{V_u})]$.
+Hoeffding's inequality and a union bound over at most $Kn^2L$ comparisons
+give failure at most
+$2Kn^2L\exp(-g\gamma^2/2)\le\zeta/4$.
+If two lists have all coordinatewise differences in a fixed interval,
+the difference of their minima belongs to that interval. This proves
+\eqref{eq:improved-eval-comparison}. The zero-distance cases are exact.
+
+Fix a prefix where both events hold and a candidate $b$ with small proxy.
+For an input candidate, every group cost is nondecreasing, so
+$\widehat G_b(t)=\widehat f_t(A_b(t))$.
+Its distance to $F_t^*$ is at most
+$(R+1)\operatorname{OPT}_t<3\operatorname{OPT}_t$.
+Equation~\eqref{eq:improved-eval-comparison} therefore implies
+\[
+ \widehat G_b(t)
+ \le\widehat f_t(F_t^*)+(R-1+3\gamma)\operatorname{OPT}_t.
+\]
+For a majority candidate, let $F_u=F_t^*|_{V_u}$. The small proxy and
+Lemma~\ref{lem:improved-weighted-history} give, for every $u\le t$,
+\[
+ \operatorname{cost}_u(A_b(u))-\operatorname{cost}_u(F_u)
+ \le (R-1)\operatorname{OPT}_t.
+\]
+Also $\operatorname{cost}_u(F_u)\le\operatorname{OPT}_t$, so
+\[
+ d(A_b(u),F_u)
+ \le\operatorname{cost}_u(A_b(u))+\operatorname{cost}_u(F_u)
+ \le(R+1)\operatorname{OPT}_t<3\operatorname{OPT}_t.
+\]
+Equation~\eqref{eq:improved-eval-comparison} now implies
+\[
+ \widehat f_u(A_b(u))
+ \le\widehat f_u(F_u)+(R-1+3\gamma)\operatorname{OPT}_t
+ \le\widehat f_t(F_t^*)+(R-1+3\gamma)\operatorname{OPT}_t.
+\]
+The last inequality follows by restriction for every evaluation group
+and then for their minimum. Take the maximum over $u$ to obtain the
+same history bound as for the input candidate.
+Thus this bound holds in both cases and also bounds
+$\widehat M_t$.
+
+The phase rule gives
+$\widehat f_t(C_t)\le(1+\theta)\widehat M_t$.
+Combining this with \eqref{eq:improved-eval-comparison}, the preceding
+history bound, and
+$d(C_t,F_t^*)\le\operatorname{cost}_t(C_t)+\operatorname{OPT}_t$
+gives
+\[
+ (1-\gamma)\operatorname{cost}_t(C_t)
+ \le\left(R+4\gamma+\theta(R+1+3\gamma)\right)
+          \operatorname{OPT}_t.
+\]
+Here \eqref{eq:improved-eval-ceiling} bounds the term
+$\theta\widehat f_t(F_t^*)$. Since $R<2$,
+$\theta=\gamma=\varepsilon/40<1/80$, and
+\[
+ \frac{R+4\gamma+\gamma(R+1+3\gamma)}{1-\gamma}
+ =R+\frac{\gamma(2R+5+3\gamma)}{1-\gamma}
+ <R+10\gamma<R_*+\varepsilon,
+\]
+the approximation follows simultaneously at all prefixes, including
+zero-optimum prefixes. The total failure probability is at most
+$3\zeta/4$.
+
+Every empirical score and its history belongs to
+$g^{-1}\mathbb Z\cap[0,\binom n2]$. The exact-cost phase counting argument
+now gives at most
+\[
+ K\left(2+\left\lceil\log_{1+\theta}(g n^2)\right\rceil\right)
+ =O(K\varepsilon^{-1}\log(gn+2))
+\]
+outer switches on every execution. Add at most
+$Kq_{\rm A}\lceil\log_2n\rceil$ internal changes for each vertex.
+The parameter choices imply
+$\log(gn+2)=O(\log(2n/(\varepsilon\zeta)))$, which gives the theorem.
+\end{proof}
+
+\subsection{A stronger recourse bound with high probability}
+
+The factor $K$ in the switch bound can be replaced by $O(\log K)$
+if the selector is randomized. This gives a guarantee in expectation and
+with high probability, in addition to the preceding deterministic bound.
+
+At the start of each positive phase, assign independent uniformly random
+priorities to the candidates and select the lowest-priority eligible
+candidate. Keep that candidate until it becomes ineligible, and then
+choose the lowest-priority surviving eligible candidate. Use a fresh
+independent ordering at the next phase. Use the same rule with one fresh
+ordering in the initial zero-history stage. All these orderings are
+independent of the candidates and evaluation samples. At the start of a
+positive phase the chosen candidate can have history between $B$ and
+$(1+\theta)B$. This still gives exactly the selection inequality used in
+the approximation proof.
+
+\begin{theorem}\label{thm:improved-random-recourse}
+Use the estimated-history algorithm of
+Theorem~\ref{thm:improved-online-estimated} with the randomized selector
+above. Its approximation guarantee is unchanged. Write
+\[
+ J=2+\left\lceil\log_{1+\theta}(gn^2)\right\rceil,
+ \qquad H_K=\sum_{j=1}^K\frac1j.
+\]
+For every $\delta\in(0,1)$, with probability at least $1-\delta$,
+every vertex simultaneously has recourse at most
+\[
+ (e-1)JH_K+\log(1/\delta)
+       +Kq_{\rm A}\lceil\log_2n\rceil.
+\]
+Its expected recourse, and the expectation of the maximum recourse over
+vertices, are at most
+$JH_K+Kq_{\rm A}\lceil\log_2n\rceil$.
+In particular, the high-probability bound is
+\[
+ O_\eta\!\left(
+  \varepsilon^{-1}\log\frac{2n}{\varepsilon\zeta}
+       \log\left(2+\varepsilon^{-1}\log\frac{2n}{\zeta}\right)
+ +\varepsilon^{-1}\log\frac{2n}{\zeta}\log(n+2)
+ +\log\frac1\delta
+ \right).
+\]
+The approximation and this recourse bound hold jointly with probability
+at least $1-\zeta-\delta$. Applying the theorem with each failure
+parameter equal to half of a desired total failure probability gives a
+single simultaneous guarantee.
+\end{theorem}
+\begin{proof}
+Condition on every candidate trajectory and evaluation sample. All
+histories and phase boundaries are then fixed independently of the
+selector's random choices. During a phase the eligible sets are nested.
+Order the initially eligible candidates by the time at which they cease
+to be eligible, breaking ties deterministically and placing candidates
+that survive the phase at the end. Refine simultaneous removals into
+individual removals. Each candidate selected during the actual phase
+is also selected at some time during this refined removal process.
+The number of selections in the refined process is the number of
+right-to-left record minima in a uniform random permutation of the
+$r\le K$ candidate priorities.
+
+Let $N_r$ denote this number. Its distribution is a sum of independent
+Bernoulli variables with success probabilities $1,1/2,\ldots,1/r$.
+For completeness, the relative rank of the $j$th element of a uniform
+random permutation among its first $j$ elements is independent and
+uniform on $[j]$. The new element is a record precisely when this rank
+is one. Reading the permutation in reverse gives the stated distribution.
+Consequently,
+\[
+ \mathbb E N_r=H_r\le H_K,
+ \qquad
+ \mathbb E e^{N_r}
+ =\prod_{j=1}^r\left(1+\frac{e-1}{j}\right)
+ \le\exp((e-1)H_K).
+\]
+There are at most $J$ stages including the zero-history stage, and their
+random orderings are independent conditional on the trajectories.
+Writing $S$ for the number of output switches, the total number of
+selections bounds $S$, so
+\[
+ \mathbb E[S\mid\text{trajectories}]\le JH_K,
+ \qquad
+ \mathbb E[e^S\mid\text{trajectories}]
+ \le\exp((e-1)JH_K).
+\]
+Markov's inequality gives
+\[
+ \Pr[S>(e-1)JH_K+\log(1/\delta)
+        \mid\text{trajectories}]\le\delta.
+\]
+These inequalities hold for every conditioning and therefore hold
+unconditionally. The same switch count applies to every vertex. Adding
+the deterministic bound on internal identifier changes proves the
+simultaneous statement, the bound on the expected maximum, and the
+asymptotic expression.
+\end{proof}
+
+\subsection{Conditional transfer to an explicit dynamic solver}
+\label{sec:conditional}
+
+Suppose an explicit correlation-clustering solver has the hypothesis
+required by the draft's consensus reduction, namely simultaneous
+$\eta$-approximation with probability at least $1/2$ and expected prefix
+work at most $tT_{\mathcal D}(n)$ with $T_{\mathcal D}(n)=\operatorname{polylog}(n+2)$.
+The improved mixed-majority construction transfers to this setting.
+Use the preceding evaluation groups and double $K$ to
+$\lceil8\varepsilon^{-1}\log(4n/\zeta)\rceil$.
+Conditional on any sampled majority graph, its solver succeeds throughout
+the stream with probability at least $1/2$. Thus a candidate has a small
+proxy and successful solver with probability at least $\varepsilon/8$,
+and the same existence and estimated-history proof applies. The resulting
+competitive ratio is $R_*+\varepsilon$, with the update-time bound
+\[
+ O\!\left(
+  \varepsilon^{-3}\log^2\frac{2n}{\zeta}
+  \log\frac{2n}{\varepsilon\zeta}\cdot\operatorname{polylog}(n+2)
+ \right).
+\]
+This statement is conditional on the solver hypothesis. It does not
+supply the missing solver guarantees identified in the review.
+
+The graph queries needed by the reduction can be implemented explicitly.
+For $k\in\{5,15\}$ and $q=(k+1)/2$, the positive closed neighborhood is
+the union of the $\binom{k}{q}$ buckets formed by agreeing with the query
+vertex on a specified $q$-subset of sampled coordinates. To support exact
+uniform sampling with a worst-case bound, maintain buckets for all
+subsets $S\subseteq[k]$ of size at least $q$, ordered by vertex arrival
+index. There are 16 such buckets per vertex for $k=5$ and 16384 for $k=15$.
+These counts are absolute constants, although the latter substantially
+increases the constants in the update time and space.
+Let $B_S(v)$ denote the bucket containing $v$ and let $F_v(x)$ count its
+closed positive neighbors of arrival index at most $x$. Then
+\[
+ F_v(x)=\sum_{r=q}^k(-1)^{r-q}\binom{r-1}{q-1}
+              \sum_{\substack{S\subseteq[k]\\|S|=r}}
+                    |B_S(v)\cap[ x ]|.
+\]
+Indeed, a vertex agreeing in $d$ coordinates receives coefficient
+\[
+ \sum_{r=q}^d(-1)^{r-q}\binom{r-1}{q-1}\binom dr
+ =\mathbf1[d\ge q].
+\]
+For $d=q$ the sum is one, and its increment from $d$ to $d+1$ is
+$\binom d{q-1}(1-1)^{d-q+1}=0$ for $d\ge q$.
+Order-statistic trees evaluate $F_v(x)$ in $O(\log(n+2))$ time.
+The open-neighborhood prefix count is
+$F_v(x)-\mathbf1[\operatorname{index}(v)\le x]$.
+Choose a uniform integer rank in the open neighborhood and binary search
+$[n]$ for its vertex using these prefix counts. This takes
+$O(\log^2(n+2))$ worst-case time and samples exactly uniformly.
+Insertions and degree queries take $O(\log(n+2))$, and edge queries use
+$O(1)$ label comparisons. The extra logarithm in sampling is absorbed in
+the displayed polylogarithmic update-time factor.
+
+\section{A \texorpdfstring{$1.64+\varepsilon$}{1.64 + epsilon} approximation with the original seven samples}
+\label{sec:centered-finite}
+
+The approximation ratio can be improved without enlarging the sample.
+The seven-input majority used in the draft already gives
+$41/25+\varepsilon=1.64+\varepsilon$, with its original $35$ buckets per
+vertex. There is also a $5/3+\varepsilon$ implementation using only five
+sampled inputs and $\binom53=10$ buckets per vertex. Both conclusions
+hold for the offline and implicit fully dynamic algorithms, with the
+same candidate generation, repetition, evaluation, and maintenance
+procedures. The improvement comes from a sampling correction whose
+expectation is exactly zero, rather than an upper bound on the absolute
+cost of a sampled sign error.
+
+For odd $k$, define
+\[
+ \phi_k(s)=\sum_{j=(k+1)/2}^k\binom kj s^j(1-s)^{k-j},
+ \qquad t_k(s)=(1-2s)\phi_k(s),\quad 0\le s\le1.
+\]
+For a signed graph $H$, let $s_e$ be the consensus cost of following its
+sign on pair $e$. Thus the opposite sign has cost $1-s_e$, and the
+expected contribution of a uniformly sampled input partition is
+$z_e=2s_e(1-s_e)$.
+
+\begin{lemma}[A correction with zero expectation]
+\label{lem:centered-zero}
+If $H$ is the majority of $k$ independently sampled uniform input
+partitions, then $\mathbb E_H[t_k(s_e)]=0$ for every pair $e$.
+\end{lemma}
+\begin{proof}
+Write $m_e$ for the smaller of the two possible consensus costs on
+$e$, and $p=\phi_k(m_e)$. Except at a tie, where $t_k(s_e)=0$,
+$s_e=m_e$ with probability $1-p$ and $s_e=1-m_e$ with probability $p$.
+Oddness of $k$ gives $\phi_k(1-m_e)=1-p$, so
+\[
+ \mathbb E_H[t_k(s_e)]
+ =(1-p)(1-2m_e)p+p(2m_e-1)(1-p)=0.
+\]
+No independence between different edges is required.
+\end{proof}
+
+\begin{theorem}\label{thm:centered-finite}
+Let $C_H$ be a uniformly randomized Pivot candidate on the majority
+of $k$ independent uniform input samples. Let $P_J$ be an independently
+sampled uniform input partition. Either row of the following table
+satisfies
+\[
+ \beta\,\mathbb E[\operatorname{cost}(C_H)]
+ +(1-\beta)\,\mathbb E[\operatorname{cost}(P_J)]
+ \le\gamma\operatorname{OPT}.
+\]
+\[
+\begin{array}{c|c|c|c|c}
+ k&\beta&\lambda&\gamma&K_{\rm buck}\\\hline
+ 5&1/3&4/3&5/3&10\\
+ 7&9/25&29/20&41/25&35
+\end{array}
+\]
+Consequently the offline and implicit fully dynamic frameworks attain
+$\gamma+\varepsilon$ with probability at least $1-\zeta$, using the
+draft's asymptotic time and space bounds. In the dynamic setting this
+holds simultaneously at every update of the prescribed oblivious
+sequence.
+\end{theorem}
+\begin{proof}
+Fix one row of the table and put
+\begin{align*}
+ f(s)&=\beta(1-s)+(1-\beta)2s(1-s)+\lambda t_k(s),\\
+ g(s)&=\beta s+(1-\beta)2s(1-s)+\lambda t_k(s)
+      =f(s)-\beta(1-2s).
+\end{align*}
+We will establish the local inequalities
+\begin{align}
+ g(s)&\le\gamma\min(s,1-s),\quad 0\le s\le1,
+   \label{eq:finite-centered-pair}\\
+ f(s_1)+f(s_2)+f(s_3)&\le\gamma C_F
+   \label{eq:finite-centered-triplet}
+\end{align}
+for every bad triangle of $H$ and every reference partition $F$.
+Number its positive edges $1,2$ and its negative edge $3$. The triangle
+inequality for consensus distances gives $s_1+s_2+s_3\ge1$.
+The five possible local reference costs are
+\[
+\begin{split}
+ C_1&=s_1+s_2+1-s_3,\qquad
+ C_2=s_1+1-s_2+s_3,\qquad
+ C_3=1-s_1+s_2+s_3,\\
+ C_4&=3-s_1-s_2-s_3,\qquad
+ C_5=2-s_1-s_2+s_3.
+\end{split}
+\]
+
+Here are exact polynomial certificates for all the needed inequalities.
+The two polynomials $f$ are
+\begin{align*}
+ f_5(s)&=\frac13+s-\frac43s^2+\frac{40}{3}s^3
+             -\frac{140}{3}s^4+48s^5-16s^6,\\
+ f_7(s)&=\frac9{25}+\frac{23}{25}s-\frac{32}{25}s^2
+             +\frac{203}{4}s^4-\frac{2233}{10}s^5
+             +\frac{3451}{10}s^6-232s^7+58s^8.
+\end{align*}
+For a polynomial $p(s)$ on $[a,b]$, substitute $s=a+(b-a)x$.
+If the resulting power coefficients are $A_i$, its degree-$d$
+Bernstein coefficients are
+\[
+ B_j=\sum_{i=0}^j A_i\frac{\binom ji}{\binom di},
+ \qquad j=0,\ldots,d.
+\]
+The polynomial is at least $\min_j B_j$ throughout the interval.
+Define $q(s)=\gamma(1-s)-f(s)$. Direct rational arithmetic gives
+\[
+\begin{array}{c|c|c|c}
+ p(s)&[a,b]&\min B_j\ (k=5)&\min B_j\ (k=7)\\\hline
+ {}[\gamma s-g(s)]/s^2 &[0,1/2]&\text{see below}&221/1600\\
+ \gamma(1-s)-g(s)&[1/2,1]&5/18&457/1600\\
+ \gamma-f'(s)&[0,1/2]&1/5&761/1400\\
+ -\gamma-f'(s)&[1/2,1]&0&17/100\\
+ q(s)&[0,1/2]&1/3&99/320
+\end{array}
+\]
+Use the actual degree of each displayed polynomial: the degrees in
+these five rows are $(k-1,k+1,k,k,k+1)$. The first quotient extends
+polynomially at zero. For $k=5$, its Bernstein minima on $[0,1/4]$
+and $[1/4,1/2]$ are respectively $5/48$ and $11/48$.
+Thus \eqref{eq:finite-centered-pair} follows. These certificates also prove
+\[
+ f'(s)\le\gamma\quad(0\le s\le1),\qquad
+ f'(s)\le-\gamma\quad(1/2\le s\le1),\qquad
+ q(s)\ge0\quad(0\le s\le1/2).
+\]
+Since $q'=-\gamma-f'\ge0$ on $[1/2,1]$ and
+$f(1/2)=1/2$, they further give
+\begin{equation}
+ q(s)\ge(\gamma-1)/2>0\qquad(1/2\le s\le1).
+ \label{eq:centered-q}
+\end{equation}
+
+Consider first $C_1$. The gap $\gamma C_1-\sum_i f(s_i)$ is
+nondecreasing in $s_1,s_2$. Under $s_1+s_2+s_3\ge1$, it is enough
+to check the boundary $s_1+s_2=1-s_3$: decrease $s_1,s_2$ to that
+boundary while keeping them nonnegative. The certificates below prove
+the inequality on this enlarged domain; no other feasibility
+constraints are needed. Put $t=s_1+s_2$ and, when $t>0$,
+$w=(s_1-s_2)^2/t^2$. Then $0\le t,w\le1$ and the required gap is
+\[
+ P_k(t,w)=2\gamma t-f(1-t)
+     -f\left(\frac{t(1+\sqrt w)}2\right)
+     -f\left(\frac{t(1-\sqrt w)}2\right).
+\]
+Odd powers of $\sqrt w$ cancel, so this is a polynomial of bidegree
+$(k+1,(k+1)/2)$. If $f(s)=\sum_{i=0}^{k+1}a_i s^i$, an explicit
+formula without radicals is
+\begin{equation}
+ P_k(t,w)=2\gamma t-\sum_{i=0}^{k+1}a_i(1-t)^i
+ -\sum_{i=0}^{k+1}\sum_{j=0}^{\lfloor i/2\rfloor}
+      2^{1-i}a_i\binom i{2j}t^i w^j.
+ \label{eq:centered-P}
+\end{equation}
+The formula also handles $t=0$.
+
+For completeness, the following is an exact tensor Bernstein
+certificate for $P_k\ge0$ on the entire unit square. On a rectangle
+$[a,b]\times[c,d]$, substitute $t=a+(b-a)x$ and $w=c+(d-c)y$.
+If the resulting power coefficients are $A_{ij}$, the tensor
+Bernstein coefficients at bidegree $(D,E)=(k+1,(k+1)/2)$ are
+\[
+ B_{rs}=\sum_{i=0}^{r}\sum_{j=0}^{s}
+ A_{ij}\frac{\binom ri}{\binom Di}\frac{\binom sj}{\binom Ej}.
+\]
+Each value of the polynomial is a convex combination of these
+coefficients. The following nine rectangles cover $[0,1]^2$ and have
+strictly positive coefficient minima:
+\[
+\begin{array}{c|c|c|c}
+ {}[a,b]&[c,d]&\min B_{rs}\ (k=5)&\min B_{rs}\ (k=7)\\\hline
+ {}[0,1/4]&[0,1/2]&6213/32768&200354911/838860800\\
+ {}[0,1/4]&[1/2,1]&37433/196608&80256847/335544320\\
+ {}[1/4,3/8]&[0,1/4]&39163/1572864&4924796569/107374182400\\
+ {}[1/4,1/2]&[1/4,1/2]&1473/163840&14705001/2936012800\\
+ {}[1/4,1/2]&[1/2,1]&4169/122880&248019/10485760\\
+ {}[3/8,7/16]&[0,1/8]&6253/16777216&5077941423/1374389534720\\
+ {}[3/8,1/2]&[1/8,1/4]&1872017/150994944&19395179149/3006477107200\\
+ {}[7/16,1/2]&[0,1/8]&15889/33554432&260187801/375809638400\\
+ {}[1/2,1]&[0,1]&11/384&7247/409600
+\end{array}
+\]
+All entries are obtained directly from \eqref{eq:centered-P} and
+the displayed coefficient conversion. This proves the $C_1$ case;
+$C_2,C_3$ follow by permuting coordinates.
+
+For $C_4$, the gap is $q(s_1)+q(s_2)+q(s_3)\ge0$.
+For $C_5$, if $s_1\le1/2$, then $C_5\ge C_2$; if $s_2\le1/2$,
+then $C_5\ge C_3$. Otherwise $s_1,s_2\ge1/2$. Its gap is
+nondecreasing in $s_3$, since its derivative is $\gamma-f'(s_3)$.
+At $s_3=0$, \eqref{eq:centered-q} bounds the gap below by
+\[
+ q(s_1)+q(s_2)-f(0)\ge\gamma-1-\beta=1-2\beta>0,
+\]
+where both rows satisfy $\gamma=2-\beta$. This finishes the proof
+of \eqref{eq:finite-centered-triplet}.
+
+To sum these local inequalities, fix $H$ and a reference partition $F$.
+Let $D_e$ be Pivot's probability of opposing the sign of $e$. The
+exact Pivot identity from the draft is
+$D_e=\sum_{T\ni e}p_T/3$, where the sum is over bad triangles of $H$.
+Multiply \eqref{eq:finite-centered-pair} for $e$ by $1-D_e$ and
+\eqref{eq:finite-centered-triplet} for $T$ by $p_T/3$, and sum.
+Each reference edge cost, uniform-input contribution, and correction
+$\lambda t_k(s_e)$ receives total weight one. Consequently
+\[
+ \beta\,\mathbb E_{\rm piv}[\operatorname{cost}(C_H)]
+ +(1-\beta)\,\mathbb E_J[\operatorname{cost}(P_J)]
+ +\lambda\sum_e t_k(s_e)
+ \le\gamma\operatorname{cost}(F).
+\]
+Taking expectation over $H$ and applying Lemma~\ref{lem:centered-zero}
+cancels the last sum exactly. Choose $F$ optimal to obtain the theorem's
+expected-cost bound. The expected minimum of the two candidates is
+no larger than this convex combination. The draft's independent
+repetition and evaluation argument gives $\gamma+\varepsilon$ with
+failure probability $\zeta$; in the dynamic setting use the same
+fixed-update distribution and union bound as in the draft. All sample
+sizes here are fixed constants, giving the asserted time bounds.
+\end{proof}
+
+\subsection{Further finite-sample tradeoffs}
+
+The same proof gives three additional approximation factors, including
+$8/5+\varepsilon=1.6+\varepsilon$ with fifteen sampled inputs. The
+following rows can be added to Theorem~\ref{thm:centered-finite}:
+\[
+\begin{array}{c|c|c|c|c}
+ k&\beta&\lambda&\gamma&K_{\rm buck}\\\hline
+ 9&3/8&8/5&13/8&126\\
+ 13&39/100&9/5&161/100&1716\\
+ 15&2/5&9/5&8/5&6435
+\end{array}
+\]
+In every row $\gamma=2-\beta$, and $f,g,q,P_k$ retain exactly their
+preceding definitions. Here are all the additional univariate
+certificates needed in that proof. The degree conventions are unchanged.
+\[
+\begin{array}{c|c|c|c|c}
+ p(s)&[a,b]&\min B_j\ (k=9)&\min B_j\ (k=13)&\min B_j\ (k=15)\\\hline
+ {}[\gamma s-g(s)]/s^2 &[0,1/2]&89/280&101/200&15927/28160\\
+ \gamma(1-s)-g(s)&[1/2,1]&117/400&417/1400&47/160\\
+ \gamma-f'(s)&[0,1/2]&49/90&5599/8320&95/128\\
+ -\gamma-f'(s)&[1/2,1]&7/20&29/50&3/5\\
+ q(s)&[0,1/2]&59/200&199/700&9/32
+\end{array}
+\]
+For each $k$, the following rectangles cover the unit square and give
+positive tensor Bernstein coefficients for $P_k$, at the same
+bidegree $(k+1,(k+1)/2)$. They complete the certificate for the
+triplet inequality, so no new argument is required.
+\[
+\begin{array}{c|c|c|c}
+ k&[a,b]&[c,d]&\min B_{rs}\\\hline
+ 9 &[0,1/4]&[0,1/2]&25970139/83886080\\
+ 9 &[0,1/2]&[1/2,1]&13267/14745600\\
+ 9 &[1/4,3/8]&[0,1/4]&8242846289791/109951162777600\\
+ 9 &[1/4,1/2]&[1/4,1/2]&76076627/15099494400\\
+ 9 &[3/8,1/2]&[0,1/4]&1249243/314572800\\
+ 9 &[1/2,1]&[0,1]&1267/81920\\\hline
+ 13 &[0,1/4]&[0,1/2]&2792808933987/6871947673600\\
+ 13 &[0,1/2]&[1/2,1]&8763372747/610690662400\\
+ 13 &[1/4,1/2]&[0,1/2]&57195679509/8549669273600\\
+ 13 &[1/2,1]&[0,1]&3526147/293601280\\\hline
+ 15 &[0,1/4]&[0,1/2]&17437117345851/43980465111040\\
+ 15 &[0,1/2]&[1/2,1]&5669651969/858993459200\\
+ 15 &[1/4,1/2]&[0,1/4]&4082432264899/3078632557772800\\
+ 15 &[1/4,1/2]&[1/4,1/2]&1832498068713/879609302220800\\
+ 15 &[1/2,1]&[0,1]&8259643/1342177280
+\end{array}
+\]
+
+
+\subsection{A fixed factor without an accuracy parameter}
+\label{sec:fixed-ratio-improvement}
+
+The nine-sample bound $13/8$ gives a fixed approximation factor $41/25=1.64$
+with no accuracy parameter in the running time. This uses 126 buckets
+per vertex. The seven-sample result above retains 35 buckets and allows
+an arbitrary additive $\varepsilon$ instead.
+
+Here is an explicit amplification argument, also recording the
+evaluation guarantee used by the finite and asymptotic results.
+Set $\gamma_0=13/8$ and let $H_0=1$ for one offline instance, or
+$H_0=\max\{1,U\}$ for a dynamic stream of at most $U$ updates. Choose
+\[
+ \delta=\frac1{200},\qquad
+ T=\left\lceil400\log\frac{2H_0}{\zeta}\right\rceil,
+ \qquad
+ s=\left\lceil720000\log\frac{4TH_0}{\zeta}\right\rceil.
+\]
+Generate both candidates in each of $T$ independent trials, use a common
+independent sample of $s$ input partitions to estimate all their costs,
+and return a minimum empirical-cost candidate.
+
+For an instance with positive optimum, Markov's inequality gives a
+trial whose better candidate costs at most
+$(\gamma_0+\delta)\operatorname{OPT}$ with probability at least
+$\delta/(\gamma_0+\delta)\ge\delta/2=1/400$.
+The probability that any of the $H_0$ instances lacks such a trial is
+at most $\zeta/2$. For zero optimum, all inputs coincide and both types
+of candidates are exact.
+
+Condition on all candidate trajectories and choose a true minimum-cost
+candidate $C_0$ at each instance. Consider any candidate $C$ with
+$\operatorname{cost}(C)>(1+\delta)\operatorname{cost}(C_0)$ and put
+$R=d(C,C_0)$. An evaluation difference
+$d(C,P)-d(C_0,P)$ lies in $[-R,R]$. Its mean is greater than
+$\delta R/(2+\delta)$, since
+$R\le\operatorname{cost}(C)+\operatorname{cost}(C_0)$.
+Hoeffding's inequality bounds the probability that $C$ has empirical
+cost no greater than $C_0$ by
+$\exp(-s\delta^2/18)$, using $\delta\le1$.
+A union bound over at most $2TH_0$ comparisons costs at most $\zeta/2$.
+Thus, with probability at least $1-\zeta$, the chosen output satisfies
+\[
+ \operatorname{cost}(C)
+ \le(1+\delta)(\gamma_0+\delta)\operatorname{OPT}
+ =\frac{32763}{20000}\operatorname{OPT}
+ <\frac{41}{25}\operatorname{OPT}.
+\]
+The statement holds simultaneously at every update in the dynamic
+setting. The displayed sample constants are large; they are explicit
+sufficient bounds, not optimized implementation parameters.
+
+Since $\delta$ and the bucket count are fixed, the offline running time is
+\[
+ O\!\left(n\log^2\frac{n+2}{\zeta}\right).
+\]
+With the hashing implementation of Section~\ref{sec:hashing}, the
+expected amortized dynamic update time is
+\[
+ O\!\left(\log^2\frac{U+2}{\zeta}\,\log(N+2)\right),
+\]
+with worst-case $O(1)$ membership and same-cluster queries. More
+generally, the same fixed-slack argument applies to any fixed target
+strictly larger than a certified expected factor.
+
+\section{Polynomial dependence on the accuracy near \texorpdfstring{$11/7$}{11/7}}
+\label{sec:centered-poly}
+
+\subsection{The \texorpdfstring{$11/7+\varepsilon$}{11/7 + epsilon} guarantees}
+
+\begin{theorem}[Offline and implicit fully dynamic consensus clustering]
+\label{thm:eleven-sevenths}
+Assume the draft's constant-time access to input cluster labels,
+uniform sampling of input indices, and the word-RAM conventions of
+Section~\ref{sec:hashing}. For every
+$0<\varepsilon\le1$ and $0<\zeta<1$, there are randomized algorithms
+with the following guarantees.
+\begin{enumerate}
+\item Given $m$ input partitions of $n$ vertices, the offline algorithm
+returns a partition $C$ such that, with probability at least $1-\zeta$,
+\[
+ \operatorname{cost}(C)
+ \le\left(\frac{11}{7}+\varepsilon\right)\operatorname{OPT}.
+\]
+Its running time is
+\[
+ n\varepsilon^{-O(1)}
+       \log^2\frac{n+2}{\varepsilon\zeta}.
+\]
+\item Starting from the empty vertex set, the implicit fully dynamic
+algorithm supports every oblivious sequence of at most a known number
+$U\ge1$ of vertex insertions and deletions. With probability at least
+$1-\zeta$, its maintained partitions satisfy
+\[
+ \operatorname{cost}_t(C_t)
+ \le\left(\frac{11}{7}+\varepsilon\right)\operatorname{OPT}_t
+ \qquad\text{simultaneously after every update}.
+\]
+Writing $N$ for the maximum active size, its expected amortized update
+time is
+\[
+ \varepsilon^{-O(1)}
+       \log^2\frac{U+2}{\varepsilon\zeta}\,\log(N+2).
+\]
+Membership and same-cluster queries take $O(1)$ worst-case time.
+With $n_t$ active vertices, listing all vertex-label pairs takes
+$O(n_t+1)$ time, and the maintained data use
+\[
+ (n_t+1)\varepsilon^{-O(1)}
+       \log^2\frac{U+2}{\varepsilon\zeta}
+\]
+words of space, in addition to access to the input labels.
+\end{enumerate}
+The exponents hidden in $O(1)$ are absolute constants. The sample and
+bucket counts depend on $\varepsilon$, with a minimum sample size of
+87 in the certificate below.
+\end{theorem}
+
+\begin{proof}[Derivation from the single-trial bound]
+The charging argument below proves \eqref{eq:centered-main}.
+Set $\varepsilon_0=\min\{\varepsilon,1/2\}$ and choose the smallest
+odd integer $k$ satisfying
+\[
+ k\ge87,\qquad k\ge10\log\frac{144}{7\varepsilon_0}.
+\]
+Then one trial's better candidate has expected cost at most
+$\gamma_0\operatorname{OPT}$, where
+$\gamma_0=11/7+\varepsilon_0/2$.
+Let $H_0=1$ for the offline case and $H_0=U$ for the dynamic case.
+Choose independent trials and an independent common evaluation sample
+with parameters
+\[
+ \delta=\frac{\varepsilon_0}{8},\qquad
+ T=\left\lceil\frac{2}{\delta}\log\frac{2H_0}{\zeta}\right\rceil,
+ \qquad
+ s=\left\lceil\frac{18}{\delta^2}
+                  \log\frac{4TH_0}{\zeta}\right\rceil.
+\]
+At each instance or update, generate or maintain both candidates of
+every trial and select a candidate of minimum empirical cost.
+In the dynamic case, retain the samples throughout the stream and
+maintain the trial processes with pivot priorities independent of the
+evaluation sample, as in the draft.
+The amplification and evaluation argument in
+Section~\ref{sec:fixed-ratio-improvement} applies with these parameters.
+In particular, $\gamma_0+\delta<2$, so a trial has cost at most
+$(\gamma_0+\delta)\operatorname{OPT}$ with probability at least
+$\delta/2$. Independent repetition and a union bound over the $H_0$
+instances bound the probability of lacking such a candidate by
+$\zeta/2$. Conditional on all candidate trajectories, the evaluation
+sample selects a candidate within a factor $1+\delta$ of the best
+true candidate cost at all $H_0$ instances, except with probability
+$\zeta/2$. Consequently the output factor is at most
+\[
+ (1+\delta)(\gamma_0+\delta)
+ =\frac{11}{7}+\frac{23}{28}\varepsilon_0
+                 +\frac{5}{64}\varepsilon_0^2
+ <\frac{11}{7}+\varepsilon_0
+ \le\frac{11}{7}+\varepsilon.
+\]
+Zero-optimum instances are exact, as all input partitions coincide.
+The dynamic conclusion uses the exact maintenance of each trial and
+the fixed-update distribution on an oblivious stream.
+
+Here $k=O(\log(2/\varepsilon))$ and
+$K_{\rm buck}=\binom{k}{(k+1)/2}\le2^k=\varepsilon^{-O(1)}$.
+The draft's bucket implementation has polynomial dependence on $k$
+and $K_{\rm buck}$. Combining this dependence with the values of
+$T,s$ and the hashing implementation in Section~\ref{sec:hashing}
+gives the stated running-time, space, and query bounds. The dynamic
+time bound is an unconditional expectation over the algorithm's
+randomness.
+\end{proof}
+
+\subsection{The single-trial estimate}
+
+The earlier exponential dependence on accuracy can be replaced by a polynomial. The new ingredient
+is a signed correction whose expectation is exactly zero. This makes it
+possible to retain the cancellation between the correct and incorrect
+sampled signs, rather than paying for the incorrect signs alone.
+
+Use the scaled correction $T_k=18t_k$ from Section~\ref{sec:centered-finite}.
+For odd $k$, define
+\[
+ \phi_k(s)=\sum_{j=(k+1)/2}^k\binom{k}{j}s^j(1-s)^{k-j},
+ \qquad T_k(s)=18(1-2s)\phi_k(s).
+\]
+For every odd $k\ge87$, we prove the single-trial bound
+\begin{equation}
+ \frac37\mathbb E[\operatorname{cost}(C_H)]
+ +\frac47\mathbb E[\operatorname{cost}(P_J)]
+ \le \left(\frac{11}{7}+\frac{72}{7}e^{-k/10}\right)
+              \operatorname{OPT},
+ \label{eq:centered-main}
+\end{equation}
+where $H$ is the majority graph of $k$ independent uniformly sampled
+input partitions, $C_H$ is Pivot on that graph, and $P_J$ is an independent
+uniform input. In particular, $k=O(\log(1/\tau))$ suffices for expected
+factor $11/7+\tau$. The clique-bucket count is then polynomial in
+$1/\tau$, improving the earlier exponential dependence.
+
+\subsection{Univariate inequalities and exact certificates}
+
+The following inequalities hold for every odd $k\ge87$:
+\begin{align}
+ T_k(s)&\le8s^2 &&(0\le s\le1/2),\label{eq:centered-pair-bound}\\
+ T_k(s)&\le8(1-s)^2 &&(0\le s\le1),\label{eq:centered-allflip-bound}\\
+ 16s-8s^2+T_k(s)&\le13/2 &&(0\le s\le1),
+       \label{eq:centered-singleton-bound}\\
+ T_k(s)&\le8(s-1/4)^2+18e^{-k/10} &&(0\le s\le1).
+       \label{eq:centered-critical-bound}
+\end{align}
+Here are finite exact certificates and their extension to all such $k$.
+If $k=2h+1$, a binomial calculation gives
+\[
+ \phi_{k+2}(s)-\phi_k(s)
+ =\binom{k}{h}s^{h+1}(1-s)^{h+1}(2s-1).
+\]
+Consequently $T_{k+2}(s)\le T_k(s)$ on the entire interval $[0,1]$.
+Thus the first three inequalities follow from the corresponding
+certificates for $k=13$ below. For a polynomial
+$p(s)=\sum_{i=0}^d a_i s^i$ on an interval $[l,h]$, put
+\[
+ c_i=(h-l)^i\sum_{j=i}^d a_j\binom ji l^{j-i},\qquad
+ b_j=\sum_{i=0}^j c_i\frac{\binom ji}{\binom di}.
+\]
+Then $b_j$ are its Bernstein coefficients after mapping $[l,h]$ to
+$[0,1]$. The coefficients of $\phi_k$ used in this calculation are
+\[
+ {}[s^j]\phi_k(s)=
+ \begin{cases}
+ 0,&j<(k+1)/2,\\
+ (-1)^{j-(k+1)/2}\binom kj\binom{j-1}{(k-1)/2},&j\ge(k+1)/2.
+ \end{cases}
+\]
+All computations in the following table are rational. In the rows
+listing two intervals, the bound holds for every coefficient on both
+intervals. The first quotient extends polynomially at zero.
+\[
+\begin{array}{c|c|c|c}
+ p(s)&d&[l,h]&\hbox{lower bound on every }b_j\\\hline
+ 8-T_{13}(s)/s^2&12&[0,1/2]&17/20\\
+ 8(1-s)^2-T_{13}(s)&14&[0,1/2],\ [1/2,1]&21269/13312\\
+ 13/2-16s+8s^2-T_{13}(s)&14&[0,1/2],\ [1/2,1]&1301/13312\\
+ 8(s-1/4)^2-T_{87}(s)&88&[17/64,49/128],\ [49/128,1/2]&1/1000
+\end{array}
+\]
+The first three rows prove
+\eqref{eq:centered-pair-bound}--\eqref{eq:centered-singleton-bound}.
+The last row and monotonicity in $k$ prove
+$T_k(s)\le8(s-1/4)^2$ for $17/64\le s\le1/2$.
+For $s\ge1/2$, $T_k(s)\le0$. For $0\le s\le17/64$, Hoeffding's
+inequality gives
+\[
+ T_k(s)\le18\phi_k(s)
+ \le18\exp\bigl(-2k(1/2-s)^2\bigr)
+ \le18e^{-225k/2048}\le18e^{-k/10}.
+\]
+These three cases prove \eqref{eq:centered-critical-bound}.
+
+\subsection{Local charging with the centered correction}
+
+Fix an arbitrary complete signed graph $H$. For each pair $e$, let
+$s_e$ be the consensus cost of following its sign in $H$,
+$z_e=2s_e(1-s_e)$, and $c_e$ its cost in a reference partition $F$.
+The corrected pair inequality is
+\begin{equation}
+ 3s_e+4z_e+T_k(s_e)\le11c_e.
+ \label{eq:centered-pair}
+\end{equation}
+It suffices to consider $c_e=\min(s_e,1-s_e)$. If $s_e\le1/2$,
+the left side minus $11c_e$ is
+$-8s_e^2+T_k(s_e)\le0$. If $s_e\ge1/2$, use
+$\phi_k(s_e)\ge1/2$ and hence $T_k(s_e)\le9-18s_e$.
+The difference is then at most $4s_e-8s_e^2-2\le0$.
+
+For a bad triplet of $H$, number its positive edges 1 and 2 and its
+negative edge 3, and put $S=s_1+s_2+s_3$. Consensus triangle
+inequalities give $S\ge1$. We will show, for every reference
+partition's local cost $C_F$, that
+\begin{equation}
+ \sum_{i=1}^3\{3(1-s_i)+4z_i+T_k(s_i)\}
+ \le(11+72e^{-k/10})C_F.
+ \label{eq:centered-triplet}
+\end{equation}
+Subtract $11C_F$ from the left side and call the result $G$.
+There are five possible reference partitions.
+
+First consider $C_F=a+b+1-r$, where $(a,b,r)$ is a permutation of
+$(s_1,s_2,s_3)$. These are the three partitions that reverse exactly
+one of the bad triplet's signs. Write $d=a+b+r-1\ge0$.
+For every $r\in[0,1]$ we have
+$T_k(r)\le9-18r$: below $1/2$ use $\phi_k(r)\le1/2$, and above
+$1/2$ reverse the inequality when multiplying by $1-2r$.
+Expanding around $(a,b,r)=(1/4,1/4,1/2)$ gives
+\begin{align*}
+ G
+ &=-2-6a-6b+16r-8(a^2+b^2+r^2)
+                  +T_k(a)+T_k(b)+T_k(r)\\
+ &\le -10d-8\bigl((a-1/4)^2+(b-1/4)^2+(r-1/2)^2\bigr)
+                  +T_k(a)+T_k(b)\\
+ &\le36e^{-k/10}-8(r-1/2)^2-10d.
+\end{align*}
+If $r\le3/4$, then $C_F\ge2(1-r)\ge1/2$, and therefore
+$G\le72e^{-k/10}C_F$. If $r>3/4$, the last upper bound is
+strictly less than $36e^{-k/10}-1/2<0$ for $k\ge87$.
+
+For the reference partition reversing all three signs,
+$C_F=3-S$. Its gap is
+\[
+ G=\sum_{i=1}^3\{T_k(s_i)-8(1-s_i)^2\}\le0
+\]
+by \eqref{eq:centered-allflip-bound}.
+For the all-singletons partition, $C_F=2-s_1-s_2+s_3$, giving
+\[
+ G=-13+\sum_{i=1}^2\{16s_i-8s_i^2+T_k(s_i)\}
+                  -6s_3-8s_3^2+T_k(s_3).
+\]
+Each braced term is at most $13/2$ by
+\eqref{eq:centered-singleton-bound}. The remaining term is nonpositive:
+for $s_3\le1/2$ use \eqref{eq:centered-pair-bound}, and for
+$s_3\ge1/2$ use $T_k(s_3)\le0$. This proves
+\eqref{eq:centered-triplet} in all cases.
+
+\subsection{Cancellation in expectation and consequences}
+
+Multiply \eqref{eq:centered-pair} by $1-D_e$, where $D_e$ is Pivot's
+probability of opposing pair $e$, and multiply each corrected triplet
+inequality by $p_t/3$ as in the exact pair identity. Summing gives
+\[
+ 3\mathbb E_{\rm piv}[\operatorname{cost}(C_H)]
+ +4\mathbb E_J[\operatorname{cost}(P_J)]
+ +\sum_e T_k(s_e)
+ \le(11+72e^{-k/10})\operatorname{cost}(F).
+\]
+Every correction receives total weight one, since
+$(1-D_e)+\sum_{t\ni e}p_t/3=1$. This identity is the reason to add
+the same correction to both local inequalities.
+
+Now take $H$ to be the majority graph of $k$ independently sampled
+inputs. For each pair put $m=\min(w_e^+,w_e^-)$ and $u=1-2m$.
+Following the sampled sign costs $m$ with probability $1-\phi_k(m)$
+and $1-m$ with probability $\phi_k(m)$. Since
+$\phi_k(1-m)=1-\phi_k(m)$,
+\begin{align*}
+ \mathbb E_H[T_k(s_e)]
+ &=18u\phi_k(m)(1-\phi_k(m))
+   -18u(1-\phi_k(m))\phi_k(m)=0.
+\end{align*}
+Taking expectation, choosing $F$ optimal, and dividing by seven proves
+\eqref{eq:centered-main}.
+
+Given $0<\tau\le1/4$, choose the smallest odd integer satisfying
+\[
+ k\ge87,\qquad k\ge10\log\frac{72}{7\tau}.
+\]
+The expected better candidate has cost at most $(11/7+\tau)\operatorname{OPT}$.
+The number of clique buckets per vertex obeys
+\[
+ K_{\rm buck}=\binom{k}{(k+1)/2}\le2^k
+ \le 2^{89}+4\left(\frac{72}{7\tau}\right)^{10\log 2}
+ =\tau^{-O(1)}.
+\]
+The very large absolute constant arising from $k\ge87$ should be
+kept in view. This result establishes polynomial accuracy dependence;
+it is not intended as a practical small-constant implementation.
+
+Using the same independent repetition and evaluation as the draft gives
+$(11/7+\tau+\varepsilon)$ approximation with failure probability
+$\zeta$. The bucket operations and the maintenance bounds are polynomial
+in $k$ and $K_{\rm buck}$. Thus, with the hashing improvement, the offline
+running time is
+\[
+ \tau^{-O(1)}\,n\varepsilon^{-3}
+       \log^2\frac{n+2}{\varepsilon\zeta},
+\]
+and expected amortized implicit update time is
+\[
+ \tau^{-O(1)}\,\varepsilon^{-3}
+       \log^2\frac{U+2}{\varepsilon\zeta}\log(N+2).
+\]
+Membership and same-cluster queries remain worst-case $O(1)$ under the
+stated word-RAM assumptions. For $0<\varepsilon\le1/2$, choosing $\tau=\varepsilon/2$ and using
+$\varepsilon/2$ for repetition and evaluation gives a
+$(11/7+\varepsilon)$ approximation with polynomial dependence on
+$1/\varepsilon$, near-linear offline time, and polylogarithmic dynamic
+update time.
+
+For larger requested errors, run the construction at error $1/2$.
+
+\section{A logarithmic improvement in fully dynamic update time}
+\label{sec:hashing}
+
+Let $T$ be the number of trials, let $s$ be the evaluation-sample size,
+and put $\ell_t=\log(n_t+2)$, where
+$n_t=\max\{|V_{t-1}|,|V_t|\}$. In the standard word-RAM model, the
+implicit fully dynamic algorithm can be implemented with expected total
+time
+\[
+ O\!\left(Ts+T\sum_{t=1}^{u}(s\ell_t+\ell_t^2)\right)
+\]
+through any prefix of $u\le U$ updates. Its membership and same-cluster
+queries take $O(1)$ worst-case time. Its approximation distribution and
+space bound $O(Ts(n+1))$ with $n$ active vertices are preserved.
+
+Here the word-RAM assumption is that vertex identifiers and input labels
+are constant-word keys and standard constant-time universal hashing is
+available. Integers up to $O(s(N+2)^2)$ and candidate-array indices
+fit in a constant number of words. The bucket count is a fixed constant;
+this includes every fixed-sample construction in Section~\ref{sec:centered-finite}. The random-ranking comparison convention from the draft is
+retained. All dictionary randomness is independent of the samples and
+pivot rankings.
+
+The only new data-structural ingredient is dynamic perfect hashing. The
+dictionary of Dietzfelbinger, Karlin, Mehlhorn, Meyer auf der Heide,
+Rohnert, and Tarjan supports exact lookup in worst-case constant time,
+insertion and deletion in expected amortized constant time, and linear
+space. Its randomness affects running time and never changes a returned
+key or value. Constant-size tuples of word keys can be encoded with a
+constant-factor increase in word size. This is a Las Vegas dictionary.
+See \cite{perfecthash}.
+
+Use this dictionary for the nonzero block-intersection counters
+$b_{j,p,b}$ and block sizes. Keep the balanced trees that are ordered by
+owner priority and the priority queue used by pivot repair. In
+particular, no replacement is made for a data structure that must support
+an ordered operation. Maintain a global vertex dictionary that maps each
+active vertex identifier to a stable record containing an array of its
+current owner or input label in every candidate. Keep these records in a
+linked list for enumeration.
+
+Fix the full input sequence and condition on every sampled partition
+index, every evaluation index, and every pivot priority. Resolve all
+algorithmic ties by fixed identifiers. The complete sequence of owners,
+counter keys, and dictionary requests is then independent of dictionary
+randomness. Dictionary relocation changes physical locations but stable
+record pointers are retained. Consequently, the expected aggregate cost
+of all dictionary operations is a constant times their number, even
+though that number and the sequence depend on the conditioned sampling
+and pivot randomness. Averaging afterward gives the same bound without
+conditioning.
+
+For one Pivot candidate let $B_t$ count intermediate owner reports,
+including insertion/deletion of the updated vertex, as in the draft.
+The owner-reporting lemma gives
+$\mathbb E B_t=O(\ell_t)$ and the pivot-sensitivity lemma gives
+$\mathbb E F_t=O(1)$. The ordered owner-index work is
+\[
+ O\!\left(\sum_{t=1}^{u}(B_t+F_t+1)\ell_t\right).
+\]
+Its expectation is $O(\sum_t\ell_t^2)$. The pivot and certificate work
+is $O(\sum_t\ell_t)$ in expectation for the constant bucket count.
+Every insertion, deletion, or owner report causes $O(s)$ exact dictionary
+operations and $O(s)$ arithmetic operations on score counters. Therefore
+the expected aggregate score work is
+\[
+ O\!\left(s\sum_{t=1}^{u}(\mathbb E B_t+1)\right)
+ =O\!\left(s\sum_{t=1}^{u}\ell_t\right).
+\]
+A sampled-input candidate costs $O(s)$ expected amortized time per
+update. Summing over all trials, adding initialization, reading sampled
+labels, and the $O(T)$ minimum-score selection per update proves the
+claimed bound.
+
+Let
+\[
+ \Lambda=\log\frac{U+2}{\varepsilon\zeta},\qquad
+ T=\Theta(\varepsilon^{-1}\Lambda),\qquad
+ s=\Theta(\varepsilon^{-2}\Lambda).
+\]
+The stream starts empty, hence $N\le U$. Since
+$\varepsilon\le1$ and $\zeta<1$, we have
+$s=\Omega(\log(N+2))$. Thus the ordered-index term is absorbed into the
+score term and the expected amortized update time becomes
+\[
+ O\!\left(\varepsilon^{-3}\Lambda^2\log(N+2)\right).
+\]
+This saves a factor $\log(N+2)$ over the draft's update bound.
+
+A membership query reads the selected candidate index, looks up the
+vertex in the global perfect-hash dictionary, and returns the appropriate
+entry of its label array. These are worst-case constant-time operations.
+Two such lookups and a label comparison answer a same-cluster query.
+Enumerating the linked list gives all vertex-label pairs in $O(n+1)$
+time. Since dictionary operations are exact, none of these changes
+introduces an approximation failure event or requires reducing $\zeta$.
+
+\paragraph{Combined guarantees.}
+The seven-sample algorithm gives simultaneous
+$(1.64+\varepsilon)$ approximation with probability at least
+$1-\zeta$, expected amortized update time
+$O(\varepsilon^{-3}\Lambda^2\log(N+2))$, worst-case $O(1)$ membership
+and same-cluster queries, and $O(n+1)$ time to list all vertex-label
+pairs. The fifteen-sample variant gives $1.6+\varepsilon$ with the
+same asymptotic bounds and larger constants.
+
+The construction in Section~\ref{sec:centered-poly} gives
+$11/7+\varepsilon$ approximation in
+\[
+ n\varepsilon^{-O(1)}\log^2\frac{n+2}{\varepsilon\zeta}
+\]
+offline time and
+\[
+ \varepsilon^{-O(1)}\log^2\frac{U+2}{\varepsilon\zeta}\log(N+2)
+\]
+expected amortized implicit update time. Its active space is
+$(n+1)\varepsilon^{-O(1)}\log^2((U+2)/(\varepsilon\zeta))$.
+The key-processing cost and bucket multiplicities are included in
+the polynomial factors. Vertex-identifier lookups, stored score
+arithmetic, and addressing the allocated data structures have the
+word-RAM conventions stated above. Query and listing bounds are
+unchanged. Section~\ref{sec:fixed-ratio-improvement} gives the
+separate fixed-factor $1.64$ guarantee with no accuracy parameter.
+
+\section{How the techniques differ from the draft}
+\label{sec:technique-comparison}
+
+Draft lemma and equation numbers refer to the compiled \texttt{main.tex}.
+The explicit dynamic lemmas appear in Appendix~B.
+
+\paragraph{Weighted online history bound.}
+Draft Lemma~3.1 (History bound for a triple candidate) bounds the
+partition distance in Eq.~(13) and then charges $\eta+1$ for every pair
+on which the majority graph disagrees with the reference partition $F$.
+Lemma~\ref{lem:improved-weighted-history} bounds the consensus cost
+difference directly. If the candidate reverses $F$ on pair $e$, its cost
+changes by $1-2p_e$, where $p_e$ is the fraction of inputs disagreeing
+with $F$ on that pair. Adding the solver's error bound on the signed
+graph gives a charge of $\eta+1-2p_e$ per majority error. The bound
+applies at every earlier prefix against the restriction of $F$, so it
+also controls the maximum over those prefixes.
+
+\paragraph{Improved online competitive ratio.}
+Draft Lemma~3.2 (Expected history score) uses three distinct sampled
+inputs and the bound $3p_e^2$ on a majority error. Together with draft
+Lemma~3.1, this gives a majority-candidate history bound of
+$\operatorname{OPT}_t+3(\eta+1)X_t$, where $X_t=\sum_e p_e^2$ for an
+optimal reference partition. Lemma~\ref{lem:improved-majority} uses
+five or fifteen samples drawn with replacement and bounds the \emph{weighted}
+error by $2\eta p_e^2$. The majority-candidate bound therefore becomes
+$\operatorname{OPT}_t+2\eta X_t$. The input candidate still has expected
+cost $2\operatorname{OPT}_t-2X_t$, as in draft Eq.~(14).
+Theorem~\ref{thm:improved-online-exact} balances the two bounds with input
+probability $\eta/(\eta+1)$ and uses the amplification and phase selection
+of draft Lemmas~3.3--3.4. This changes the ratio from
+$2-2/(3\eta+5)+\varepsilon$ to $2-1/(\eta+1)+\varepsilon$ with the same
+Online Agreement solver. When $\eta\ge16/3$, the variant in
+Section~\ref{sec:improved-online} obtains the same weighted error bound
+using only majorities of five or seven samples.
+
+\paragraph{Online recourse independent of the input count.}
+Draft Lemma~3.5 (Per-vertex recourse) starts the phase count at $1/m$,
+the smallest possible positive exact score.
+Theorem~\ref{thm:improved-online-estimated} uses the minimum of independent
+group means from draft Lemmas~B.6--B.8 with the deterministic Online
+Agreement candidates. Draft Lemma~B.6 compares a candidate and $F_t^*$
+at the same prefix $t$. Equation~\eqref{eq:improved-eval-comparison}
+also compares a candidate at $u$ with $F_t^*|_{V_u}$ for every $u\le t$.
+These comparisons let the weighted bound from
+Lemma~\ref{lem:improved-weighted-history} control the estimated history.
+The grid of scores has spacing $1/g$, where $g$ is the group size, so
+the logarithm in the phase count depends on $g$ in place of $m$.
+
+\paragraph{Fewer switches within an online phase.}
+Draft Lemma~3.5 allows up to $K$ outer switches per phase because
+eligibility is monotone within a phase.
+Theorem~\ref{thm:improved-random-recourse} uses a fresh random order in
+each phase and chooses the first eligible candidate in that order.
+Given the elimination order, the number of selections is bounded by
+the number of record minima. Its mean is at most
+$H_K=O(\log(K+1))$ per phase, and its exponential moment gives a tail
+bound for the total across phases. The selection inequality from draft
+Lemma~3.4 still applies to any eligible choice. Changes within the
+solver copies are counted separately as in draft Lemma~3.5.
+
+\paragraph{Conditional transfer to explicit dynamic consensus.}
+Draft Lemma~B.1 uses the triple candidates in the reduction, and
+Lemmas~B.5--B.8 combine the proxy, solver success, and estimated score
+comparison. Section~\ref{sec:conditional} substitutes the weighted
+proxy based on Lemmas~\ref{lem:improved-majority}
+and~\ref{lem:improved-weighted-history}, so the reduction gives
+$2-1/(\eta+1)+\varepsilon$ under the solver hypothesis. In the draft,
+the pairwise intersections of the three buckets coincide, which allows
+sampling a uniform neighbor in $O(\log(n+2))$ time. The larger majorities
+use inclusion-exclusion over ordered buckets to count neighbors in an
+arrival-index prefix. Binary search for a uniform rank takes
+$O(\log^2(n+2))$ time, which fits the polylogarithmic factor in the
+update bound of draft Lemma~B.1.
+
+\paragraph{A better bound for the original seven-sample algorithm.}
+Draft Lemma~4.3 (Exact pair identity) expresses the probability $D_e$
+that Pivot opposes the sampled sign as a sum of bad-triangle weights.
+Draft Lemmas~4.4--4.5 then bound positive corrections caused by sampling,
+including the saving for unanimous errors. Draft Lemmas~4.6--4.7 use
+the resulting sampling penalty in their pair and triangle bounds for
+the full majority graph. Equations~\eqref{eq:finite-centered-pair}
+and~\eqref{eq:finite-centered-triplet} instead use the sampled sign costs
+and add the same term $\lambda t_k(s_e)$ to both bounds. Draft
+Lemma~4.3 gives that term total weight one, and
+Lemma~\ref{lem:centered-zero} cancels it in expectation. For $k=7$,
+the new certificates give expected factor $41/25$ in
+Theorem~\ref{thm:centered-finite}. The repetition and evaluation steps
+from draft Theorem~4.1 then give $1.64+\varepsilon$ in place of
+$1.6944+\varepsilon$ with the original 35 buckets.
+
+\paragraph{Approximation tradeoffs at other fixed sample sizes.}
+Draft Lemma~4.6 certifies a pair inequality and a triangle inequality
+for seven samples. Theorem~\ref{thm:centered-finite} and its finite-sample
+extension certify \eqref{eq:finite-centered-pair}--\eqref{eq:finite-centered-triplet}
+with different $(\beta,\lambda)$ at each sample size. Five samples
+give $5/3+\varepsilon$ with ten buckets. Nine, thirteen, and fifteen
+samples give $1.625+\varepsilon$, $1.61+\varepsilon$, and
+$1.6+\varepsilon$ with 126, 1716, and 6435 buckets, respectively.
+The sampled-majority graph uses $\binom{k}{(k+1)/2}$ buckets per vertex
+in the representation analyzed by draft Lemma~4.2, so these choices
+change the constants in the time and space bounds.
+
+\paragraph{A fixed factor of $1.64$.}
+The proof of draft Theorem~4.1 amplifies the single-trial bound in
+Eq.~(22) and estimates candidate costs with accuracy set by
+$\varepsilon$. Section~\ref{sec:fixed-ratio-improvement} applies those
+steps to the nine-sample expected factor $13/8$. With fixed slack
+$\delta=1/200$, amplification and evaluation give
+$(1+\delta)(13/8+\delta)=1.63815<1.64$. The gap between $13/8$ and $1.64$
+thus lets us fix the accuracy used to set the trial count and
+evaluation sample size.
+
+\paragraph{The $11/7+\varepsilon$ guarantee.}
+Draft Lemmas~4.6--4.7 prove a bound for a fixed sample size. For growing
+odd $k$, \eqref{eq:centered-pair}--\eqref{eq:centered-triplet} replace
+those local inequalities using $18t_k(s)$ in the charges scaled by
+seven. The potentially tight triangle has sign costs $(1/4,1/4,1/2)$.
+Equation~\eqref{eq:centered-critical-bound} absorbs the corrections on
+the first two edges into quadratic slack up to $O(e^{-k/10})$, and the
+third edge uses $18t_k(r)\le9-18r$. Summing with the weights from draft
+Lemma~4.3 and applying Lemma~\ref{lem:centered-zero} gives the
+single-trial bound \eqref{eq:centered-main}. The loss above $11/7$ is
+$O(e^{-k/10})$, improving the $O(k^{-1/2})$ loss in earlier versions
+of these notes. Theorem~\ref{thm:eleven-sevenths} reaches
+$11/7+\varepsilon$ with $k=O(\log(2/\varepsilon))$ and a bucket count
+polynomial in $1/\varepsilon$.
+
+\paragraph{Faster implicit score maintenance.}
+Draft Lemmas~4.8--4.12 supply exact Pivot maintenance, its time bound,
+and the expected number of owner reports. Draft Lemma~4.13 (Maintaining
+a candidate and its score) performs $O(s)$ counter operations per
+report, paying $O(\log(n_t+2))$ for each one in a balanced dictionary.
+Section~\ref{sec:hashing} uses exact dynamic perfect hashing for the
+counters and retains the ordered owner indexes. With
+$\ell_t=\log(n_t+2)$ as defined there, the expected amortized score
+work per update drops from $O(s\ell_t^2)$ to $O(s\ell_t)$ for a fixed
+bucket count. The separate $O(\ell_t^2)$ ordered-index work fits within
+$O(s\ell_t)$ because $s=\Omega(\log(N+2))$. This removes one factor
+of $\log(N+2)$ from the update bound in draft Theorem~2.2.
+
+\paragraph{Constant-time implicit queries.}
+The membership lookup in the proof of draft Theorem~2.2 searches the
+selected candidate's balanced dictionary in $O(\log(n+2))$ time for
+$n$ active vertices. Section~\ref{sec:hashing} uses one perfect-hash
+lookup to find the vertex record and an array access at the selected
+candidate index to read its label. This gives worst-case $O(1)$
+membership on a word RAM. Two lookups and one label comparison give
+the same bound for same-cluster queries.
+
+\begin{thebibliography}{9}
+\bibitem{acn}
+Nir Ailon, Moses Charikar, and Alantha Newman.
+\emph{Aggregating Inconsistent Information: Ranking and Clustering}.
+Journal of the ACM 55(5), Article 23, 2008.
+\url{https://doi.org/10.1145/1411509.1411513}.
+
+\bibitem{online}
+Vincent Cohen-Addad, Silvio Lattanzi, Andreas Maggiori, and Nikos Parotsidis.
+\emph{Online and Consistent Correlation Clustering}.
+Proceedings of ICML, PMLR 162, 4157--4179, 2022.
+Theorems E.2 and F.1.
+\url{https://proceedings.mlr.press/v162/cohen-addad22a.html}.
+
+\bibitem{perfecthash}
+Martin Dietzfelbinger, Anna Karlin, Kurt Mehlhorn, Friedhelm Meyer auf
+der Heide, Hans Rohnert, and Robert E. Tarjan.
+\emph{Dynamic Perfect Hashing: Upper and Lower Bounds}.
+SIAM Journal on Computing 23(4), 738--761, 1994.
+\url{https://doi.org/10.1137/S0097539791194094}.
+\end{thebibliography}
+\end{document}

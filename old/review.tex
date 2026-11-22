@@ -1,0 +1,186 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=0.9in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+\newcommand{\loc}[2]{\textit{#1, lines #2.}}
+\newcommand{\mt}[1]{\loc{\texttt{main.tex}}{#1}}
+\newcommand{\ed}[1]{\loc{\texttt{explicit\_dynamic.tex}}{#1}}
+
+\begin{document}
+
+{\LARGE\bfseries Proof review}\\[0.3em]
+{\large Consensus Clustering below Two}
+
+\section*{Scope and assessment}
+
+I reviewed the online, offline, implicit fully dynamic, and explicit
+insertion-only results in the current \texttt{main.tex}, including the
+explicit algorithm and its macros. Line numbers refer to the draft as
+reviewed.
+
+The online history bound and per-vertex recourse analysis check out with
+the cited Online Agreement guarantees. I verified the offline charging
+constants, Bernstein coefficients, and boundary factorization in exact
+arithmetic. I found no substantive gap in the offline approximation or
+the implicit fully dynamic maintenance argument. The explicit consensus
+reduction also checks out conditional on its correlation-clustering solver.
+The draft leaves the approximation and expected update time of that solver
+unproved for the modified Dynamic Agreement algorithm.
+
+\section{Gaps affecting the explicit dynamic theorem}
+
+\subsection{Approximation and sparse anchor density need a proof for the modified algorithm}
+
+\ed{48--59, 374--398, 699--707, 990--996}
+The lemma for \textsc{ExplicitDynamicAgreement} promises a simultaneous
+constant-factor approximation with failure probability at most \(N^{-2}\).
+The next sections prove that \textsc{LabelSync} recovers connected
+components conditional on a success event. They give neither a definition
+and probability bound for that event nor an approximation proof for the
+sparse graph the modified algorithm produces.
+
+The published Dynamic Agreement analysis uses its own anchor updates.
+The draft adds the \(L_t\) pruning rule, deletes edges after anchor
+removals, and resets neighborhood snapshots. These operations change the
+state used by subsequent \textsc{Clean}, \textsc{Anchor}, and
+\textsc{Connect} calls. In particular, an argument that a sampled anchor
+survives until the target prefix must account for the extra \(L_t\) test.
+The draft also uses \(h_u\) without specifying which test sets it or when
+it is refreshed. The precision boost for the tests appears only in a
+comment at line 50. The source's Theorem~6 states a \(1-5/n\) bound and its
+proof discusses a union over times and clusters. The draft needs to
+justify the \(N^{-2}\) failure bound for its own algorithm. The consensus
+reduction itself needs only probability \(1/2\) for simultaneous success.
+
+The sparse-degree lemma is a separate dependency. Theorem~39 bounds
+degrees in the input graph. \textsc{LabelSync} needs
+\(\deg_{\widetilde G_t}(a)\ge 3|C|/4-1\) for every anchor \(a\)
+in a nontrivial sparse component \(C\). Input density alone cannot give
+this inequality. For example, the input could be a clique and its sparse
+subgraph a spanning path. A possible route for the original algorithm
+is to combine the sparse-neighborhood retention bounds in Lemma~33
+with the stronger \((1-574434\varepsilon)|C|\) bound in the proof of
+Theorem~39 at the anchor's last interesting event. If the draft keeps
+the modified algorithm, it must prove the corresponding bounds for its
+pruning and snapshot rules. Both approximation and sparse density need
+to hold on the event used by \textsc{LabelSync}.
+\href{https://openreview.net/attachment?id=3YG55Lbcnr&name=pdf}{Cohen-Addad et al.,
+ICML 2024, Algorithms 3--6, Lemma 33, and Theorems 17, 23, 39, and 6.}
+
+\subsection{The additional cleanup work is missing from the time bound}
+
+\ed{374--398, 932--984}
+The pseudocode closes the arrival handler before computing \(L_t\) and
+calling \textsc{LabelSync}. Those operations need to run at every arrival.
+Line 391 also says to delete \emph{vertices} with no endpoint in the
+anchor set. The stated edge invariant suggests deleting \emph{edges}
+with neither endpoint in the anchor set and retaining all active vertices.
+
+Charging every edge deletion to a preceding insertion bounds the number
+of deletions and leaves the cost of finding those edges unaccounted for. A full
+scan of the sparse graph each update would take \(\Omega(n^2)\) total
+time on successful executions on a disjoint-matching stream. Once a
+positive pair in that stream has arrived, its edge must be retained in
+the sparse graph to obtain zero disagreements. A local cleanup needs to
+specify which edges it inspects when anchors change and charge those
+inspections, including inspections that leave edges in place. The
+analysis must also account for the degree checks and snapshot
+maintenance. The current proof invokes (DA4), (B2), and (B3), which
+are undefined in the draft. The modified trajectory needs its own
+test-count bound.
+\href{https://openreview.net/attachment?id=3YG55Lbcnr&name=pdf}{Cohen-Addad et al.,
+ICML 2024, Appendix C.}
+
+\section{Local proof and statement corrections}
+
+\subsection{Distinguish the graph after deletions from the final graph}
+
+\ed{480--518, 709--739, 751--778}
+The robustness lemma establishes that vertices stranded from the old
+anchors are singletons in \(\widetilde G_{t-1}[C]\setminus D_C\).
+The correctness proof later asserts they are singletons in
+\(\widetilde G_t\). Added edges can reconnect them to each other or to
+other classes. For example, remove one leaf edge from a five-vertex old
+star and attach that leaf to a newly arrived vertex. The leaf is a
+singleton after deletions and belongs to a two-vertex component in the
+final graph. Similarly, an old class with \(d_C=0\) remains internally
+connected but can merge with another class. The described implementation
+can handle both cases. In the few-deletions case, prove that every vertex
+of \(C\setminus W_C\) remains connected to the anchor representative
+\(r\) via surviving old edges. Use final connectivity queries to place
+the vertices of \(W_C\), as the pseudocode does.
+
+\subsection{Count the work of \textsf{LabelSync} on all executions}
+
+\ed{584--602, 658--679, 784--785, 885--928, 956--975}
+The statement of the per-update time lemma omits the \(+1\) already
+present in its proof. An isolated arrival can have an empty journal
+and zero changes to old labels, yet still requires processing and
+reporting. Include the new assignment separately and use, for example,
+\(O((|\mathcal J(t)|+1)\log(n+2)+c_t)\) when all vertices enumerated
+in the merge step actually change labels.
+
+For the unconditional expected-time proof, the paper should charge
+enumeration to the vertices actually visited. The claim at line 920
+that a piece is traversed only if its vertices receive a different label
+uses the component invariant. On a failed density event, the retained
+piece can contain vertices from different final components. If its key
+is computed from an arbitrary vertex, a piece extracted from that same
+old class can be merged back into the retained piece and enumerated
+with its old label. Charge enumeration directly to the sizes of the
+nonwinning pieces and the fresh-label winning pieces, plus one for the
+arrival. The potential computation already bounds these sizes
+irrespective of component correctness. When creating the report, compare
+the final label with the stored old label so that an unchanged old
+vertex is not reported.
+
+\subsection{Specify the neighborhood convention for the Agreement tests}
+
+\ed{34--46, 374--396}
+The bucket implementation gives open neighborhoods. The draft switches
+to closed neighborhoods for the pruning test and does not specify the
+convention for agreement and heaviness tests. Using open neighborhoods
+directly in the agreement test fails even on a graph with two vertices
+and one positive edge. The endpoints have disjoint open neighborhoods
+and fail the agreement threshold for any \(\varepsilon_{\mathrm{DA}}<1\),
+although the optimum cost is zero. Spell out the closed-neighborhood
+implementation where it is needed. A closed-neighborhood sample can be
+generated by sampling the query vertex with probability \(1/(d+1)\)
+and otherwise sampling an open neighbor. This also specifies the case
+\(d=0\).
+
+\subsection{State the prefix expectation used for the deterministic cap}
+
+\ed{17--31, 286--327}
+The reduction and the optional deterministic-cap proof use
+\(\mathbb E W(u)\le uT_{\mathcal D}(n)\) for every \(u\le n\), with
+the solver initialized using the same horizon \(n\). The solver lemma at
+lines 48--52 promises this prefix bound, but the reduction's hypothesis
+only says \emph{expected amortized update time}. State the bound explicitly
+in the hypothesis so that both the prefix work proof and the dyadic
+Markov argument have the premise they need.
+
+\subsection{Align the theorem statements with the proved parameters}
+
+\mt{201--221, 225--245, 445--461, 589--604, 1338--1356, 2368--2383}
+The online theorem should quantify \(\varepsilon\) with the range
+\(0<\varepsilon<2/(3\eta+5)\) used in the proof. Its \(\eta\) is the
+competitive factor of the chosen deterministic Online Agreement
+implementation with the required per-vertex recourse. The cited
+theorems establish this guarantee without identifying \(\eta\) as the
+best known factor among online correlation-clustering algorithms.
+
+Use the positive logarithms from the proofs in the offline and
+implicit time bounds, for example \(\log(N+2)\) instead of \(\log N\).
+For the implicit query guarantee, define \(n=|V_t|\), use
+\(O(\log(n+2))\) for lookup and \(O(n+1)\) for listing, and specify
+whether listing returns distinct cluster identifiers or a vertex-label
+pair for every active vertex. The proof currently describes the latter.
+\href{https://proceedings.mlr.press/v162/cohen-addad22a.html}{Cohen-Addad et al.,
+ICML 2022, Theorems E.2 and F.1.}
+
+\end{document}

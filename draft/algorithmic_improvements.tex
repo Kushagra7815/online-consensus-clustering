@@ -1,0 +1,3229 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,array,booktabs,tabularx}
+\usepackage{algorithm,algpseudocode,tikz,needspace}
+\usepackage{fvextra,thmtools,thm-restate,bbm}
+\usepackage[hidelinks,hypertexnames=false]{hyperref}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newcommand{\OPT}{\operatorname{OPT}}
+\newcommand{\Pivot}{\textsc{Pivot}}
+\newcommand{\BandSeed}{\textup{\textsc{SolveAndRound}}}
+\newcommand{\SampleSolve}{\textsc{Cluster}}
+\allowdisplaybreaks[1]
+\setlength{\parskip}{0.2em}
+\setlength{\parindent}{1.2em}
+\title{Efficient Offline, Online, and Fully Dynamic Consensus Clustering}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Consensus clustering seeks a partition minimizing the total pairwise
+disagreement with a collection of input partitions. We give
+algorithms with approximation ratio $1.21+\varepsilon$ offline and under
+fully dynamic updates, and competitive ratio $1.21+\varepsilon$ online.
+At approximation ratio $1.21$, our offline
+algorithm runs in linear expected time with constant success probability. Our
+online algorithm changes each vertex's cluster label logarithmically
+many times and has
+$O(\log n(\log\log n)^2)$ expected amortized time per insertion at
+constant success probability. Our fully dynamic algorithm has $O(\log^2 U)$ expected amortized update
+time over $U$ updates with constant success probability and constant worst-case
+query time. We also give algorithms when future updates may depend on earlier outputs. The
+algorithms use a rounding of the cluster linear program in which
+Pivot uses both the fraction of input partitions that separate a pair
+and the fractional separation value in the linear program.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Several partitions of the same set can represent different attributes,
+different clustering methods, or the views of several agents. Consensus
+clustering asks for one partition that agrees as closely as possible
+with the inputs. A pair contributes a disagreement when its vertices belong to the same
+cluster in exactly one of the output partition and an input partition.
+The objective is to minimize the average number of disagreements
+with the input partitions. This is the median partition problem
+under the pairwise disagreement distance~\cite{ACN2008}.
+
+We study three models. An \emph{offline algorithm} sees the entire vertex
+set and returns a partition. An \emph{online algorithm} sees vertices one
+at a time. It assigns each arriving vertex a \emph{cluster label}, an
+identifier shared exactly by vertices in the same cluster. It reports
+the new label and all changes to previously published labels; we refer
+to this as
+\emph{explicit output}. The \emph{recourse} of a vertex is the number of
+changes to its cluster label after its arrival. A \emph{fully dynamic
+algorithm} handles vertex insertions and deletions and answers queries
+about the current partition. A vertex is \emph{active} if it has been
+inserted and has not subsequently been deleted. In both update models,
+the algorithm can read the input labels of each active vertex.
+
+A \emph{label query} returns an active vertex's cluster identifier. A
+\emph{same-cluster query} asks whether two active vertices belong to the
+same cluster. We refer to representing a partition through these queries
+as \emph{implicit output}. An \emph{oblivious adversary} fixes the update
+sequence before the algorithm makes its random choices. An
+\emph{adaptive adversary} may choose the next update using the cluster
+labels and query answers revealed so far.
+
+\subsection{Our Contribution}
+
+Let $m$ be the number of input partitions, and fix
+$0<\varepsilon\le1$ and $0<\zeta<1$. We use
+$O_\varepsilon(\cdot)$\footnote{The notation $O_\varepsilon(\cdot)$
+hides a multiplicative factor depending on $1/\varepsilon$.}
+for the running-time and space bounds below. Each algorithm assumes constant-time access
+to input cluster labels,
+as specified in Section~\ref{sec:preliminaries}.
+
+\begin{restatable}{theorem}{OfflineMain}
+\label{off:linear}
+There is a randomized algorithm for consensus clustering on $n$ vertices
+and $m$ input partitions with approximation ratio $1.21+\varepsilon$,
+success probability at least $1-\zeta$, and
+$O_\varepsilon(n\log(2/\zeta))$ expected running time.
+\end{restatable}
+
+\Needspace{8\baselineskip}
+\begin{restatable}{theorem}{OnlineMain}
+\label{on:loglog}
+There is a randomized online algorithm for consensus clustering under
+a sequence of at most $n\ge2$ vertex arrivals, where $n$ is given in advance.
+Against an oblivious adversary, it achieves competitive ratio
+$1.21+\varepsilon$ simultaneously after every arrival with probability
+at least $1-\zeta$. Its expected amortized update time, including label
+changes, is
+$O_\varepsilon(\log n\,(\log\log(n+2)+\log(2/\zeta))^2)$.
+Each vertex has recourse $O(\varepsilon^{-3}\log n+\log(2/\zeta))$
+on every execution, and queries take worst-case $O(1)$ time.
+
+For adaptive arrivals, a deterministic online algorithm for consensus
+clustering achieves the same competitive ratio with
+$O(\varepsilon^{-1}\log(t+2))$ recourse per vertex and
+$O_\varepsilon(\operatorname{poly}(t,m))$ time through arrival $t$.
+\end{restatable}
+
+\Needspace{9\baselineskip}
+\begin{restatable}{theorem}{DynamicMain}
+\label{thm:dyn-band}
+There is a fully dynamic algorithm for consensus clustering under a
+sequence of at most $U$ vertex insertions and deletions.
+Against an oblivious adversary, it maintains approximation ratio
+$1.21+\varepsilon$ simultaneously after every update with probability
+at least $1-\zeta$. Its expected amortized update time is
+$O_\varepsilon(\log^2((U+2)/\zeta))$, and its expected space is
+$O_\varepsilon((n+1)\log^2((U+2)/\zeta))$ on $n$ active vertices.
+
+Against an adaptive adversary, a fully dynamic algorithm for consensus
+clustering maintains the same approximation ratio after every completed
+update, with $O_\varepsilon(m^2)$ expected amortized update time and
+$O_\varepsilon((n+1)m^2)$ expected space. Both algorithms answer label
+and same-cluster queries in worst-case $O(1)$ time.
+\end{restatable}
+
+The offline and randomized online and fully dynamic bounds are independent
+of $m$. The proofs allow sufficiently small fixed internal accuracy to
+obtain approximation or competitive ratio $1.21$ itself, as reported in
+Table~\ref{tab:results}.
+
+Simpler algorithms based on sampling pair signs in Pivot give approximation
+ratio $1.419+\varepsilon$ offline and under fully dynamic updates,
+and competitive ratio $1.419+\varepsilon$ online, with explicit polynomial
+dependence on $1/\varepsilon$. Appendix~\ref{app:vote} presents those
+algorithms.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\linewidth}{@{}p{0.17\linewidth}XX@{}}
+\toprule
+Model & Previous bounds or baselines & This paper \\
+\midrule
+Offline
+ & $4/3$ in polynomial time, including a deterministic algorithm
+   \cite{ACN2008,vZWdet}
+ & $1.21$ in $O(n\log(2/\zeta))$ expected time \\
+Explicit online
+ & $O(1)$ with zero recourse for metric correlation clustering
+   \cite{DMN2026}
+ & $1.21$, $O(h\ell^2)$ expected amortized insertion time, and
+   $O(h+\log(2/\zeta))$ recourse per vertex. The deterministic
+   version has $O(\log(t+2))$ recourse at fixed accuracy. \\
+Fully dynamic
+ & $4/3$ by rerunning the offline algorithm~\cite{vZWdet} after each
+   update, in polynomial time per update
+ & $1.21$, $O(\log^2((U+2)/\zeta))$ expected amortized update time
+   against oblivious adversaries or $O(m^2)$ against adaptive adversaries.
+   Queries take worst-case $O(1)$ time. \\
+\bottomrule
+\end{tabularx}
+\caption{Bounds for approximation or competitive ratio $1.21$. All update-time bounds in the last
+column are expected amortized. Here $h=\log(n+2)$ and
+$\ell=\log((h+2)/\zeta)$.}
+\label{tab:results}
+\end{table}
+
+The offline benchmark in Table~\ref{tab:results} is the classical
+$4/3$ approximation for the median partition objective. The
+online benchmark applies because the fraction of input partitions
+that separate two vertices satisfies the triangle inequality.
+Dynamic correlation clustering on unweighted graphs has also been
+studied under vertex updates~\cite{CLMP2024Dynamic,CaoEtAl2026Dynamic}.
+For example, Cao et al.~\cite{CaoEtAl2026Dynamic} give a $1.485$
+approximation at any fixed update with constant success probability
+and worst-case constant update time in their graph access model.
+In consensus clustering, access to the partitions determines which
+pair weights the algorithm can evaluate efficiently.
+
+\section{Preliminaries}
+\label{sec:preliminaries}
+
+\paragraph{Partitions and cost.}
+A \emph{partition} of a vertex set is a collection of nonempty, pairwise
+disjoint subsets, called \emph{clusters}, whose union is that vertex set. Let
+$P_1,\ldots,P_m$ be the input partitions. Two vertices are \emph{co-clustered} if they belong to
+the same cluster, and \emph{separated} if they belong to different clusters.
+For partitions $C,P$ of the same set, let $d(C,P)$ be the number of
+unordered pairs that are co-clustered in exactly one of $C,P$. This
+distance satisfies the triangle inequality because it is the Hamming
+distance between the vectors indicating which pairs are co-clustered.
+Given a vertex set $V$, let $P_i|_V$ denote the restriction of $P_i$ to $V$.
+For a partition $C$ of $V$, its \emph{cost} is $f_V(C)=m^{-1}\sum_{i=1}^m d(C,P_i|_V)$
+and the optimum is $\OPT_V=\min_C f_V(C)$.
+
+Let $V_t$ be the \emph{active set} after update $t$: the set of vertices
+that have arrived by that time and have not subsequently been deleted.
+In the online model, $V_t$ consists of the first $t$ arriving vertices.
+Let $C_t$ be the partition returned or maintained on $V_t$. Subscripts $t$ on $f,\OPT$, and
+other quantities denote evaluation on $V_t$. We omit the subscript when
+the vertex set is fixed. An \emph{approximation ratio} $\alpha$, or a
+\emph{competitive ratio} $\alpha$ online, means $f_t(C_t)\le\alpha\OPT_t$
+after the specified arrivals or updates. An \emph{expected approximation ratio} $\alpha$
+means $\mathbb E[f_t(C_t)]\le\alpha\OPT_t$.
+
+For a pair $e=\{u,v\}$, let $d_e=d_{uv}$ be the fraction of inputs
+that separate its endpoints. The pair contributes $d_e$ to $f(C)$ if
+$C$ assigns its endpoints to the same cluster, and $1-d_e$ otherwise. Its minimum possible contribution
+is $p_e=p_{uv}=\min\{d_e,1-d_e\}$. The sum $B=\sum_e p_e$, over unordered
+pairs, is therefore a lower bound on $\OPT$. The values $d_{uv}$ satisfy
+the triangle inequality because each input's separation indicators do.
+
+On insertion-only streams, $B_t$ and $\OPT_t$ are nondecreasing. The
+majority decision for a pair assigns its endpoints to the same cluster
+if $d_e<1/2$ and to different clusters if $d_e>1/2$. If $B_t<1/2$, there are no ties. The expected number of
+pairs on which a uniform input disagrees with the majority decisions
+is then $B_t<1$, so some input realizes all of them. That partition
+attains $\OPT_t$. Label each cluster by its smallest arrival index to
+preserve all old labels while $B_t<1/2$.
+
+\paragraph{Access and output.}
+The algorithm can obtain a vertex's cluster identifier in any specified
+input in constant time and can sample a uniform input index in constant
+time. Input labels stay fixed while a vertex is active. We treat a
+reinserted vertex as a new vertex. We use a word RAM with counters and identifiers stored
+in a constant number of words at fixed accuracy. Dynamic perfect
+hashing gives worst-case constant lookup time and expected amortized
+constant time for insertions and deletions~\cite{Dietzfelbinger1994}.
+
+The offline algorithm outputs one cluster identifier for every vertex.
+The online algorithm starts empty, sees vertex insertions, and reports
+the new label and all changes to previously published labels. Recourse
+counts changes to an individual vertex's published label after it
+arrives. The fully dynamic algorithm also starts empty. Its updates
+insert or delete a vertex, and it provides an implicit partition
+through queries. A label query returns a vertex's identifier in the
+maintained partition. A same-cluster query tests equality of two such
+identifiers. When a probability guarantee holds simultaneously over the update
+sequence, a single event ensures the approximation or competitive ratio
+after every update.
+
+\paragraph{Maintaining partition distances.}
+For partitions $C,P$, let $J(C)$ count the pairs co-clustered in $C$
+and let $J(C,P)$ count the pairs co-clustered in both $C$ and $P$. Then
+$d(C,P)=J(C)+J(P)-2J(C,P)$. Each term is the sum of $\binom b2$
+over the sizes $b$ of the clusters in $C$, the clusters in $P$, or
+their intersections, respectively. We can therefore evaluate one
+distance in $O(n)$ expected time or update it in expected amortized
+$O(1)$ time per insertion, deletion, or change of one vertex's label.
+We use the triangle inequality in the forms
+$|d(C,P)-d(A,P)|\le d(C,A)$ and $d(C,A)\le f(C)+f(A)$.
+
+\subsection{Sampling input partitions and selecting a candidate}
+\label{sec:ensemble-transfer}
+
+Unless specified otherwise, sample input indices independently and
+uniformly with replacement. Repetitions are allowed, and we retain the
+order of the sampled indices. Associate each vertex with the ordered tuple of its cluster identifiers
+in the corresponding input partitions. Let
+$\widehat f$ denote the average cost over these partitions, and let
+$\widehat d_e$ be the fraction of them separating pair $e$. A
+\emph{candidate} is a partition produced by a run of an algorithm.
+To compare candidates, independently sample further input partitions
+and estimate the candidates' average distances to them. Only the pairs
+on which two candidates disagree can affect the error in their
+estimated cost difference.
+
+\begin{lemma}\label{lem:sample-difference}
+On a fixed vertex set $V$, let $\widehat d_e$ denote the separation
+fraction in a sample of $k$ independently sampled inputs. For $\delta>0$,
+let
+\[
+ R(V)=\sum_{e\subseteq V,\ |e|=2}(2|\widehat d_e-d_e|-\delta)_+,
+ \qquad (x)_+=\max\{x,0\}.
+\]
+For any subset $W\subseteq V$ and partitions $C,F$ of $W$,
+\[
+ \big|(f_W(C)-f_W(F))-(\widehat f_W(C)-\widehat f_W(F))\big|
+ \le \delta d(C,F)+R(V).
+\]
+Moreover, $\mathbb E[R(V)]\le\operatorname{OPT}_V/(k\delta)$.
+\end{lemma}
+\begin{proof}
+Only pairs on which $C$ and $F$ disagree contribute to the difference.
+Each contributes at most $2|\widehat d_e-d_e|$ in absolute value.
+Apply $(2|x|-\delta)_+\le x^2/\delta$ and the variance of each sampled
+fraction to obtain
+\[
+ \mathbb E[R(V)]\le\frac{1}{k\delta}\sum_e d_e(1-d_e)
+ \le\frac{\operatorname{OPT}_V}{k\delta}.
+\]
+The last inequality uses $d_e(1-d_e)\le p_e$ for each pair.
+\end{proof}
+
+The next lemma bounds the expected approximation ratio on all input
+partitions in terms of the ratio on a sample.
+
+\begin{lemma}\label{thm:ensemble-transfer}
+Let $1\le\gamma\le2$ and $0<\tau\le1$. If an algorithm has conditional
+expected approximation ratio $\gamma$ on every collection of
+$k\ge25/\tau^2$ sampled input partitions, its expected approximation ratio on the original instance
+is at most $\gamma+\tau$.
+\end{lemma}
+\begin{proof}
+Fix a fixed optimal partition $F$. Lemma~\ref{lem:sample-difference} bounds the
+error even when $C$ depends on the sampled input partitions. The partition triangle
+inequality gives $d(C,F)\le\widehat f(C)+\widehat f(F)$.
+Taking expectations and using $\mathbb E[\widehat f(F)]=\operatorname{OPT}$
+yields
+\[
+ \mathbb E[f(C)]\le
+ \bigl(\gamma+\delta(\gamma+1)+1/(k\delta)\bigr)\operatorname{OPT}.
+\]
+Take $\delta=\tau/6$ and use the bound on $k$.
+\end{proof}
+
+We will also use a deterministic family of short sequences of input indices. Pairwise
+independence suffices in Lemma~\ref{thm:ensemble-transfer}, since its
+proof uses only the first two moments of the separation fractions.
+
+\begin{lemma}\label{lem:finite-lists}
+For any positive integer $k$, one can enumerate $(m k!)^2$ sequences of
+$k$ input indices such that a uniformly chosen sequence has pairwise
+independent, uniformly distributed entries.
+\end{lemma}
+\begin{proof}
+Set $w=k!$ and $N=mw$. Enumerate $a,b$ modulo $N$ and use input
+$1+\lfloor((a+ib)\bmod N)/w\rfloor$ at position $0\le i<k$.
+Conditional on $a+ib$ modulo $N$, the residue $a+jb$ is uniform
+in a congruence class modulo $\gcd(|j-i|,N)$. If $i\ne j$, this
+divisor divides $w$, so each interval of $w$ residues contains the
+same number of elements of that class.
+\end{proof}
+
+Generate candidates using independently sampled input partitions and
+independent rounding. To compare them, independently sample further
+input partitions and use the same partitions to estimate all candidate
+costs. The resulting cost-difference estimates suffice to select the
+candidate with the smallest estimated cost.
+
+\begin{lemma}\label{lem:select-simple}
+Suppose each trial has expected approximation ratio $\gamma$ at
+each of $U\ge1$ fixed instances, where $1\le\gamma\le2$.
+Fix $0<\delta\le1/12$ and $0<\zeta<1$. Run
+$T=\lceil (3/\delta)\log(2U/\zeta)\rceil$ independent trials and independently
+sample $R=\lceil2\delta^{-2}\log(4UT^2/\zeta)\rceil$ input partitions
+to estimate costs for all trials and instances. Selecting the candidate of smallest estimated cost gives
+approximation ratio $\gamma+6\delta$ at all instances simultaneously
+with probability at least $1-\zeta$.
+\end{lemma}
+\begin{proof}
+At an instance with $\OPT>0$, Markov's inequality gives a trial
+probability at least $\delta/(\gamma+\delta)\ge\delta/3$ of producing
+a candidate of cost at most $(\gamma+\delta)\OPT$. With probability
+at least $1-\zeta/2$, some candidate $C_\star$ meets this bound at each
+instance. When $\OPT=0$, every candidate has cost zero almost surely.
+
+Condition on all candidate partitions. The cost difference between two candidates
+$C,A$ on one input lies in $[-d(C,A),d(C,A)]$. By Hoeffding's inequality
+and a union bound over at most $UT^2$ comparisons, every average cost
+difference has error at most $\delta d(C,A)$ except with probability
+$\zeta/2$. In particular, for the candidate $C$ with smallest estimated
+cost, $f(C)-f(C_\star)\le\delta d(C,C_\star)\le\delta(f(C)+f(C_\star))$.
+The resulting factor is at most
+$(1+\delta)(\gamma+\delta)/(1-\delta)\le\gamma+6\delta$.
+\end{proof}
+
+The preceding rule is sufficient with constant success probability. The next
+lemma gives the full dependence on the offline failure probability using a linear number
+of comparisons in $\log(2/\zeta)$, without comparing every pair of
+candidates in a large sample.
+
+\begin{lemma}\label{lem:offline-confidence}
+Let $1\le\gamma\le2$ and $0<\varepsilon\le1$. An offline algorithm
+with approximation ratio $\gamma+\varepsilon/2$ and success probability
+$9/10$ can be amplified to approximation ratio $\gamma+\varepsilon$
+and success probability $1-\zeta$ using
+$O(\log(2/\zeta))$ expected independent calls to that algorithm and
+$O(\varepsilon^{-2}\log(2/\zeta))$ expected partition-distance
+evaluations.
+\end{lemma}
+\begin{proof}
+In each attempt, draw a candidate $C$ and $M=\Theta(\log(2/\zeta))$
+independent partitions from the given algorithm. For each resulting partition $Q$, let
+$D=d(C,Q)$. If $D>0$, average
+$(d(C,P)-d(Q,P))/D$ over $O(\varepsilon^{-2})$ independently sampled
+uniform input partitions $P$. The comparison accepts the candidate
+if this average is at most $\theta=\varepsilon/28$ or if $D=0$.
+Accept $C$ if at least half of its comparisons succeed. Otherwise
+start an independent attempt.
+
+Each normalized difference lies in $[-1,1]$. When $f(C)\le f(Q)$,
+one comparison accepts the candidate with probability at least $19/20$, by
+Hoeffding's inequality. If $f(C)>(\gamma+\varepsilon)\OPT$ and
+$f(Q)\le(\gamma+\varepsilon/2)\OPT$, the mean difference is at least
+$\varepsilon/(4\gamma+3\varepsilon)>2\theta$, since
+$D\le f(C)+f(Q)$. The mean is at least one when $\OPT=0$ in this
+case. Thus a candidate above the target is accepted in one comparison
+with probability at most $1/10+(9/10)/20=29/200$.
+
+With probability at least $1/4$, $f(C)$ is at or below the lower
+quartile of the output cost distribution. Conditional on such a
+candidate, a comparison accepts the candidate with probability at least
+$(3/4)(19/20)=57/80$. Choose the constant in $M$ so that
+Hoeffding's inequality gives unconditional acceptance probability
+at least $1/8$ and probability at most $\zeta/8$ of accepting a
+candidate above the target in any one attempt. Independent attempts
+then take at most eight repetitions in expectation and have eventual
+error at most $\zeta$. Counting the calls and evaluations gives the
+bounds.
+\end{proof}
+
+\section{Offline algorithm}
+\label{sec:offline}
+\OfflineMain*
+
+Our offline routine solves a small sample of input partitions. It first groups
+vertices with the same label tuple that together occupy nearly all of
+each input cluster containing them.
+We group the other vertices according to the sizes of the input clusters
+containing them. Within each group, we solve a restricted linear program
+and round its solution. The analysis permits a small additive error in each group's
+solution and bounds the sum of these errors by the lower bound
+$B=\sum_e p_e$ for the sample. The same routine provides the partitions that the
+online algorithm extends and the fully dynamic algorithm rebuilds.
+For the full offline instance, run the routine on independently
+sampled collections of input partitions and select a candidate as in Lemma~\ref{lem:select-simple}.
+Use Lemma~\ref{lem:offline-confidence} to reach success probability $1-\zeta$.
+
+\subsection{The algorithm on one sample}
+\label{sec:size-bands}
+
+In this section $d_e,p_e,B$ refer to the fixed sample of $k$ inputs.
+Call a pair \emph{positive} if its endpoints belong to the same cluster in
+strictly more than half of the sampled input partitions. A vertex $v$
+is a \emph{positive neighbor} of $u$ if the pair $\{u,v\}$ is positive.
+For each distinct label tuple $x$, let $A_x$ be the set of vertices
+with that tuple. Let $a_x=|A_x|$, and let $s_x$ be the largest size of
+an input cluster containing $A_x$. These sizes refer to the full vertex set on the fixed
+sample, before any vertices are grouped or removed. Fix $0<\nu\le1/8$
+and let $\theta=\nu/(64k^2)$, $\lambda=\theta/16$, and $c=\theta/(3k)$.
+The analysis allows $\widehat a_x,\widehat s_x$ to approximate $a_x,s_x$,
+respectively, within a factor $1+\lambda$. The offline algorithm
+uses the exact sizes.
+For the decomposition by cluster size, use $Q=\lceil64k^2/\nu\rceil$,
+$L=\lceil16k(\log_2 Q+4)/\nu\rceil$, and $K=2^{L+2}$.
+Set the solver accuracy to $\mu=\nu c/(128K)$.
+Select each set $A_x$ satisfying
+$\widehat s_x\le(1+\theta)\widehat a_x$. For each selected set, form
+a cluster consisting of $A_x$ and all positive neighbors of vertices in
+$A_x$.
+Lemma~\ref{lem:centers} shows that the resulting clusters are disjoint. For every remaining set $A_x$, let
+$l_x=\lfloor\log_2\widehat s_x\rfloor$. Choose the shift $j$ uniformly
+from $\{0,\ldots,L-1\}$ and assign all vertices of $A_x$ to the group
+indexed by $b=\lfloor(l_x+j)/L\rfloor$, as in Figure~\ref{fig:bands}.
+Let $V_b$ be the set of vertices assigned index $b$. Their values of
+$l_x$ lie in $[a,a+L)$
+with $a=bL-j$. Since $s_x$ and $\widehat s_x$ differ by at most
+$1+\lambda\le2$, the value $D_b=2^{a+L+1}$ bounds $s_x$ from above
+and satisfies $D_b\le K s_x$ for every $A_x\subseteq V_b$. The algorithm \BandSeed{}
+uses $\min\{D_b,|V_b|\}$ as its bound on cluster size.
+
+\begin{algorithm}[htbp]
+\caption{\SampleSolve\ on fixed input partitions}
+\label{alg:offline}
+\begin{algorithmic}[1]
+\Require A sample of $k$ inputs on $V$ and tolerance $\nu$
+\State Compute label tuple counts and input-cluster sizes
+\State Form a cluster around each selected set $A_x$ and remove its vertices
+\State Draw the random shift $j$ and assign the remaining vertices to their groups $V_b$
+\For{each nonempty group $V_b$}
+    \State $C_b\gets \BandSeed(V_b,\min\{D_b,|V_b|\},\mu)$
+\EndFor
+\State \Return the clusters formed around the selected sets $A_x$ and the clusters of all $C_b$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.56cm,y=0.77cm,font=\small]
+\foreach \shift/\row in {0/1,2/0}{
+  \node[left] at (-0.65,\row) {$j=\shift$};
+  \draw[gray!65] (-0.5,\row) -- (11.5,\row);
+  \foreach \a in {0,...,11}{
+    \pgfmathtruncatemacro{\band}{floor((\a+\shift)/4)}
+    \ifodd\band
+      \fill[blue!11] (\a-0.5,\row-0.23) rectangle (\a+0.5,\row+0.23);
+    \fi
+    \pgfmathtruncatemacro{\boundary}{mod(\a+\shift,4)}
+    \ifnum\boundary=0
+      \draw[gray!80] (\a-0.5,\row-0.24) -- (\a-0.5,\row+0.24);
+    \fi
+  }
+  \draw[blue!50!black,thick] (3,\row) -- (4,\row);
+  \fill[blue!50!black] (3,\row) circle[radius=2.2pt];
+  \fill[blue!50!black] (4,\row) circle[radius=2.2pt];
+}
+\foreach \a in {0,...,11}{\node[below] at (\a,-0.29) {\a};}
+\node at (5.5,-0.96) {$l_x$};
+\end{tikzpicture}
+\caption{Boundaries between the groups $V_b$ for width $L=4$. The marked pair has values $l_x=3$ and $l_y=4$. Shift $j=0$ separates the pair and shift $j=2$ keeps
+it in one group.}
+\label{fig:bands}
+\end{figure}
+
+The selection inequality identifies clusters that can be fixed at low cost.
+It also bounds the sum, over remaining vertices, of the largest sizes
+of input clusters containing them. Let $x(u)$ denote the label tuple of vertex $u$.
+The following bound controls the total additive error of the LP solver.
+
+\begin{lemma}\label{lem:centers}
+The clusters formed around the selected sets $A_x$ are disjoint. Imposing all of them increases
+the cost of an optimum by at most $4k^2\theta B$. Moreover,
+$\sum_{u\text{ remaining}}s_{x(u)}\le2B/c$.
+\end{lemma}
+\begin{proof}
+The bounds on the approximate sizes give $s_x\le(1+2\theta)a_x$ for a selected
+set $A_x$ and $s_x>(1+\theta/2)a_x$ otherwise. Two selected sets sharing an input label
+would each have size at most $2\theta$ times the other's size,
+which is impossible. A vertex positive to vertices in two distinct selected sets would give
+those sets a common input label, since two strict majorities
+intersect.
+
+Pairs incident to vertices in a selected set $A_x$ attain their minimum cost in the
+new partition. Fix a selected set $A_x$ of size $a_x$ and let $Y_x$ contain its
+neighbors with different label tuples. The union of its input clusters contains at
+most $2k\theta a_x$ vertices outside $A_x$. Every positive neighbor
+of a vertex in $Y_x$ has an input-cluster label in common with $A_x$, again by
+intersection of two strict majorities. Thus each vertex of $Y_x$
+can lose at most $2k\theta a_x$ positive neighbors outside the selected set
+and can be placed with at most as many other vertices whose pair cost increases.
+The $a_x|Y_x|$ pairs between the selected set and $Y_x$ each contribute at least $1/k$
+to $B$. A pair changes the cost by at most one. The total increase charged
+to $Y_x$ is at most $4k\theta a_x|Y_x|$, which is at most $4k^2\theta$
+times the sum of $p_{uv}$ over pairs between the selected set and
+$Y_x$. These pairs
+are disjoint across selected sets.
+
+For a remaining vertex $u$ in $A_x$, its largest full input cluster
+contains $s_x-a_x$ vertices outside $A_x$. Each pair to one of
+these vertices contributes at least $1/k$ to $B$. Thus
+$\sum_{v\ne u}p_{uv}\ge(s_x-a_x)/k\ge c s_x$. Sum over the remaining
+vertices and use $\sum_u\sum_{v\ne u}p_{uv}=2B$.
+\end{proof}
+
+A random shift allows vertices of comparable cluster sizes to stay
+together with high probability. Pairs of very different cluster sizes
+can be separated with a small increase in cost.
+
+\begin{lemma}\label{lem:band-cuts}
+Splitting any fixed clustering of the remaining vertices by the
+boundaries of the groups $V_b$ increases its cost by at most $\nu B/8$
+in expectation. In every shift, $\sum_b |V_b|D_b\le 2KB/c$.
+\end{lemma}
+\begin{proof}
+Only positive pairs can increase the cost. Vertices with the same label tuple stay
+together. For distinct tuples $x,y$ with $s_x/s_y$ in $[1/Q,Q]$, the difference
+$|l_x-l_y|$ is at most $\log_2 Q+4$. The probability that the two vertices are assigned
+to different groups
+is at most $(\log_2 Q+4)/L$ and their cost increase is at most
+$1\le k p_{uv}$. This accounts for at most $\nu B/16$.
+
+For a pair with $s_y<s_x/Q$, any shared cluster has size below $s_x/Q$.
+A vertex in $A_x$ has at most $k s_x/Q$ neighbors
+in sets $A_y$ with $s_y<s_x/Q$. If it has any, then $a_x\le s_y<s_x/Q$ and
+the sum of its incident pairwise lower bounds is at least $(s_x-a_x)/k\ge s_x/(2k)$ from
+its largest cluster. The total number of these pairs is at most
+$4k^2B/Q\le\nu B/16$. The second assertion follows by summing
+$D_b\le K s_x$ and applying Lemma~\ref{lem:centers}.
+\end{proof}
+
+The two lemmas also explain how to combine the solutions to the groups $V_b$.
+For a given shift, only pairs within a group $V_b$ depend on its computed
+partition. The cost on the other pairs is fixed.
+
+\begin{lemma}\label{lem:combine-bands}
+Fix a sample and size estimates satisfying the stated bounds before choosing the random shift.
+Suppose that, for each shift, the expected cost in group $V_b$ is at most
+$\alpha\OPT_{V_b}+\xi_b$, where $1\le\alpha\le2$ and
+$\sum_b\xi_b\le\nu B/8$. Combining these partitions with the clusters formed around the selected sets $A_x$ gives expected cost at most $(\alpha+\nu)\OPT$ on the sample.
+\end{lemma}
+\begin{proof}
+The sum of the optima of the groups $V_b$ plus the cost of the fixed pairs is the
+optimum under the restrictions imposed by the clusters formed around the selected sets
+$A_x$ and groups $V_b$. The fixed pairs have
+nonnegative cost, so multiplying their cost by $\alpha$ only increases
+the upper bound. Lemmas~\ref{lem:centers} and~\ref{lem:band-cuts}
+bound the expected increase in the restricted optimum by
+$(4k^2\theta+\nu/8)B$. The total loss above $\alpha\OPT$ is at most
+$[\alpha(4k^2\theta+\nu/8)+\nu/8]B\le\nu\OPT$.
+\end{proof}
+
+\subsection{Solving and rounding the cluster LP}
+
+The \emph{cluster LP} assigns a nonnegative weight $z_S$ to each possible
+cluster $S$.
+Require $\sum_{S\ni u}z_S=1$ for every vertex $u$. For a pair $uv$,
+let $x_{uv}=1-\sum_{S\supseteq\{u,v\}}z_S$ be its \emph{LP distance}. Its objective is to minimize
+$\sum_{u<v}[d_{uv}+(1-2d_{uv})x_{uv}]$ under these constraints.
+Every partition gives a feasible integral solution by setting $z_S=1$
+for each of its clusters and $z_S=0$ for all other sets. We use the
+cluster LP and cluster-based rounding for correlation
+clustering~\cite{CCLLNV2024,clusterLP25}.
+
+The rounding below combines three distributions. In \emph{cluster-based rounding},
+give each set $S$ with $z_S>0$ an independent exponentially
+distributed priority with rate $z_S$ and order the sets by priority. Each vertex takes
+the label of the first set containing it. A pair with fractional distance $x$ is
+separated with
+probability $2x/(1+x)$, since the total rate incident to either
+endpoint is $1+x$ and the rate incident to exactly one is $2x$.
+The second distribution selects a uniform input partition. In the
+third, \Pivot{} chooses a uniform remaining vertex $u$ as the pivot
+and groups it with the remaining vertices $v$ satisfying
+$4d_{uv}+x_{uv}<5/2$. It removes this cluster and repeats on the
+unassigned vertices.
+
+We calculate the expected costs of cluster-based rounding and a
+uniform input partition exactly.
+We bound the Pivot contribution using the difference between the target
+LP bound and the contributions of the other two rounding procedures. The proof uses the
+stronger rounding ratio $601/500=1.202$, leaving room for the sampling
+and maintenance errors in the stated $1.21+\varepsilon$ ratios.
+
+\begin{lemma}\label{lp:hybrid}
+The three rounding distributions admit a mixture with expected
+approximation ratio $601/500$ relative to the cluster LP.
+On a sample of $k$ inputs and $s$ vertices, if each vertex belongs to at most
+$h_0$ sets of positive LP weight, we can generate the Pivot candidate in
+$2^{O(k+h_0)}s$ expected time.
+\end{lemma}
+\begin{proof}
+Let $\alpha=601/500$ and choose cluster-based rounding, a uniform
+input partition, and
+\Pivot{} with probabilities $u=\alpha/2$, $v=\alpha-1$, and
+$w=1-u-v=197/1000$, respectively. Both $d$ and $x$ obey the
+triangle inequalities. Indeed, $x_{ij}$ is half the total weight
+of sets containing exactly one of $i,j$, since the total weight
+incident to either vertex is one.
+
+For a pair with distances $d,x$, put $y=x^2/(1+x)$. Its fractional
+cost is $d+(1-2d)x$, its expected cost under cluster-based rounding is
+$d+(1-2d)2x/(1+x)$, and its expected uniform-input cost is $2d(1-d)$.
+Subtracting $u$ times the second quantity and $v$ times the third
+from $\alpha$ times the first leaves
+\[
+ F(d,x)=w d+2v d^2+\alpha(1-2d)y .
+\]
+We prove that the expected Pivot cost is at most $\sum_e F(d_e,x_e)/w$.
+Within this proof, call a pair \emph{positive} if it satisfies the Pivot
+threshold, and \emph{negative} otherwise. First, $F(d,x)/w$ is at least the cost $d$ of co-clustering
+a positive pair, or the cost $1-d$ of separating a negative pair. For a positive pair with
+$d\le1/2$ this follows from $F-wd\ge0$. For a positive pair with
+$d>1/2$, we have $x<1/2$, $y\le1/6$, and $2d-1\le d^2$.
+Hence $F-wd\ge(2v-\alpha/6)d^2\ge0$. For a negative pair,
+\[
+ F-w(1-d)=2v d^2+(1-2d)(\alpha y-w).
+\]
+If $d<1/2$, then $x\ge1/2$ and $\alpha y\ge\alpha/6\ge w$.
+If $d\ge1/2$, use $\alpha y-w\le\alpha/2-w=2v$ and $2d-1\le d^2$.
+
+Now consider a triangle with edges $1,2$ positive and edge $3$
+negative. Summed over its three possible pivots, the opposite edges
+cost $(1-d_1)+(1-d_2)+d_3$. The exact rational certificate in
+Appendix~\ref{app:hybrid} proves that for all $d,x$ satisfying the
+triangle inequalities and these signs,
+\[
+ \sum_{i=1}^3 F(d_i,x_i)\ \ge\ w(2-d_1-d_2+d_3).
+\]
+Fix the set of vertices still present. Whether a pair is co-clustered is determined when at least one endpoint
+is assigned to a cluster. Sum the costs and the values $F(d_e,x_e)/w$ of
+the pairs whose assignments are determined over all possible pivots. Pairs incident to the pivot
+and decisions consistent with the pair's sign satisfy the individual
+bound. All other decisions come from triangles with two positive edges
+and one negative edge. Each such triangle contributes three decisions,
+one opposite each of its pivots, and the triangle inequality above
+bounds their combined cost. Dividing by the number of pivots bounds
+the expected cost of this step by the expected sum of $F(d_e,x_e)/w$ over
+those pairs. The assignment of each pair is determined once, so summing over steps
+bounds the expected Pivot cost by $\sum_e F(d_e,x_e)/w$, where
+$x_e=x_{uv}$ for $e=\{u,v\}$. Adding the other two rounding costs gives
+the claimed approximation ratio.
+
+For the implementation, attach to each vertex its $k$ keys consisting
+of a coordinate and its input label, each of weight $4/k$, and the
+identifiers of its incident LP sets, each with its weight $z_S$.
+The two kinds of keys use distinct identifiers. Common keys for a pair
+have total weight $4(1-d)+(1-x)$. This exceeds $5/2$ exactly for a
+positive pair. For every vertex, enumerate the subsets of its keys
+whose total weight exceeds $5/2$. Store the vertex in the list for
+each such subset, using a fixed order for the keys. Scanning the
+pivot's lists and ignoring duplicates returns exactly the pivot and
+its positive neighbors. Remove them from every list they belong to.
+Each vertex has at most $2^{k+h_0}$ list entries, all of which are
+removed at its first scan. This bounds the total work.
+\end{proof}
+
+The cluster LP has a variable for every subset of vertices. To limit
+the number of candidate clusters within a group $V_b$, first group
+vertices that agree on a majority of input positions. Within each such
+group, retain frequent input labels and partition the vertices by their
+retained label tuples. Candidate clusters are unions of the resulting
+subsets.
+Lemma~\ref{lem:band-packing} shows that this restriction loses at most
+the allowed additive error. The cluster-size bound $D$ may exceed the
+number of vertices in the group $V_b$.
+
+\begin{lemma}\label{band:linear-seed}
+Fix an odd $k$ and $0<\sigma<1$. On a sample of $k$ input partitions
+of $s$ vertices whose clusters have size at most $D$, \BandSeed{}
+returns an explicit partition of expected cost at most
+$601/500\OPT+\sigma sD$. It uses $O_{k,\sigma}(s)$ expected
+time and $O_{k,\sigma}(s)$ words.
+\end{lemma}
+\begin{proof}
+Lemma~\ref{lem:band-packing} constructs feasible fractional weights
+of cost at most $\OPT+(500\sigma/601)sD$. Each vertex belongs to
+a bounded number of sets of positive weight and all weights are
+multiples of $1/J$ for a fixed integer $J$ depending only on
+$k,\sigma$. Lemma~\ref{lp:hybrid} applies to these weights. To draw
+the order of the exponentially distributed priorities in linear time, group the sets by their integer
+rate $Jz_S$. At each step choose a class with probability
+proportional to its rate times its current size, then remove a
+uniform member of that class. There are $J$ classes and
+$O_{k,\sigma}(s)$ memberships of vertices in sets. This implements all
+three rounding distributions within the stated bound.
+\end{proof}
+
+\subsection{Approximation and running time}
+
+\begin{proof}[Proof of Theorem~\ref{off:linear}]
+Let $\nu=\varepsilon/8$ and let $k$ be the least odd integer at least
+$25/\nu^2$. Sample $k$ input partitions independently and uniformly. On a fixed sample, Lemma~\ref{band:linear-seed}
+bounds the expected cost in group $V_b$ by $601/500\OPT_{V_b}$
+plus at most $\mu|V_b|D_b$.
+By Lemma~\ref{lem:band-cuts}, the sum of the additive errors is at
+most $2\mu KB/c\le\nu B/8$. Lemma~\ref{lem:combine-bands} gives
+expected approximation ratio $601/500+\nu$ on the sample. Lemma~\ref{thm:ensemble-transfer}
+then gives expected approximation ratio $601/500+2\nu$ on the original
+inputs.
+
+Hashing label tuples and input labels builds the counts in
+$O_k(n)$ expected time. Each vertex can check the selected set $A_x$ in each of its
+$k$ input clusters to find its cluster formed around a selected set $A_x$, if any. We can
+tabulate the integers $\lfloor\log_2 z\rfloor$ for sizes $z$ up to $n$ in linear time, and the group $V_b$
+solver takes linear time in the sum of the sizes of the groups $V_b$ at fixed
+accuracy. Use Lemma~\ref{lem:select-simple} with $U=1$,
+$\delta=\varepsilon/32$ and failure probability $1/10$ to get
+approximation ratio $601/500+\varepsilon/2$ in $O_\varepsilon(n)$
+expected time. Lemma~\ref{lem:offline-confidence} gives the stated
+success probability and running time. Set $\varepsilon=1/125$ for approximation ratio $1.21$.
+\end{proof}
+
+We also use a deterministic version when the online algorithm rebuilds
+its clustering. It
+enumerates the pairwise independent samples of
+Lemma~\ref{lem:finite-lists} and all the random shifts. Within a group $V_b$
+it selects the cheapest of deterministic versions of the three
+rounding distributions. Appendix~\ref{app:deterministic-seed}
+gives this construction. Appendix~\ref{app:near-linear} gives a
+second offline implementation with singly exponential dependence
+on inverse accuracy and a polylogarithmic factor in $n$.
+
+\section{Online algorithm}
+\label{joint:section}
+\OnlineMain*
+
+For the analysis, let $h=\log(n+2)$ and
+$\ell=\log((h+2)/\zeta)$. Run $T$ independent copies of the algorithm,
+each using $k$ sampled input partitions. All copies rebuild their
+clusterings at the same arrival times. At a rebuilding time $s$, each
+copy computes a partition of $V_s$, its \emph{initial clustering}. It
+then assigns later vertices without changing the labels assigned since
+time $s$.
+
+For copy $j$, let $d_{j,e}$ be the fraction of its $k$ input partitions
+that separate pair $e$, and maintain
+$D_j(t)=\sum_{e\subseteq V_t}d_{j,e}(1-d_{j,e})$. Fix a tolerance
+$0<\delta\le1/100$. A copy initialized at $s$ continues extending its
+clustering while $D_j(t)\le(1+\delta/(18k))D_j(s)$. If $D_j(s)<1/4$,
+it instead uses the partition consistent with all majority decisions
+while $D_j(t)<1/4$. When the applicable inequality fails, stop using
+that copy until the next rebuilding time. Once this happens to
+$q=\lceil T/200\rceil$ copies, rebuild all copies before reporting the
+current answer. Lemmas~\ref{sig:prepare} and~\ref{sig:extend} describe
+how to prepare and extend each newly computed clustering. We specify
+$T$ and $k$ in the analysis below.
+
+To estimate costs, independently sample collections of $g$ input
+partitions and use the same collections for all copies. For a partition
+$C$ of $V_t$, let $G_t(C)$ be the average of the lowest quarter of its
+estimated costs. Let $C_t^j$ be the partition maintained by copy $j$.
+For each copy, maintain $H_j(t)$, the largest value of $G_v(C_v^j)$
+over times $v\le t$ at which that copy had not exceeded its applicable
+threshold. These maxima include values from earlier rebuilding
+intervals and are initially zero. Let $M_t$ be the
+$\lceil T/80\rceil$th smallest value among $H_1(t),\ldots,H_T(t)$.
+Maintain a separate threshold, initially zero. When $M_t$ first becomes
+positive or exceeds this threshold, replace the threshold by
+$(1+\delta)M_t$.
+
+Let $\mathcal I_t$ be the set of copy indices $j$ that have not exceeded
+their threshold on $D_j$ since the last rebuild and whose value $H_j(t)$
+is at most the threshold determined by $M_t$. Retain the selected copy
+until it leaves $\mathcal I_t$, all copies rebuild, or the threshold
+determined by $M_t$ changes. Whenever a new selection is needed, choose
+uniformly from $\mathcal I_t$. Each selection can change previously
+reported cluster labels. Allow at most $A$ selections, as specified in
+Lemma~\ref{lem:online-recourse}. If another selection would exceed this
+bound, preserve all reported labels and assign each subsequent vertex
+a new singleton cluster.
+
+\begin{algorithm}[htbp]
+\caption{Explicit online consensus clustering}
+\label{alg:online}
+\begin{algorithmic}[1]
+\Require Independently sampled input partitions, accuracy $\delta$, and selection bound $A$
+\State Initialize all copies on the empty set, $H_j(0)=0$, and the threshold at zero
+\For{each insertion at time $t$}
+  \State Update $D_j(t)$ for every copy
+  \If{at least $\lceil T/200\rceil$ copies have exceeded their thresholds on $D_j$}
+    \State Rebuild all copies; prepare their clusterings if $D_j(t)\ge1/4$
+  \EndIf
+  \State Extend each copy that has not exceeded its threshold on $D_j$
+  \State Update $G_t$, the values $H_j(t)$, the threshold determined by $M_t$, and $\mathcal I_t$
+  \If{the copies rebuilt, the threshold changed, or the selected index is absent from $\mathcal I_t$}
+    \State Select a uniform index from $\mathcal I_t$, subject to the bound $A$
+  \EndIf
+  \State Report the arriving vertex's label and all changed labels in the selected partition
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Extending one initial clustering}
+
+On a fixed sample, the separation fraction between two vertices is the
+fraction of coordinates on which their label tuples differ. We use
+$d_{xw}$ for the separation fraction between a label tuple $x$ and that
+of a vertex $w$. First collect all vertices of each label tuple in
+one cluster. Then split off sets $A_x$ whose average distance to the
+other vertices in their cluster is too large. Both operations
+preserve or decrease the cost of the initial clustering. To assign numeric identifiers to
+label tuples, hash pairs consisting of the identifier of a prefix of the
+label tuple and its next label. This takes $O(k)$ expected time per vertex.
+
+\begin{lemma}
+\label{sig:prepare}
+Given an initial clustering on $s$ vertices and $k$ input positions, we can obtain
+in $O(ks)$ expected time a partition of no greater cost with two
+properties. All vertices with the same label tuple lie in a single cluster. Within any cluster
+$C$ containing more than one label tuple, the average distance from a
+label tuple $x$ in $C$ to the vertices in $C\setminus C_x$ is at most
+$7/8$, where $C_x$ consists of the vertices with label tuple $x$ in $C$.
+\end{lemma}
+\begin{proof}
+Process the distinct label tuples $x$ one at a time. Move all vertices with tuple $x$
+into a single cluster that contains
+at least one of them. Choose the cluster $C$
+minimizing $\sum_{w\in C\setminus C_x}(2d_{xw}-1)$ over those options.
+This is the cost increase per vertex with label tuple $x$ when it
+is placed in $C$ rather than separated from vertices with other tuples
+in $C$. Its minimum is at most the
+weighted average before the move, where the weights count the vertices with tuple
+$x$ in each cluster. Placing all vertices with label tuple $x$ in one cluster also eliminates their
+internal disagreement cost.
+
+Maintain counts for each input label in each cluster. These counts give
+the sum of distances from a label tuple to the cluster in $O(k)$ time.
+There are at most $s$ initial pairs of a label tuple and a cluster containing a vertex with that tuple.
+Processing one label tuple does not change this list for vertices with any tuple not yet processed.
+Each vertex moves at most once in this step, so maintaining these counts
+and evaluating the moves takes $O(ks)$ expected time.
+
+Now work independently in each resulting cluster $C$ of current size
+$c$. Stop if $C$ contains only one label tuple. For each tuple $x$, let
+$a_x=|C_x|$ and let $b_x$ be its average distance to $C\setminus C_x$.
+The same input-label counts give all these averages in $O(kc)$ time,
+since the $a_x$ vertices with tuple $x$ contribute zero to the sum of distances
+from $x$ to $C$.
+
+For each $x$ with $b_x\ge3/4$, split $C_x$ off into a separate cluster. Splitting
+off $C_x$ alone would reduce the cost by
+$a_x(c-a_x)(2b_x-1)\ge a_x(c-a_x)/2$. Let $M$ be the sum of
+$a_x(c-a_x)$ over the chosen tuples. Summing their individual gains
+counts each pair whose two distinct tuples were both chosen twice.
+There are at most $M/2$ such pairs, and overcounting each contributes
+at most one. The simultaneous split therefore gains at least
+$M/2-M/2=0$.
+
+If the remaining cluster is empty or has only one distinct label tuple, stop. If at least
+$c/16$ vertices were split off, repeat on the error term. Otherwise let
+$c'$ be the remaining size. For a remaining tuple $x$ with $a_x\le c'/2$,
+its original complement had size $c-a_x\ge c/2$. It lost less than
+one eighth of that size. Its new average is at most
+$(3/4)/(1-1/8)=6/7$, because all distances are nonnegative and the
+vertices with tuple $x$ were not split off. Only a tuple occurring on more than $c'/2$ vertices
+can therefore violate the desired $7/8$ bound. Check its average
+and stop if the bound holds or if there is no such tuple. Otherwise
+split it off, which decreases the cost, and repeat. Whenever the
+algorithm repeats, at most $15c/16$ vertices remain. The total sizes
+scanned are consequently linear in the initial cluster size. No
+split separates vertices with the same label tuple.
+\end{proof}
+
+The extension assigns one cluster label to the later vertices with each
+label tuple. If its
+vertices do not form a strict majority in an initial cluster, the
+sum of its incident pairwise lower bounds controls the cost of assigning
+later vertices of this label tuple to a separate cluster.
+
+\begin{lemma}
+\label{sig:extend}
+Suppose the initial clustering at time $s$ satisfies Lemma~\ref{sig:prepare}.
+If a label tuple occurs on a strict majority of the vertices of an initial cluster, assign all
+later vertices with that label tuple to that cluster. For every other label tuple,
+assign a new cluster label to all later vertices
+with that tuple. The extension
+preserves all assigned labels and adds cost at most
+$9k(B_t-B_s)$ through time $t$, with $B_s$ and $B_t$ both computed on the same sample.
+\end{lemma}
+\begin{proof}
+Fix an arriving vertex with label tuple $x$. It stays separate from every
+initial cluster containing no vertex with label tuple $x$. For a vertex $w$
+in such a cluster, the separation cost is zero if $d_{xw}=1$.
+Otherwise $0<d_{xw}<1$, and $p_{xw}=\min\{d_{xw},1-d_{xw}\}$
+is at least $1/k$, so $1-d_{xw}\le k p_{xw}$. The same estimate applies to every nonidentical pair of later
+vertices because distinct label tuples receive distinct labels.
+Later vertices with the same label tuple are co-clustered at cost zero.
+
+Consider the unique initial cluster $C$ that contains $a$ vertices
+with label tuple $x$, if one exists. The cost between the arriving vertex and $C$ is zero if every vertex
+in $C$ has label tuple $x$. Otherwise let $b=|C|-a$ and let
+$B_C(x)=\sum_{w\in C}p_{xw}$.
+The average-distance bound in Lemma~\ref{sig:prepare} gives
+$\sum_{w\in C\setminus C_x}(1-d_{xw})\ge b/8$. Each nonzero summand
+is at most one and corresponds to a pair of vertices with different tuples for which
+$p_{xw}\ge1/k$. Hence $b\le8kB_C(x)$.
+If tuple $x$ occurs on a strict majority of vertices in $C$, assign the new
+vertex to $C$, at cost at most $b$.
+If it is not a strict majority, $a\le b$ and it is separated from $C$.
+The $a$ vertices with tuple $x$ contribute $a$. The remaining vertices
+contribute at most $k B_C(x)$. Thus the total is at most $9kB_C(x)$
+in either case. Sum over the additional pairs.
+\end{proof}
+
+The next lemma bounds the number of arrivals for which the initial
+clustering can be extended before rebuilding it. It also
+explains how to maintain $D_j$, using cluster-intersection counts
+instead of summing over all pairs.
+
+\begin{lemma}
+\label{sig:base}
+Suppose an offline algorithm is called at every rebuilding time to supply an
+$\alpha$-approximate clustering. For $0<\tau\le1$, the extension algorithm
+has ratio $\alpha+\tau$ after every arrival on which all preceding
+offline calls have succeeded. Every vertex has recourse at most
+$O(k\tau^{-1}\log(n+2))$ on every execution. Define
+$J=O(1+k\tau^{-1}\log(n+2))$. Over $n$ arrivals the algorithm
+uses $O(k^2 n +k nJ)$ expected time beyond the offline calls, and
+reports at most $O(nJ)$ label changes. Worst-case label and
+same-cluster queries take $O(1)$ time with stored vertex identifiers.
+\end{lemma}
+\begin{proof}
+Recall that $D_t=\sum_{\{u,v\}\subset V_t}d_{uv}(1-d_{uv})$.
+For each pair, $p_{uv}/2\le d_{uv}(1-d_{uv})\le p_{uv}$, so
+$B_t/2\le D_t\le B_t$.
+The same inequalities hold for increments over nested vertex sets.
+The identity
+\[
+ D_t=k^{-2}\sum_{i<j}d(P_i|_{V_t},P_j|_{V_t})
+\]
+follows pair by pair. Maintain the $k(k-1)/2$ distances using the cluster-intersection
+counts of Section~\ref{sec:preliminaries}. This takes $O(k^2)$
+expected time per insertion. The cost of input partition $P_i$ is $k^{-1}\sum_j d(P_i,P_j)$. 
+
+While $D_t<1/4$, we have $B_t<1/2$. The partition consistent with all majority decisions is optimal
+and is attained by a lowest-cost input by Section~\ref{sec:preliminaries}.
+Label each cluster by its smallest arrival index. The label persists
+because the majority decisions on old pairs are fixed.
+
+At the first time $s$ with $D_s\ge1/4$, call the offline algorithm and
+prepare its output using Lemma~\ref{sig:prepare}. Use
+Lemma~\ref{sig:extend} while
+$D_t\le(1+\tau/(18k))D_s$. Start a new initial clustering at the first time
+exceeding the threshold, before publishing that time's answer. Before the next
+rebuild, additional cost is bounded by
+\[
+ 9k(B_t-B_s)\le18k(D_t-D_s)\le\tau D_s\le\tau\operatorname{OPT}_t.
+\]
+The cost of a successful initial clustering is at most $\alpha\operatorname{OPT}_s$.
+The positive values of $D_t$ at rebuilding times grow geometrically from at least $1/4$ to
+at most $n(n-1)/8$, proving the bounds on rebuilds and recourse. Use a
+distinct set of cluster identifiers after each rebuild, and issue one report per old vertex at each
+reset. All other arrivals issue only their own label. For values of $D_t$
+below $1/4$, maintain minimum arrival indices per input cluster and the
+identifier of a current minimum-cost input. Dictionary access to a
+new full label tuple takes $O(k)$ expected time using successive prefix
+identifiers. Preparing each initial clustering takes $O(ks)$ expected time. An explicit
+label array supports constant-time queries.
+\end{proof}
+
+\subsection{Selecting the published copy}
+
+Before each rebuild, at least $q$ copies have exceeded their thresholds
+on $D_j$. A copy can cross $D_j=1/4$ at most once. At every later
+threshold violation, $\log\max\{1,4D_j(t)\}$ has increased by more than
+$\log(1+\delta/(18k))$ since the last rebuild.
+Since $D_j\le n^2/8$, we may use
+\[
+ J_0=1+(T/q)\left(1+\frac{\log(1+n^2)}{\log(1+\delta/(18k))}\right)
+\]
+as an upper bound on the number of intervals between rebuilds. In particular
+$J_0=O(k\delta^{-1}h)$ for $h=\log(n+2)$. After every arrival
+fewer than $T/200$ copies have exceeded their thresholds on $D_j$. Give each offline call failure
+probability at most $1/(4000J_0)$. Conditional on the input partitions used to construct the candidates,
+a union bound over the initial clusterings of a copy gives failure probability
+at most $1/4000$ for that copy.
+The rebuilding times depends only on the samples and the stream.
+
+For the analysis, divide the optimum values into the range $[0,1/8)$
+and the ranges $[(1+\delta)^i/8,(1+\delta)^{i+1}/8)$ for $i\ge0$.
+There are at most
+$b=3+\lceil\log(1+8n^2)/\log(1+\delta)\rceil$ occupied ranges.
+For each, take the last time $t$ in that range, fix an optimum $F_t$, and
+let $o=\OPT_t$ and let $F'_v$ denote the restriction of $F_t$ to
+$V_v$ for $v\le t$. For each copy $j$ that has not exceeded its threshold on $D_j$ at time $v$,
+let $C^j_v$ be its partition there.
+The endpoints are fixed by the oblivious stream and appear only in the analysis.
+
+The first selection lemma identifies many copies whose
+costs are close to the costs of these restrictions at all earlier times. This is
+stronger than finding a good copy at
+the current time, since the selection rule uses the maxima $H_j$.
+
+\begin{lemma}\label{lem:online-training}
+Let $\gamma\in[1,1.42]$ and suppose a successful initial clustering has approximation
+ratio on the sample $\gamma+\delta$. With $k\ge52\delta^{-2}$ and
+$T=\lceil C\log(16b/\zeta)\rceil$ independent copies, each using $k$
+independently sampled input partitions, for a sufficiently large
+absolute constant $C$, the following holds with
+probability at least $1-\zeta/4$. At each endpoint $t$, at least
+$3T/160$ copies satisfy
+$f_v(C^j_v)-f_v(F'_v)\le(\gamma-1+8\delta)o$ at every $v\le t$ at which the copy has not exceeded its threshold on $D_j$.
+\end{lemma}
+\begin{proof}
+By the initial clustering and extension bounds, a copy with successful offline calls
+that has not exceeded its threshold on $D_j$ has
+approximation ratio at most $a=\gamma+2\delta$ on its $k$ sampled input partitions by
+Lemma~\ref{sig:base}. Let $f^j_v$ denote the average cost on copy $j$'s sampled input
+partitions restricted to $V_v$.
+The triangle inequality for partitions gives
+$d(C^j_v,F'_v)\le(a+1)f^j_v(F'_v)$. Therefore
+Lemma~\ref{lem:sample-difference} bounds the true cost excess at
+every such time $v\le t$ by
+$[a-1+\delta(a+1)]f^j_t(F_t)+R_j(V_t)$, where $R_j$ is the
+error term from Lemma~\ref{lem:sample-difference} for copy $j$. For $o>0$, Feige's inequality~\cite{Feige}
+gives $f^j_t(F_t)\le(1+1/k)o$ with probability at least $1/13$.
+Markov's inequality gives $R_j(V_t)\le\delta o$ except with
+probability $1/52$. Their intersection has probability at least
+$3/52$ and implies the desired cost bound. When $o=0$ the terms
+are zero almost surely.
+
+These events depend on the input partitions sampled independently for
+the different copies. Chernoff's
+inequality gives at least $T/40$ copies satisfying these events at every endpoint
+except with probability $\zeta/8$ for the stated $T$. Independently
+across copies conditional on the samples, the offline-call failure probability
+per copy is at most $1/4000$. Again by Chernoff, more than $T/160$
+copies have an unsuccessful offline call with probability at most
+$(e/25)^{T/160}\le\zeta/8$. Discard these copies from those satisfying these events at each endpoint.
+\end{proof}
+
+We estimate the copies' costs using further independently sampled input
+partitions. The estimate $G_t$
+averages the lowest quarter of the estimated costs to control the cost of restrictions
+of $F_t$. The next lemma also controls differences between the estimates,
+which are what the selection proof needs.
+
+\begin{lemma}\label{lem:online-eval}
+To estimate costs, independently sample
+$V=4\lceil C\delta^{-1}\log(16b/\zeta)\rceil$ collections of input
+partitions, each containing $g=\lceil128\delta^{-3}\rceil$ partitions. Put $r=V/4$. With
+probability at least $1-\zeta/4$, at each endpoint $t$ the estimate
+satisfies $G_t(F_t)\le2o$ and for all $v\le t$ and partitions
+$C,A$ of $V_v$,
+\[
+ |G_v(C)-G_v(A)-f_v(C)+f_v(A)|\le 2\delta d(C,A)+\delta o .
+\]
+\end{lemma}
+\begin{proof}
+At an endpoint with $o>0$, Markov's inequality applied to the
+remainder in Lemma~\ref{lem:sample-difference} gives probability at
+most $1/(g\delta^2)\le\delta/128$ of exceeding $\delta o$. If $o=0$,
+the error term is zero almost surely. Chernoff and a union bound give at most
+$\delta V/8$ such collections per endpoint except with probability
+$\zeta/8$. Also a collection gives average cost at most $2o$ on $F_t$ with
+probability at least $1/2$. At least $r$ collections satisfy this test
+at each endpoint except with probability $\zeta/8$ in total.
+
+Among any $r$ of these collections, at most a $\delta/2$ fraction have
+an error term exceeding $\delta o$. For the other collections Lemma~\ref{lem:sample-difference}
+bounds the cost-difference error by $\delta d(C,A)+\delta o$
+at every $v\le t$. A collection whose error term exceeds $\delta o$ has error at most
+$2d(C,A)$, by the pairwise cost formula. The claimed bound follows
+for the average on any $r$ collections and thus for the difference of
+the two minimum averages.
+\end{proof}
+
+The estimate $G_t$ of a restriction of $F_t$ is nondecreasing as vertices arrive, since
+each estimated cost grows. The following argument uses this fact
+to bound the cost of every copy in $\mathcal I_t$.
+
+\begin{lemma}\label{lem:online-eligible}
+On the events of Lemmas~\ref{lem:online-training} and~\ref{lem:online-eval},
+every copy indexed by $\mathcal I_u$ has true cost at most
+$(\gamma+25\delta)\OPT_u$.
+\end{lemma}
+\begin{proof}
+Fix the range containing $u$ and its endpoint $t$. For a copy satisfying
+Lemma~\ref{lem:online-training} and any $v\le u$ at which its threshold on $D_j$ has not
+been exceeded, the bound in that lemma gives
+$d(C^j_v,F'_v)\le(\gamma+1+8\delta)o$. Also
+$G_v(F'_v)\le G_u(F'_u)\le2o$. Applying the bound in Lemma~\ref{lem:online-eval}
+at each such time $v$ shows that $H_j(u)$ is at most
+$G_u(F'_u)+b'o$, where
+$b'=\gamma-1+8\delta+2\delta(\gamma+1+8\delta)+\delta
+\le\gamma-1+14\delta$.
+There are at least $3T/160$ such copies, so their bound also
+holds for $M_u$. The threshold determined by $M_u$ is at least $M_u$, so at least $\lceil T/80\rceil$
+values $H_j(u)$ are at or below it. Fewer than $T/200$ of these copies can
+have exceeded their thresholds on $D_j$. Hence $|\mathcal I_u|\ge T/200$
+on every execution.
+
+For the partition $C$ of any copy in $\mathcal I_u$, the threshold rule gives $G_u(C)\le(1+\delta)M_u$.
+Use the bound in Lemma~\ref{lem:online-eval} and $d(C,F'_u)\le f_u(C)+o$ to obtain
+\[
+ (1-2\delta)f_u(C)
+ \le [1+5\delta+(1+\delta)b']o
+ \le(1-2\delta)(\gamma+23\delta)o.
+\]
+In a positive geometric range, $o\le(1+\delta)\OPT_u$ and
+$(1+\delta)(\gamma+23\delta)\le\gamma+25\delta$. In the first
+range, $d(C,F'_u)\le(\gamma+23\delta+1)o<1$, so $C=F'_u$.
+Any distinct partition $C'$ has $d(C',F'_u)\ge1$ and hence
+$f_u(C')\ge1-f_u(F'_u)>f_u(F'_u)$. Thus $F'_u$ is optimal.
+\end{proof}
+
+Between consecutive rebuilds or changes to the threshold determined by
+$M_t$, the sets $\mathcal I_t$ only decrease. Selecting an index that
+remains in the set until the end of the interval avoids any further
+relabeling within that interval.
+
+\begin{lemma}\label{lem:online-recourse}
+The algorithm can bound the total number of selections by
+$A=O(k\delta^{-1}h+\delta^{-1}\log(rgn^2)+\log(2/\zeta))$.
+The probability that it needs more selections is at most $\zeta/8$.
+\end{lemma}
+\begin{proof}
+Divide time at every rebuild and every change to the threshold
+determined by $M_t$. The estimates $G_t$ are multiples of $1/(rg)$ and are at most
+$\binom n2$, so there are $K=O(k\delta^{-1}h+
+\delta^{-1}\log(rgn^2))$ intervals. Use any deterministic upper bound
+$K_0$ of this order. Conditional on arrivals, all samples, and all initial clusterings,
+the sequence of sets $\mathcal I_t$ in each interval is fixed and
+decreases with time.
+At the last time in each interval, $|\mathcal I_t|\ge T/200$. Each selection chooses one
+of those copies with probability
+at least $p=1/200$, in which case no further selection is needed in
+that interval. The number of selections is stochastically
+dominated by a geometric variable with parameter $p$.
+
+At $\vartheta=-\tfrac12\log(1-p)$ its exponential moment is at most
+$p e^\vartheta/(1-(1-p)e^\vartheta)<3$. Iteration over intervals
+and Markov's inequality give the claim for
+$A=\lceil(K_0\log3+\log(8/\zeta))/\vartheta\rceil$.
+A selection can change a vertex's label once and all other insertions
+preserve it. Use the rebuild and copy indices in labels so that each
+new copy can publish its partition consistently.
+\end{proof}
+
+\subsection{Running time and adaptive arrivals}
+
+\begin{proof}[Proof of the randomized part of Theorem~\ref{on:loglog}]
+Fix $\delta=\varepsilon/100$ and $\gamma=601/500$, and use the least
+odd $k\ge52\delta^{-2}$. Compute each initial clustering using the construction in the proof of
+Theorem~\ref{off:linear} on its own $k$ sampled input partitions at accuracy $\delta$
+and failure probability $1/(4000J_0)$. That proof gives approximation
+ratio $601/500+\delta$.
+Let $sQ$ be its expected time on $s$ vertices, so
+$Q=O_\delta(\log(2J_0))$. For each copy, updating $D_j$
+takes $O(k^2)$ time. Maintaining the counters and obtaining the cost
+estimate takes $O(Vg+k)$ expected time per insertion.
+Rebuilding all counters and preparing the initial clusterings at a reset
+of size $s$ costs $O(sT[Q+k+Vg])$ in expectation. The sum of reset
+sizes through time $t$ is at most $tJ_0$. Scanning the selected
+copy upon a selection to publish changed labels costs at most $tA$
+through time $t$. Thus the expected amortized insertion time is
+\[
+ O\bigl(T(k^2+Vg)+TJ_0(Q+k+Vg)+A\bigr).
+\]
+Store the published labels for worst-case constant query time.
+For fixed $\delta$, $T,Vg=O_\delta(\ell)$, $J_0=O_\delta(h)$ and
+$Q=O_\delta(\log(2+h))$. Hence the time is $O_\delta(h\ell^2)$.
+The selection bound is $O(\delta^{-3}h+\log(2/\zeta))$, since
+$\log(rgn^2)=O(h+\log(1/\delta)+\log\log(8n/\zeta))$ and
+$\delta^{-1}\log x=O(\delta^{-2}+x)$ for $x\ge1$.
+Lemmas~\ref{lem:online-eligible} and~\ref{lem:online-recourse}
+give the stated success probability. The fixed choice $\delta=1/3125$ gives
+$601/500+25\delta=1.21$.
+\end{proof}
+
+\subsection{Deterministic extension for adaptive arrivals}
+\label{det:section}
+
+For adaptive arrivals, compute a deterministic clustering on the original
+inputs at time $s$ and improve it by cost-decreasing splits and merges.
+Use the resulting partition as the initial clustering. Subsequently,
+the extension assigns later vertices without changing any earlier
+labels. Its additional cost is at most $C_0(B_t-B_s)$, where
+$C_0=112(1+2A)$ and $A$ is the constant competitive factor of the
+irrevocable algorithm for metric correlation clustering of Davies,
+Moseley and Newman~\cite{DMN2026}. Rebuild the initial clustering when this bound
+would exceed the allowed error.
+
+\begin{algorithm}[htbp]
+\caption{Deterministic online consensus clustering}
+\label{alg:det-online}
+\begin{algorithmic}[1]
+\For{each insertion at time $t$}
+    \If{$B_t<1/2$}
+        \State Publish the partition consistent with all majority decisions with persistent labels
+    \Else
+        \If{there is no initial clustering or $B_t>(1+\varepsilon/(2C_0))B_s$}
+            \State Set $s\gets t$ and compute a deterministic initial clustering at accuracy $\varepsilon/2$
+            \State Apply cost-decreasing splits and merges, then publish the labels
+        \Else
+            \State Assign the arriving vertex with the deterministic clustering extension
+        \EndIf
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Cost-decreasing splits and merges.}
+
+A partition $\mathcal C$ of the initial vertex set $S$ is \emph{locally optimal}
+with respect to the following operations if neither decreases its cost.
+\begin{enumerate}
+\item Split any cluster $C$ into $C\cap P$ and $C\setminus P$, where
+$P$ is any cluster of any one of the original input partitions.
+\item Merge any two clusters $C,D$ of $\mathcal C$.
+\end{enumerate}
+Empty pieces are ignored. Repeat any available cost-decreasing split or merge until the
+partition is locally optimal. Each operation decreases the cost by at least
+$1/m$, so exhaustive search over operations takes polynomial time.
+
+For a new vertex, the split condition bounds the smaller cost of
+assigning it to an initial cluster or separating it from that cluster.
+
+\begin{lemma}
+\label{seedext:onevertex}
+Let $C$ be a cluster in a locally optimal initial clustering and let $v$ be a later vertex.
+Let $S_C(v)=\sum_{u\in C}d_{uv}$ be its cost of being assigned to $C$,
+and let $B_C(v)=\sum_{u\in C}p_{uv}$. Then the smaller cost of
+assigning $v$ to $C$ or separating it from $C$ is at most $7B_C(v)$:
+$\min\{S_C(v),|C|-S_C(v)\}\le7B_C(v)$.
+\end{lemma}
+\begin{proof}
+Put $x_u=d_{uv}$ and partition $C$ into
+$L=\{u:x_u\le 1/2\}$ and $H=C\setminus L$.
+Sample one input partition uniformly, and let $A$ consist of the
+vertices of $C$ in the sampled cluster containing $v$.  Each possible
+nonempty $A$ is an input-cluster intersection tested by local optimality.
+Consequently the expected change in cost upon splitting $C$ into
+$A,C\setminus A$ is nonnegative.
+
+For $a,b\in C$, let $r_{ab}$ be the probability that exactly one of
+$a,b$ belongs to $A$.  Necessarily $r_{ab}\le d_{ab}$.  If $a,b$ are
+on the same side of $L,H$, a union bound gives
+$r_{ab}\le p_{av}+p_{bv}$ and hence
+\[
+ r_{ab}(1-2d_{ab})\le p_{av}+p_{bv}.
+\]
+If $a,b$ lie on different sides, put $z=p_{av}+p_{bv}$.
+The difference of the two membership probabilities gives
+$r_{ab}\ge 1-z$.  The inequality
+$r-2r^2\le 2-3r$, valid for $0\le r\le1$, now gives
+\[
+ r_{ab}(1-2d_{ab})
+ \le r_{ab}-2r_{ab}^2
+ \le -1+3z.
+\]
+Summing over unordered pairs and using local optimality yields
+\[
+ 0\le \sum_{\{a,b\}\subseteq C}r_{ab}(1-2d_{ab})
+ \le -|L||H|+3(|C|-1)B_C(v).
+\]
+Since $\max\{|L|,|H|\}\ge |C|/2$, this implies
+$\min\{|L|,|H|\}\le 6 B_C(v)$.
+Finally $|S_C(v)-|H||\le B_C(v)$, which proves the claim.
+\end{proof}
+
+The merge condition ensures that a new vertex can be close to at most one initial cluster.
+
+\begin{lemma}
+\label{seedext:merge}
+For two different clusters $C,D$ of a locally optimal initial clustering,
+\[
+ \frac1{|C||D|}\sum_{u\in C,w\in D}d_{uw}\ge\frac12.
+\]
+In particular, for any vertex $v$ and any $r<1/4$, there is at most
+one cluster $C$ satisfying $S_C(v)/|C|<r$.
+\end{lemma}
+\begin{proof}
+The first assertion is exactly the condition that merging $C,D$ does
+not decrease cost.  If both averages to $v$ were below $r$, averaging
+the triangle inequality $d_{uw}\le d_{uv}+d_{vw}$ would make their
+cross-cluster average smaller than $2r<1/2$.
+\end{proof}
+
+\paragraph{Extending a locally optimal clustering.}
+
+Fix a locally optimal initial clustering $\mathcal C$ of $S$. Sample independently
+one integer $j$ uniformly from $\{0,\ldots,m-1\}$, set
+\[
+ R=\frac1{16}+\frac{2j+1}{32m},
+\]
+and sample one uniform input partition $P$ independently. Keep $R$ and
+$P$ fixed until the next rebuild.
+Assign an arriving vertex $v\notin S$ to the unique initial cluster $C$ with
+$S_C(v)/|C|<R$, if such a cluster exists. Otherwise give $v$ the label
+of its cluster in $P$, with these labels kept distinct from all initial
+cluster labels.  The decisions only use the fixed initial vertex set, the fixed
+threshold, and the fixed input partition. Therefore no previous
+vertex ever changes its label within this extension.
+
+For a fixed set $W$ of later vertices, let $\mathcal C^{\rm ext}$
+be the partition obtained by extending $\mathcal C$ with the sampled
+threshold and input partition. Its expected cost on pairs involving
+$W$ will bound the cost of the deterministic extension.
+
+\begin{lemma}
+\label{seedext:additional}
+For any deterministic set $W$ of later vertices, the extension has
+\[
+ \mathbb E\bigl[f_{S\cup W}(\mathcal C^{\rm ext})
+                    -f_S(\mathcal C)\bigr]
+ \le112\sum_{\substack{\{u,v\}\subseteq S\cup W\\
+                        \{u,v\}\not\subseteq S}}p_{uv}.
+\]
+The expectation is over $R,P$ for the fixed initial clustering.
+\end{lemma}
+\begin{proof}
+First fix $v\in W$. For its chosen initial cluster $C$, if there is one,
+$S_C(v)/|C|<R\le1/8$, so Lemma~\ref{seedext:onevertex} bounds its
+cost within the cluster by $7B_C(v)$. For every other initial cluster $D$,
+$S_D(v)/|D|\ge R\ge1/16$. If
+$S_D(v)\ge |D|-S_D(v)$, its separation cost is at most $7B_D(v)$.
+Otherwise $S_D(v)\le7B_D(v)$ and
+$|D|\le16S_D(v)\le112B_D(v)$, which also bounds its separation cost.
+Thus all costs of pairs between the initial and later vertices are at most 112 times their
+sum of the pairwise lower bounds,
+for every threshold.
+
+Consider two later vertices $v,w$. If they are assigned to the same initial cluster,
+averaging the triangle inequality gives $d_{vw}<2R\le1/4$. Their
+cost within the cluster is exactly $p_{vw}$. If they are assigned to different initial clusters,
+Lemma~\ref{seedext:merge} and the triangle inequality give
+$d_{vw}>1/2-2R\ge1/4$, so their separation cost is at most $3p_{vw}$.
+If both are unassigned to the initial clustering, their expected cost over $P$ is
+$2d_{vw}(1-d_{vw})\le2p_{vw}$.
+
+It remains to treat the event that exactly one is assigned to the initial clustering.
+Put $a(v)=\min_{C\in\mathcal C}S_C(v)/|C|$. The triangle inequality
+shows $|a(v)-a(w)|\le d_{vw}$. Exactly one is assigned only if $R$
+lies between these two values. The grid has spacing $1/(16m)$,
+so when $d_{vw}>0$ the event has probability at most
+\[
+ \min\{1,16d_{vw}+1/m\}\le\min\{1,17d_{vw}\},
+\]
+since every positive $d_{vw}$ is at least $1/m$. When $d_{vw}=0$,
+the two minima coincide and the event is empty. This case contributes at most $17p_{vw}$ in expectation. When
+$d_{vw}\le1/2$ use the probability bound and a cost of at most one.
+When $d_{vw}>1/2$ use the separation cost $1-d_{vw}=p_{vw}$. The
+other three cases are disjoint and together contribute at most $3p_{vw}$.
+Thus the expected cost of every later--later pair is at most
+$20p_{vw}\le112p_{vw}$, completing the proof. All thresholds and
+comparisons use integers with $O(\log(mn))$ bits.
+\end{proof}
+
+
+
+The separation probabilities of these extensions satisfy the triangle
+inequality, so they give a valid input to the cited algorithm for
+metric correlation clustering.
+
+\begin{lemma}
+\label{virt:lemma}
+There is a deterministic online extension of every locally optimal initial clustering
+on $S$. It preserves the initial clustering and assigns each subsequent
+vertex its permanent label at arrival. After every arrival its additional
+original consensus cost is at most
+\[
+ C_0\,(B_t-B_s),\qquad C_0=112(1+2A).
+\]
+The extension takes polynomial time and is valid for arbitrary arrival
+orders, including adaptive orders.
+\end{lemma}
+\begin{proof}
+Let $Z$ be the random extension of Lemma~\ref{seedext:additional}
+and let $a_{uv}$ be the probability that $Z$ separates $u,v$.
+The separation indicators of a partition satisfy the triangle
+inequality, so their average $a$ does too. When the second endpoint
+arrives, compute $a_{uv}$ by enumerating the $m^2$ equally likely
+threshold and input choices. The weights of earlier pairs stay fixed.
+
+Run the irrevocable algorithm of Davies, Moseley and Newman with negative
+weights $a_{uv}$ and positive weights $1-a_{uv}$. At initialization,
+feed it the vertices of the initial clustering in a fixed order. Each distance between
+vertices in the initial clustering is zero
+within an initial cluster and one between initial clusters. The optimum on the
+initial clustering is zero, so the algorithm outputs precisely the initial clustering,
+up to renaming. Reuse the initial clustering identifiers for these clusters.
+
+Fix a later arrival time and let $D$ be the output partition. For any
+partition $X$, let $f_a(X)=\mathbb E_Z[d(X,Z)]$ be its cost in the
+instance with weights $a$. Let $E$ be the expected original cost
+of $Z$ on pairs with at least one endpoint outside the initial vertex set. If
+$Z'$ is an independent copy of $Z$ and $P$ is a uniform original
+input, the triangle inequality on those pairs gives
+$\mathbb E[d(Z',Z)]\le2E$. Pairs within the initial vertex set contribute zero since
+both extensions keep the initial clustering, so $\min_X f_a(X)\le2E$.
+The competitive guarantee gives $f_a(D)\le2AE$. A second
+application of the triangle inequality on the same pairs bounds
+the additional original cost of $D$ by $E+f_a(D)$.
+Lemma~\ref{seedext:additional} gives $E\le112(B_t-B_s)$.
+Each of these inequalities applies to the vertices present after any arrival in the
+deterministic algorithm.
+\end{proof}
+
+\begin{proof}[Proof of the deterministic part of Theorem~\ref{on:loglog}]
+Use Lemma~\ref{off:det} at rebuilding times with accuracy $\varepsilon/2$.
+The offline approximation ratio is $\alpha=601/500+\varepsilon/2$ and the extension
+error tolerance is $\tau=\varepsilon/2$.
+Use the exact majority partition until the first arrival time $s$ with
+$B_s\ge1/2$. At $s$ compute and locally optimize an offline initial clustering. Use
+Lemma~\ref{virt:lemma} as long as
+$B_t\le(1+\tau/C_0)B_s$. At the first arrival violating this inequality,
+rebuild the clustering before publishing its output. After every arrival before
+the next rebuild the original cost is at most
+\[
+ \alpha\operatorname{OPT}_s+C_0(B_t-B_s)
+ \le (\alpha+\tau)\operatorname{OPT}_t.
+\]
+Each restart changes a vertex's label at most once. The values of $B_s>0$ at rebuilding
+times grow geometrically from at least $1/2$ to at most $t^2/4$,
+so there are $O((C_0/\tau)\log(t+2))$ restarts through time $t$,
+including the transition out of the initial majority stage. The proof
+uses only the vertices seen so far. The auxiliary distances have
+rational denominators dividing $m^2$. A direct implementation evaluates
+them by enumerating the $m^2$ threshold/input choices. The cited online
+metric algorithm uses polynomial-time distance and average-distance
+comparisons, so replaying the initial clustering and processing later vertices takes
+polynomial time. Cluster identifiers persist when that algorithm changes
+a cluster's representative.
+\end{proof}
+
+\section{Fully dynamic algorithm}
+\label{sec:dyn-band}
+\DynamicMain*
+
+Let $\Lambda=\log((U+2)/(\varepsilon\zeta))$ for the analysis.
+A deletion can decrease the optimum. To control the cost of keeping
+an old partition, track the entries and exits in each group $V_b$ separately.
+Each trial fixes a collection of sampled input partitions and a shift and uses the rules for clusters formed
+from selected sets $A_x$ and
+groups $V_b$ of Section~\ref{sec:size-bands}. It records the size of each
+nonempty input cluster and set $A_x$ when it first appears. It refreshes the
+recorded size when it differs from the current size by more than the
+factor $1+\lambda$, and removes the record when its set becomes empty. For a set $A_x$, use its
+stored count for $\widehat a_x$ and the largest stored size estimate of
+its clusters for $\widehat s_x$.
+
+For the set $S$ at its most recent rebuild, each group $V_b$ stores $|S|$
+and the count $e$ of subsequent changes in its membership. Keep each vertex newly assigned to $V_b$ in a singleton cluster until
+the next rebuild. Count a vertex that leaves and reenters as two membership changes. When $e>\mu|S|$, rebuild
+the group $V_b$ with \BandSeed{} at accuracy $\mu$. An empty group has $|S|=0$, so it
+rebuilds upon receiving its first vertex. Apply all membership changes caused by a stream
+update before testing
+whether any group needs a rebuild.
+
+\begin{algorithm}[htbp]
+\caption{Maintaining one trial under vertex updates}
+\label{alg:dynamic}
+\begin{algorithmic}[1]
+\Require A fixed collection of input partitions and a random shift
+\For{each vertex insertion or deletion}
+    \State Update the sizes of input clusters and sets $A_x$ and refresh stored size estimates where needed
+    \State Update clusters formed around the selected sets $A_x$ and compute the resulting changes in membership of the groups $V_b$
+    \For{each affected group $V_b$}
+        \State Remove departing vertices and give newly assigned vertices fresh singleton labels
+        \State Add the number of membership changes to $e_b$
+        \If{$e_b>\mu|S_b|$}
+            \State $C_b\gets\BandSeed(V_b,\min\{D_b,|V_b|\},\mu)$ if $V_b\ne\varnothing$
+            \State Set $|S_b|\gets |V_b|$ and reset $e_b$ to zero
+        \EndIf
+    \EndFor
+    \State Update estimated costs for the changed labels
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+For oblivious streams, we run independent copies of
+Algorithm~\ref{alg:dynamic}, sampling the input partitions and shifts independently for each copy.
+After each update we choose the copy with the smallest estimated cost, using one
+independently sampled collection
+of input partitions to estimate the cost of every copy. A query to the current partition
+uses identifiers from that copy.
+The adaptive construction uses a fixed family of sequences of input indices and accepts
+each initial clustering only after checking its cost.
+
+\subsection{Reusing a clustering before rebuilding}
+
+The upper bound $D_b$ on input-cluster sizes controls the cost of assigning a vertex
+a singleton. Comparing optima through the vertices that have
+stayed in the group $V_b$ gives the following bound.
+
+\begin{lemma}\label{lem:dynamic-band}
+Suppose the initial clustering on $S$ has expected cost at most
+$\alpha\OPT_S+\mu|S|D_b$, where $1\le\alpha\le2$. For the present
+group $V_b$ after $e$ changes in membership, the restricted initial clustering plus
+the newly assigned vertices as singletons has expected cost at most
+$\alpha\OPT_{V_b}+(\alpha e+\mu|S|)D_b$.
+\end{lemma}
+\begin{proof}
+Assigning a vertex its own singleton adds at most $D_b$ in cost,
+since the average number of other vertices in its input clusters is
+at most $D_b$. Let $I$ be the vertices that have stayed in the group $V_b$
+since the last rebuild. Restrict an optimum on $V_b$ to $I$ and extend
+it by singletons on $S\setminus I$. This gives
+$\OPT_S\le\OPT_{V_b}+|S\setminus I|D_b$. Restricting the initial clustering to $I$
+and adding the current singletons adds at most $|V_b\setminus I|D_b$.
+Each vertex in $S\setminus I$ accounts for a removal from the group,
+and each vertex in $V_b\setminus I$ accounts for an insertion into it. Their total count is at most $e$.
+
+On an oblivious stream, fixing the sample and shift determines the
+initial vertex set and the rebuild time before rounding. We can therefore use
+the stated expected cost of the initial clustering. If the bound on the initial clustering cost holds on every
+realized set, the argument also holds directly for adaptive updates.
+\end{proof}
+
+At a completed update, $e\le\mu|S|$ and $|S|\le2|V_b|$. Thus
+Lemma~\ref{lem:dynamic-band} gives total additive loss at most
+$6\mu\sum_b|V_b|D_b\le12\mu KB/c\le\nu B/8$, by
+Lemma~\ref{lem:band-cuts}. Lemma~\ref{lem:combine-bands} now bounds the expected cost at any
+fixed update by $(\alpha+\nu)\OPT$ on the sample.
+
+\subsection{Update time}
+
+We charge scans for changes to the stored size estimates to the updates that
+caused them. We charge a rebuild of a group $V_b$ to the membership changes
+since its previous rebuild. The next lemma counts both sources of
+work.
+
+\begin{lemma}\label{lem:dynamic-work}
+For fixed sample size $k$ and tolerance $\nu$, one trial changes
+$O_{k,\nu}(t)$ labels in total through $t$ updates. It uses
+$O_{k,\nu}(1+r)$ expected amortized update time if it maintains
+distances to $r$ input partitions used to estimate costs and each initial clustering can be computed in linear
+expected time at this accuracy. Its space on $n$ active vertices is
+$O_{k,\nu}((n+1)(1+r))$.
+\end{lemma}
+\begin{proof}
+Maintain membership lists for the input clusters and sets $A_x$. A
+stored size estimate $b$ can refresh only after $\Omega(\lambda b)$
+updates to its record. At a refresh, scan $O(b+1)$ members.
+Creation and removal at size one take constant time. Each vertex
+update affects $k$ cluster counts and one count of $A_x$, so the total
+scan cost is $O_k(t/\lambda)$ through $t$ updates.
+
+Only sets $A_x$ in refreshed input clusters, sets $A_x$ whose counts are refreshed,
+and new or deleted sets $A_x$ can change whether they satisfy the selection inequality or change their
+value of $l_x$. If a set $A_x$ becomes selected or ceases to be selected, mark all members of
+its old or new input clusters, using the input labels of any deleted
+vertex until the update finishes. The scan takes $O(k(a_x+1))$
+for a set $A_x$ of size $a_x$ because it satisfies the inequality $\widehat
+s_x\le(1+\theta)\widehat a_x$ before or after
+the update. The total sizes of the sets $A_x$ found in a refreshed
+cluster are bounded by its size up to the inserted or deleted member.
+This charges the extra scans to the refresh scans. Marked vertices
+can find their cluster formed around a selected set $A_x$ by checking the unique
+pointer to a selected set $A_x$ in
+each of their $k$ clusters and testing their label tuples. Scan the
+affected lists of the sets $A_x$ for changes in membership of the groups $V_b$. All unaffected vertices
+retain their assignments.
+
+A rebuild on $v$ vertices satisfies $v\le |S|+e\le(1+1/\mu)e$.
+Hence the total rebuild size, and the number of labels reported
+internally, are linear in the number of processed membership
+changes at fixed accuracy. Use distinct identifiers for selected sets $A_x$,
+groups $V_b$, rebuilds, and new singletons. Exact hash dictionaries store
+current records. For each nonempty input cluster and set $A_x$,
+maintain $\lfloor\log_2 z\rfloor$, where $z$ is its current size.
+This integer changes only when $z$ crosses a power of two, so each
+unit size change takes constant work. A refresh of a stored estimate
+can read this integer. Maintaining $r$ distances costs $O(r)$ expected amortized
+time per insertion, deletion, or label change, by
+Section~\ref{sec:preliminaries}. The current memberships, output
+labels and distance counters have the stated space bound.
+\end{proof}
+
+\begin{proof}[Proof of the oblivious-stream part of Theorem~\ref{thm:dyn-band}]
+Set $\nu=\varepsilon/8$ and take the least odd $k\ge25/\nu^2$.
+In each group $V_b$ use Lemma~\ref{band:linear-seed} with
+$\alpha=601/500$. The fixed-update estimate above gives
+expected approximation ratio $601/500+\nu$ on the sample, and
+Lemma~\ref{thm:ensemble-transfer} gives expected approximation ratio
+$601/500+2\nu$ on the original inputs. Use Lemma~\ref{lem:select-simple} with
+$\delta=\nu/8$. The input partitions used to estimate candidate costs do not affect the
+rebuilding rules. Thus the lemma gives a simultaneous approximation ratio
+$601/500+\varepsilon$ with failure probability at most
+$\zeta$.
+
+The selection procedure uses $T=O(\nu^{-1}\Lambda)$ trials and
+$R=O(\nu^{-2}\Lambda)$ sampled input indices for estimating the cost of each trial.
+Lemma~\ref{lem:dynamic-work} and a scan of the $T$ estimated costs give
+expected amortized update time $O_\varepsilon(\Lambda^2)$ and
+expected space $O_\varepsilon((n+1)\Lambda^2)$. Exact hash lookups
+answer queries in worst-case constant time. Take $\varepsilon=1/125$
+for approximation ratio $1.21$.
+\end{proof}
+
+To handle an arbitrary number of updates, start a fresh structure
+at update $2^j$, for $j=0,1,\ldots$, with failure probability
+$\zeta/2^{j+1}$ and an upper bound of $2^{j+1}$ on the number
+of updates it processes. Initialize it by inserting the currently
+active vertices in their current arrival order, then use it
+through update $2^{j+1}-1$. Through update $t$, these initializations
+process $O(t)$ vertices in total, and the failure probabilities sum
+to at most $\zeta$. This gives the fixed-factor time bound with $t$
+in place of $U$. If the guarantee is only needed in expectation at
+each fixed time, one trial suffices and takes $O_\varepsilon(1)$
+expected amortized time per update.
+
+\subsection{Adaptive updates}
+\label{sec:adaptive-dynamic}
+
+For adaptive updates we maintain the fixed samples of
+Lemma~\ref{lem:finite-lists} and all shifts on every sample.
+On a rebuild, draw roundings until an exactly evaluated candidate
+meets a threshold computed from the fractional solution.
+For each sample, choose the shift with smallest average cost on the sampled partitions.
+The remaining task is to choose a sample whose output approximates
+the full instance. We do so using the distances among the original
+input partitions.
+
+\begin{proof}[Proof of the adaptive part of Theorem~\ref{thm:dyn-band}]
+Put $\alpha=601/500$, $\nu=\varepsilon/8$, $\delta=\varepsilon/64$,
+and let $k$ be the least odd integer at least $4/\delta^2$.
+
+\emph{Checking the clustering computed for each group $V_b$.}
+For each fixed sample of $k$ inputs maintain all $L$ shifts of
+Section~\ref{sec:size-bands}. At a rebuild on $s>0$ vertices use cluster
+bound $D=\min(D_b,s)$ and apply the packing step of
+Lemma~\ref{lem:band-packing} at accuracy $\mu/2$. Let $P$ denote the
+cost of the singleton partition minus the total internal weight of the computed
+packing, evaluated with the reduced pair weights of that lemma. The
+actual fractional cost is at most $P$, and the packing proof gives
+\[
+ 0\le P\le\operatorname{OPT}_S+\frac{\mu sD}{2\alpha},
+ \qquad P\le sD/2 .
+\]
+For the last inequality, the packing objective value is nonnegative.
+The singleton partition costs at most $sD/2$ because every vertex
+has at most $D-1$ other vertices in any input cluster.
+
+Independently repeat the rounding of these fixed weights until its
+exact average cost on the sampled partitions is at most $\alpha P+\mu sD/2$. The expected cost of
+one draw is at most $\alpha P$. For $P>0$, Markov's inequality gives
+acceptance probability at least $\mu/(\alpha+\mu)$ in each attempt.
+For $P=0$ the first draw costs zero almost surely. Compute $P$ from the
+candidate-cluster weights and compute its cost on the $k$ input partitions using
+cluster sizes and intersection counts. The expected rebuild work is
+$O_{k,\mu}(s)$ and each accepted initial clustering has cost at most
+$\alpha\operatorname{OPT}_S+\mu sD$.
+
+For any realized update history, Lemma~\ref{lem:dynamic-band}
+applies directly to the accepted initial clusterings. All shifts of a given sample
+use the same stored size estimates and selected sets $A_x$, determined by that history.
+By Lemma~\ref{lem:combine-bands}, their costs, averaged over shifts, are at most
+$\gamma$ times the optimum for these input partitions, where $\gamma=\alpha+\nu$. Maintain
+the exact average cost on the sampled partitions for each shift and choose the cheapest.
+
+\emph{Selecting the input indices.}
+Use the pairwise independent family from Lemma~\ref{lem:finite-lists}.
+
+Let $A$ be a minimum-cost original input and $F$ a fixed optimal partition of the
+current instance. The partition triangle inequality, averaged over two
+independent uniform inputs, gives $f(A)\le2\operatorname{OPT}$. For
+a sample $I$ put
+\[
+ b_I=\widehat f_I(A)-f(A),\qquad
+ z_I=\sum_e(\widehat d_{I,e}-d_e)^2,\qquad
+ T_I=(\gamma-1)b_I+(\gamma+1)z_I/\delta .
+\]
+Select a sample minimizing $T_I$ and return its cheapest shift.
+The mean of $b_I$ is zero, and pairwise independence gives
+$\mathbb E_I[z_I]=k^{-1}\sum_e d_e(1-d_e)\le\operatorname{OPT}/k$.
+Thus the selected sample has
+$T_I\le(\gamma+1)\operatorname{OPT}/(k\delta)$.
+
+For any partition $X$, Lemma~\ref{lem:sample-difference} and
+$(2|v|-\delta)_+\le v^2/\delta$ give
+\[
+ |(\widehat f_I-f)(X)-b_I|\le\delta d(X,A)+z_I/\delta .
+\]
+Apply this inequality to the selected answer $C$ and to $F$, use
+$\widehat f_I(C)\le\gamma\widehat f_I(F)$, and bound
+$d(C,A)\le f(C)+f(A)$ and $d(F,A)\le\operatorname{OPT}+f(A)$. It follows that
+\[
+ (1-\delta)f(C)\le[\gamma+(3\gamma+2)\delta]\operatorname{OPT}+T_I .
+\]
+Since $\gamma\le2$, $k\delta^2\ge4$ and $\delta\le1/64$, the right
+side divided by $1-\delta$ is at most
+$(\gamma+12\delta)\operatorname{OPT}\le(\alpha+\varepsilon)\operatorname{OPT}$.
+This calculation includes a zero optimum.
+
+\emph{Updating the estimated costs.}
+Maintain all $m^2$ distances between input partitions, the averages
+$f(P_i)=m^{-1}\sum_j d(P_i,P_j)$, and the average over all input pairs. For distributions $X,Y$ on input indices,
+let $D(X,Y)$ be the expected distance between independent inputs from
+$X$ and $Y$. In this notation, identify a sample $I$ with the distribution
+that gives its positions equal weight, and let $M$ be the uniform
+distribution on all inputs. For each vertex pair, expanding the expected
+differences of its binary separation indicators gives the identity
+\[
+ z_I=D(I,M)-\tfrac12D(I,I)-\tfrac12D(M,M).
+\]
+Hence $b_I$ and $z_I$ cost $O(k^2)$ table lookups and arithmetic
+operations per sample, including at an update when $A$ changes. The
+distances between input partitions take $O(m^2)$ expected amortized update time
+and $O((n+1)m^2)$ space by the cluster-intersection counts of
+Section~\ref{sec:preliminaries}.
+
+For each sample, maintain the $k$ distances used to estimate costs of each shift.
+Lemma~\ref{lem:dynamic-work} bounds the expected amortized work
+per sample by $O_{k,\nu}(1)$ and its space by $O_{k,\nu}(n+1)$.
+There are $(k!)^2m^2$ samples and their initialization can be
+charged to the first update. A query reads the selected sample
+and shift and looks up the labels there.
+
+Each fresh rounding attempt has its stated acceptance probability
+conditional on the previous history, so every update terminates
+almost surely. The random choices for hashing are private and independent of the
+rounding. Process vertices in insertion order and break ties by fixed
+rules so that the published answers do not depend on the hash layout.
+Conditional on the updates and rounding choices, the dictionary
+operations therefore have their usual expected amortized cost.
+This proves the running times when the adversary sees the published
+answers. The approximation inequality holds at every completed
+update. Finally $121/100-601/500=1/125$ gives the approximation ratio $1.21$.
+\end{proof}
+
+Appendix~\ref{app:recourse} gives a lower bound on recourse per vertex over all updates
+for explicit output under deletions.
+
+\bibliographystyle{abbrvurl}
+\bibliography{algorithmic_improvements}
+
+\clearpage
+\appendix
+
+\section{Algorithms using sampled input partitions}
+\label{app:vote}
+
+The following algorithms attain $1.419+\varepsilon$ without solving
+a linear program. Each trial produces two candidates, a Pivot
+partition and one input partition. We define the common trial
+first, then give its offline, online, and fully dynamic
+implementations.
+
+\subsection{A Pivot trial}
+\label{floor:section}
+
+Let $s_e=1-d_e$ be the fraction of input partitions that co-cluster
+the endpoints of pair $e$. Use
+$\lambda=1/100000$, $\beta=117/200$, and $\gamma=1419/1000$, where
+$\beta$ will be the probability of choosing the Pivot candidate in
+the rounding analysis. To assign a sign to a pair, with probability
+$\lambda$, sample one uniform input partition and give the pair a
+positive sign if its endpoints are co-clustered in that partition.
+Otherwise sample seventeen independent uniform input partitions. Give
+the pair a positive sign if at least ten of them co-cluster its
+endpoints. If exactly nine do, give it a positive sign with probability
+$4/5$. In all other
+cases give it a negative sign. These choices are independent across
+pairs. Let $\operatorname{Bin}(r,s)$ denote a binomial random variable
+with $r$ trials of success probability $s$. The probability of a
+positive sign on a pair co-clustered in a fraction $s$ of the inputs is
+\begin{align*}
+ q_{\rm vote}(s)&=\Pr[\operatorname{Bin}(17,s)\ge10]
+       +\frac45\Pr[\operatorname{Bin}(17,s)=9],\\
+ q_\lambda(s)&=(1-\lambda)q_{\rm vote}(s)+\lambda s.
+\end{align*}
+Run Pivot using these signs. At each step, choose a uniform unassigned
+vertex, form a cluster containing it and its unassigned positive
+neighbors, and remove that cluster from further consideration. Let
+$Q_\lambda$ be the resulting partition. Sampling a pair's sign takes
+at most seventeen input-label comparisons. For an input separation
+fraction $d$, the probability of a negative sign is
+\begin{equation}\label{floor:h}
+ h(d)=1-q_\lambda(1-d)
+ =(1-\lambda)\left(\Pr[\operatorname{Bin}(17,d)\ge9]
+ +\frac15\binom{17}{8}d^8(1-d)^9\right)+\lambda d.
+\end{equation}
+
+\begin{theorem}\label{floor:main}
+For every consensus clustering instance and a uniformly sampled input partition
+$P_J$,
+\[
+ \frac{117}{200}\,\mathbb E[f(Q_\lambda)]
+ +\frac{83}{200}\,\mathbb E[f(P_J)]
+ \le \frac{1419}{1000}\operatorname{OPT}.
+\]
+Consequently the cheaper of the two candidates has expected cost at
+most $1.419\operatorname{OPT}$. In a sample of $k$ input
+partitions, every pair sharing at least one input cluster has probability
+at least $1/(100000k)$ of receiving a positive sign. Pairs sharing no input
+cluster never receive a positive sign.
+\end{theorem}
+
+We compare the cost of every pair that Pivot decides with its cost
+in an optimum. If one of the pair's endpoints is the pivot, the
+pair's own sign determines the decision. The first inequality
+covers this case. Appendix~\ref{floor:verifier} verifies both
+inequalities with exact arithmetic.
+
+\begin{lemma}\label{floor:pair}
+For $d\in[0,1]$, let $a(d)=d(1-h(d))+(1-d)h(d)$ be the expected
+cost of a pair when one endpoint is the pivot. Let $z(d)=2d(1-d)$
+be its expected cost in a uniform input partition. Then
+$585a(d)+415z(d)\le1419\min\{d,1-d\}$.
+\end{lemma}
+\begin{proof}
+On $[0,1/2]$, divide the difference between right and left sides by
+$1000d$. On $[1/2,1]$, divide it by $1000(1-d)$ and substitute $d=1-x$.
+Both resulting degree-seventeen polynomials on $[0,1/2]$ have
+nonnegative Bernstein coefficients.  In both cases their smallest
+coefficient is exactly $79883/20000000$.  The verifier constructs the
+polynomials from~\eqref{floor:h}, performs the divisions exactly, and
+checks all coefficients.  The endpoint inequalities follow by continuity.
+\end{proof}
+
+For a pivot outside a pair, the pair contributes only when at least one endpoint is
+assigned to the pivot's cluster. The inequality below sums the three possibilities on a
+triple.
+
+\begin{lemma}\label{floor:triangle}
+Consider three pair distances $d_0,d_1,d_2\in[0,1]$ satisfying the metric
+triangle inequalities. Let $h_i=h(d_i)$ and $q_i=1-h_i$ be the
+negative and positive sign probabilities. For $\{i,j,k\}=\{0,1,2\}$,
+let $R_i$ be the probability that the vertex opposite pair $i$
+decides it, and let $A_i$ be the expected cost it pays on that pair,
+counting zero when it leaves both endpoints unassigned. Then
+\[
+ R_i=1-h_jh_k,\qquad
+ A_i=d_iq_jq_k+(1-d_i)(q_jh_k+h_jq_k).
+\]
+For any partition $F$ of the three vertices let $c_i=d_i$ if
+$F$ co-clusters the endpoints of pair $i$, and $c_i=1-d_i$ otherwise.  Then
+\[
+ 585\sum_i A_i+415\sum_i2d_i(1-d_i)R_i
+ \le1419\sum_i c_iR_i.
+\]
+\end{lemma}
+\begin{proof}
+Sort the distances as $d_0\le d_1\le d_2$. The verifier checks all five partitions
+of the triple in this ordering.  The sorted metric domain is the
+tetrahedron with ordered vertices
+\[
+ (0,0,0),\quad(0,1,1),\quad(1/2,1/2,1),\quad(1,1,1).
+\]
+Indeed its barycentric coordinates are
+$1-d_2,d_1-d_0,2(d_2-d_1),d_0+d_1-d_2$.
+The verifier bisects tetrahedra at the midpoint of their longest edge. Ties use the
+lexicographically first pair of vertex indices.  A child
+is named by the index of the endpoint replaced by that midpoint.
+The fourteen paths below specify the subdivision.
+\[
+\begin{gathered}
+312312,\ 312310,\ 312301,\ 3123030,\ 3123031,\ 3120,\ 3101,\\
+3102,\ 3010,\ 3012,\ 3030,\ 30310,\ 30312,\ 0.
+\end{gathered}
+\]
+The verifier checks that every internal node has both children
+and that its leaves form a prefix-free set.  On each leaf, substitute its
+barycentric coordinates into the claimed gap and homogenize to degree
+$36$.  Clearing positive denominators yields a polynomial with
+nonnegative integer coefficients for each of the five partitions
+of the triple. The verifier checks $14\cdot5\binom{39}{3}=639730$
+coefficients, of which $639648$ are positive and $82$ are zero. Thus the gap
+is nonnegative on every leaf and throughout the domain.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{floor:main}]
+Fix an optimal partition $F$ and let $c_F(e)$ be the contribution
+of pair $e$ to its cost. For a set $S$ of vertices still unassigned,
+use the potential
+\[
+ \Phi(S)=\sum_{e\subseteq S}\bigl(1419c_F(e)-415z(d_e)\bigr).
+\]
+It is nonnegative, since $z(d_e)\le2c_F(e)$.  Conditional on $S$, the
+next pivot is uniform on $S$, and the unexposed pair decisions inside
+$S$ retain their independent distributions.  For an edge incident to
+the pivot, the expected paid cost is $a(d_e)$ and the edge is removed
+certainly.  For an edge opposite the pivot in a triangle, the expected
+paid cost is $A_i$ and its removal probability is $R_i$.  Summing
+Lemma~\ref{floor:pair} twice for each edge (its two endpoint pivots) and
+Lemma~\ref{floor:triangle} once for each unordered triple, then dividing
+by $|S|$, gives
+\[
+ 585\,\mathbb E[\text{cost paid in this step}\mid S]
+ \le\mathbb E[\Phi(S)-\Phi(S\setminus D)\mid S],
+\]
+where $D$ is the removed pivot cluster.  Telescoping yields
+\[
+ 585\,\mathbb E[f(Q_\lambda)]
+ \le1419\operatorname{OPT}-415\sum_e z(d_e).
+\]
+A uniform input partition has expected cost $\sum_e z(d_e)$, which
+proves the claimed mixture inequality.  Finally $q_\lambda(s)\ge\lambda s$
+and $q_\lambda(0)=0$, proving the claims about the positive-sign probabilities.
+\end{proof}
+
+\subsection{Offline algorithm}
+\begin{theorem}
+\label{fastnew:offline}
+For $0<\varepsilon\le1$ and $0<\zeta<1$, an offline algorithm for
+consensus clustering on $n$ vertices has approximation ratio
+$1.419+\varepsilon$ and success probability
+at least $1-\zeta$. For $L=\log(3/(\varepsilon\zeta))$, its expected time is
+\[
+ O\!\left(n\varepsilon^{-3}L+n\varepsilon^{-2}L^2\right).
+\]
+The expected time can also be bounded by
+$O(n\varepsilon^{-3}\log(6/\varepsilon)\log(2/\zeta))$.
+Both bounds are independent of $m$.
+\end{theorem}
+Generate a Pivot partition by scanning the pivot's input clusters.
+Generate the other candidate by choosing one of the sample positions
+uniformly. Use the selection procedure in Appendix~\ref{sec:ms} to compare
+the candidates.
+
+\begin{algorithm}[htbp]
+\caption{Producing the candidates using sampled input partitions on one sample}
+\label{alg:vote}
+\begin{algorithmic}[1]
+\State Initialize the unassigned vertex lists of all input clusters
+\While{some vertex is unassigned}
+    \State Choose a uniform unassigned pivot $u$
+    \State Scan its clusters, counting the occurrences $j$ of each other unassigned vertex
+    \State Form a cluster of $u$ and vertices independently included with probability $q_\lambda(j/k)$
+    \State Remove the cluster from the lists of unassigned vertices
+\EndWhile
+\State \Return the Pivot partition and a uniform input position's partition
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proof}
+Draw $k=\lceil100/\varepsilon^2\rceil$ input indices with replacement.
+Store the unassigned vertices in an array and in the $k$ families of input
+clusters. At each step choose a uniform unassigned pivot and scan its $k$
+clusters. Count occurrences of each visited vertex and keep a list of
+vertices whose counters were updated. For each other vertex found in
+$j\ge1$ clusters, include it in the pivot's cluster independently with probability
+$q_\lambda(j/k)$. Simulate each choice of an input partition using an independent uniform
+integer in $[k]$ and checking whether it is at most $j$.
+Every pair not encountered in these scans has probability zero of
+receiving a positive sign.
+Only the pairs incident to the pivot are tested in a step. Each
+such pair disappears when the pivot leaves, so every tested sign is
+sampled at most once.
+
+Conditional on the set of unassigned vertices and the pivot, each vertex found in
+$j$ clusters contributes $j$ to the scan cost and is included in the pivot's cluster with
+probability at least $\lambda j/k$. Thus the scan cost for nonpivots
+is at most $k/\lambda$ times the expected number of vertices added to the pivot's cluster.
+Each vertex is removed once. The array and cluster lists support
+constant-time deletion per record, so initialization and all deletions
+cost $O(nk)$ in total. One Pivot candidate therefore takes expected
+$O(nk/\lambda)$ time. The second candidate is the partition at a
+uniformly chosen position of the sample.
+
+\emph{Selecting a candidate.}
+Conditional on the sample, the mixture with weights $\beta$ and
+$1-\beta$ satisfies Theorem~\ref{floor:main}. By
+Lemma~\ref{thm:ensemble-transfer} with tolerance $\varepsilon/2$, the
+better candidate of a trial has expected true cost at most
+$(1.419+\varepsilon/2)\operatorname{OPT}$. Use the selection procedure in
+Theorem~\ref{thm:ms-selection} with one instance ($U=1$), accuracy
+$\varepsilon/2$, and failure probability $\zeta$. It evaluates the
+candidates on the fixed vertex set, using
+$O(\varepsilon^{-1}L)$ trials and $O(\varepsilon^{-2}L^2)$ distances.
+Each distance can be computed in $O(n)$ expected time by counting
+cluster sizes and intersections in a single pass. Since $\lambda$ is
+fixed, these counts give the first time bound. Apply
+Lemma~\ref{lem:offline-confidence} to the algorithm at accuracy
+$\varepsilon/2$ and failure probability $1/10$. Its per-call time
+is $O(n\varepsilon^{-3}\log(6/\varepsilon))$, since
+$\varepsilon\log(6/\varepsilon)=O(1)$. This gives the second bound.
+\end{proof}
+
+\subsection{Online algorithm}
+\label{app:vote-online}
+
+\begin{theorem}\label{joint:online}
+There is a randomized online algorithm for consensus clustering under
+a sequence of at most $n\ge2$ vertex arrivals, where $n$ is given in advance.
+Against an oblivious adversary, it achieves competitive ratio
+$1.419+\varepsilon$ simultaneously after every arrival with probability
+at least $1-\zeta$. Its expected amortized update time, including label
+changes, is
+$O(\varepsilon^{-5}\log n\,\log^2((n+2)/\zeta))$.
+Each vertex has recourse $O(\varepsilon^{-3}\log n+\log(2/\zeta))$
+on every execution, and queries take worst-case $O(1)$ time.
+\end{theorem}
+
+For the proof, let $h=\log(n+2)$ and $H=\log(8(n+2)/\zeta)$.
+Use Algorithm~\ref{alg:online} with initial clusterings obtained using sampled input partitions and
+$\gamma=1.419$ and tolerance $\delta=\varepsilon/100$. Use every
+arrival time as an endpoint in Lemma~\ref{lem:online-training}, so
+$T=O(H)$. Checking simultaneous accuracy on all vertex pairs
+lets us use fewer input partitions in each cost estimate.
+
+\begin{lemma}\label{lem:vote-validation}
+Using $V=4\lceil C H\rceil$ independent collections of
+$g=\lceil16\delta^{-2}\rceil$ sampled input partitions to estimate
+costs, for a sufficiently large absolute constant $C$, the conclusions of Lemma~\ref{lem:online-eval} hold
+after all arrivals.
+\end{lemma}
+\begin{proof}
+For each pair $e$, let $\widehat d^j_e$ be the fraction of input partitions in
+collection $j$ that separate $e$ and set $X_e=V^{-1}\sum_j|\widehat d^j_e-d_e|$.
+Its mean is at most $1/(2\sqrt g)\le\delta/8$. Changing one
+sampled input index changes $X_e$ by at most $1/(Vg)$. Bounded
+differences give $\Pr[X_e>\delta/4]\le\exp(-Vg\delta^2/32)$, so a
+union bound over all pairs costs at most $\zeta/8$. On that event,
+an average over any $V/4$ collections estimates each cost difference
+with error at most $2\delta d(C,A)$, because only the pairs on which
+$C,A$ differ contribute. The same bound applies to the difference
+of the minimum averages. After each arrival at least $V/4$ collections have
+cost at most $2\OPT_t$ on the fixed optimal partition, by the Markov and
+Chernoff argument of Lemma~\ref{lem:online-eval}.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{joint:online}]
+The proof of Lemma~\ref{lem:online-eligible} uses only its endpoint
+bounds and $o=\OPT_t$ at the time being analyzed. It applies here
+with one time per range. The recourse proof is unchanged, as
+$J_0=O(\delta^{-3}h)$ and the estimates are still multiples of $1/(rg)$ with
+$r=V/4$.
+
+If $h\le\delta^{-2}$, use the fully dynamic algorithm of Appendix~\ref{app:vote} of
+Theorem~\ref{fastnew:main} on the input partitions used by each copy, with failure
+probability over all updates $1/4000$. It has
+$O(\delta^{-3}(h+\log(1/\delta))^3)$ expected amortized time for maintaining the initial
+clustering per insertion and reporting all cluster labels takes linear time.
+If $h>\delta^{-2}$, generate the two candidates in
+Theorem~\ref{floor:main} directly on the $k$ input partitions used by the copy, using
+the cluster scans of the offline algorithm. Compute their costs on those same
+input partitions in $O(k)$ expected time per vertex of the initial clustering. A trial achieves
+approximation ratio $\gamma+\delta$ with probability at least
+$\delta/(\gamma+\delta)$, by Markov's inequality, and succeeds
+almost surely if the optimum is zero. Thus the best of
+$O(\delta^{-1}\log(2J_0))$ trials meets the required offline-call failure
+probability $1/(4000J_0)$.
+
+Using the online time calculation with $T=O(H)$ and
+$Vg=O(\delta^{-2}H)$ gives $O(\delta^{-5}hH^2)$ apart from the
+work for computing initial clusterings. When $h\le\delta^{-2}$, the added work is
+$O(T\delta^{-3}(h+\log(1/\delta))^3)$, within this bound since
+$\delta^2h\le1$. When $h>\delta^{-2}$, the per-vertex time for computing an initial clustering is
+$Q=O(\delta^{-3}\log(2J_0))$ and the added work is $O(TJ_0Q)$.
+Here $\log(2J_0)=O(\log(2+h))=O(\delta h)$ because
+$h>\delta^{-2}$, giving the same bound. Set $\delta=\varepsilon/100$.
+\end{proof}
+
+\subsection{Fully dynamic algorithm}
+\label{fastnew:section}
+
+\begin{theorem}
+\label{fastnew:main}
+There is a fully dynamic algorithm for consensus clustering under a
+sequence of at most $U\ge1$ vertex insertions and deletions.
+Against an oblivious adversary, it maintains approximation ratio
+$1.419+\varepsilon$ simultaneously after every update with probability
+at least $1-\zeta$. Its expected amortized update time is
+$O(\varepsilon^{-3}\log^3((U+2)/(\varepsilon\zeta)))$. With $n$ active
+vertices, its expected space is
+\[
+ O\!\left((n+1)\left[
+ \varepsilon^{-3}\log\frac{U+2}{\varepsilon\zeta}
+ +\varepsilon^{-2}\log^2\frac{U+2}{\varepsilon\zeta}\right]\right).
+\]
+Label and same-cluster queries take worst-case $O(1)$ time.
+\end{theorem}
+
+The trials use the same two candidates as Algorithm~\ref{alg:vote}.
+We maintain the Pivot candidate under updates by storing the current
+pivot responsible for each vertex, then testing new pair signs only
+when that assignment can change. For the analysis, let $N$ be the
+maximum number of active vertices and let
+$k=\lceil100/\varepsilon^2\rceil$,
+$\Lambda=\log((U+2)/(\varepsilon\zeta))$, and
+$D=1+k\log(N+2)+10^5k\log(k+2)$.
+The more precise expected amortized update bound proved below is
+\begin{equation}
+ O\!\left([D\varepsilon^{-1}\Lambda+\varepsilon^{-2}\Lambda^2]
+             \log(N+2)\right)
+ =O(\varepsilon^{-3}\Lambda^3).
+ \label{fastnew:time}
+\end{equation}
+\subsubsection{Maintaining one trial}
+\label{defer:section}
+
+Let $N$ be the maximum number of active vertices. On a fixed sample of
+$a$ inputs, let $j(x,y)$ count the positions where $x,y$ have the same
+label. The positive signs define a graph. To obtain its pivots,
+process the vertices in a uniform random order, making a vertex a pivot
+if it has no earlier adjacent pivot. This is the greedy maximal
+independent set of the graph. Assign each nonpivot vertex to its first adjacent pivot. A pivot is
+assigned to itself. These assignments identify the clusters. The priorities specify this
+order and are preserved on surviving
+vertices across updates. For a fixed graph, one oblivious vertex insertion or deletion changes
+the assigned pivots of $O(\log(N+2))$ surviving vertices in expectation over
+the random order~\cite[Theorem~3]{BDHSS2019}.
+
+\begin{theorem}\label{defer:maintenance}
+Suppose $q(0)=0$, $q(j/a)\ge\lambda j/a$ for $1\le j\le a$, and a
+sign that is positive with probability $q(j(x,y)/a)$ can be sampled in
+expected constant time. Define
+\[
+ D=1+a\log(N+2)+(a/\lambda)\log(a+2).
+\]
+Maintaining distances to $r$ input partitions used to estimate costs, a Pivot trial for
+consensus clustering under vertex updates chosen by an oblivious adversary has expected amortized update time
+$O((D+r)\log(N+2))$, expected space $O((n+1)(a+r))$ when $n$ vertices are active, and worst-case constant-time label and same-cluster queries.
+Its partition at each fixed update has the same distribution as if
+the randomized procedure were run again on the current vertices.
+\end{theorem}
+
+\paragraph{The signs determined by the previous assigned pivots.}
+Fix the order and let $e(x)$ denote the previous assigned pivot of $x$. For
+a nonpivot $x$, the edge to $e(x)$ is positive and all edges to
+pivots before $e(x)$ are negative. A pivot has negative edges to
+all earlier pivots. These conditions suffice to reproduce the same
+assigned pivots by induction in the vertex order. Thus, conditional on the
+order and assigned pivots, all other signs are independent with their original
+probabilities. After each update, the algorithm may sample any such
+sign anew when needed. This preserves the current partition and the
+distribution of independent signs conditional on the order. On
+insertion, draw the new priority and signs independently. On deletion,
+retain the previous pivot assignments until the update finishes.
+
+\paragraph{Processing an update.}
+An old vertex is \emph{unprocessed} until it enters the queue or is
+assigned to a different pivot. Each input cluster indexes its pivots by priority
+and its unprocessed nonpivots by the priority of their previous assigned pivot, breaking
+ties by vertex identifier. For each previous cluster, maintain a list of its unprocessed
+vertices. During the update, keep separate priority indexes for surviving old
+pivots and new pivots. An unprocessed vertex belongs to the list for its previous
+cluster and, if a nonpivot, the indexes ordered by its previous assigned pivot. Remove
+it from
+these structures as soon as it is scheduled or assigned a different pivot.
+Retain a list of changed vertices for updating the indexes after the update
+and updating their estimated costs.
+
+For each queued vertex, store a lower bound on the priorities of new
+pivots that still need to be tested. Use $-\infty$ for an inserted
+vertex and for the surviving nonpivots of a deleted pivot. A
+nonpivot deletion only removes that vertex. Process the queue in order
+of vertex priority. For an extracted $x$ with lower bound $b$,
+merge two families of lists from its $a$ clusters in increasing pivot
+priority.
+\begin{itemize}
+\item surviving old pivots strictly after $e(x)$, or all surviving old
+pivots when $x$ is the inserted vertex,
+\item new pivots of priority at least $b$.
+\end{itemize}
+Collect all occurrences of a candidate $y$ in the merged lists
+before testing $\{x,y\}$, and skip $y=x$. The number of occurrences
+is $j(x,y)$ because the priority filter is the same in all shared
+clusters. Sample the sign once. A positive edge to a pivot earlier
+than $x$ ends the search at that assigned pivot. If there is no such $y$, add $x$ to the
+set of pivots and remove every later positive pivot
+found by the scan from that set.
+These are old pivots. Assign each vertex removed from the set of pivots directly to $x$, and
+queue its remaining unprocessed nonpivots with lower bound equal to the
+priority of $x$. Finally scan $x$'s input clusters for unprocessed old nonpivots $w$ whose
+previous assigned pivot is later than $x$. Count all occurrences of each vertex
+before testing these pairs. The count is $j(x,w)$, since the condition on the previous
+assigned pivot applies in every shared cluster. Test each distinct $w$ once
+and assign it directly to $x$ if its sign is positive.
+
+\paragraph{Correctness.}
+Every newly queued vertex appears later in the priority order than its former pivot,
+which appears later than the new pivot that replaced it. Hence vertices leave the queue
+in increasing order of priority.
+A pivot assigned to a queued vertex cannot be replaced by a pivot
+processed later in the priority order. An old vertex removed from the set of pivots has no old pivot
+neighbor. An earlier new pivot adjacent to it would already have
+removed it from the set of pivots, so the removal determines its final assigned pivot directly.
+For a queued old nonpivot $x$, the skipped surviving old pivots are
+forced negatives by the previous pivot assignments. Each skipped new pivot was
+added to the set of pivots strictly before $x$ was queued. Such a pivot precedes $x$'s
+previous assigned pivot, which still survived at that time. The scan when it became a pivot would have
+taken the still-unprocessed $x$ if their sign were positive. Thus $x$ has a negative
+edge to every skipped pivot. A positive unprocessed nonpivot reached by a
+scan when a vertex becomes a pivot likewise has no earlier old or new pivot neighbor
+and receives its final assigned pivot. These observations show that every
+recorded assigned pivot is final. Every vertex losing a previous assigned pivot is queued
+or assigned directly, and every unprocessed vertex whose surviving previous assigned pivot
+is superseded is found by the earliest new neighbor's scan. At
+termination the pivots are independent and all nonpivots are assigned to
+their first adjacent pivot. This is the greedy partition.
+
+Let $R$ count surviving vertices that change assigned pivot. Each surviving
+scheduled or directly reassigned vertex changes assigned pivot and is processed
+once. There are at most $R+1$ queue extractions, additions to the set of pivots, and
+removals from the set of pivots of each kind. By conditional resampling before the update,
+the graph of pair signs is independent of the uniform order. Fix the
+graph on the union of the vertex sets before and after the update.
+The bound on changes to the first adjacent pivot then gives
+$\mathbb E[R+1]=O(\log(N+2))$.
+
+\paragraph{Bounding the number of scanned list entries.}
+Every tested sign is unconstrained by the previous pivot assignments. An extracted
+old vertex is an old nonpivot. Its old-pivot comparisons start after its
+previous assigned pivot, and its neighbors that have just become pivots are old nonpivots or the
+inserted vertex. Scans when a vertex becomes a pivot likewise compare an old
+nonpivot that has become a pivot or inserted vertex to an unprocessed old nonpivot. Each test samples its sign
+anew. A queued vertex has never been a
+pivot during this update.
+Comparisons it experienced while unprocessed came from scans when a vertex becomes a pivot
+strictly before its scheduling bound. It no longer occurs in those
+scans after it is queued. A new pivot's scan against an unprocessed nonpivot
+has no earlier test on that pair. Duplicate cluster occurrences of a
+candidate in a single search use the single sampled sign. Consequently
+the sign at each adaptive test is fresh, conditional on the old state
+and the previous tests.
+
+For any reached pair put $j=j(x,y)$. It occurs in at most $j$ scanned
+cluster lists, and its conditional positive probability is at least
+$\lambda j/a$. Summing conditional expectations gives
+\[
+ \mathbb E\!\left[\sum_{\rm tests}j(x,y)\right]
+ \le(a/\lambda)\,\mathbb E[\#\text{ positive tests}]
+ =O((a/\lambda)\log(N+2)).
+\]
+Indeed, a positive test ends a queue search at an earlier assigned pivot,
+removes an old pivot from the set of pivots, or assigns an unprocessed vertex to the new
+pivot. Each of these three cases occurs at most $R+1$ times.
+
+\paragraph{Time and space.}
+Use ordered trees with linked inorder successors. Starting the
+$O(a)$ cluster scans, changing their indexes, and maintaining the queue
+cost $O(a\log(N+2))$ per affected vertex. A heap merges the $O(a)$
+sorted pivot lists. Before removing a pivot, advance every list cursor
+with its priority. The merge costs $O(\log(a+2))$ time per occurrence. The
+scans when a vertex becomes a pivot use constant time per occurrence after their
+initial tree searches, apart from index removals already counted.
+Updating the distances costs expected $O(r)$ per reassigned or
+updated vertex. At completion move the new pivots into
+the persistent cluster indexes. This costs
+$O(a\log(N+2))$ per new pivot. When a scan removes entries, save
+the successor before unlinking the current entry. The preceding bounds prove the claimed time. The
+completed indexes and temporary update records require $O((n+1)a)$
+words, and the distance counters require expected $O((n+1)r)$
+words. No edge cache is needed between updates. A query reads the
+assigned pivot in an exact dictionary.
+
+\paragraph{Total update time for all copies.}
+For $T$ Pivot trials and $W$ maintained distances to input partitions,
+summing the theorem gives expected amortized update time
+\begin{equation}\label{defer:combined}
+ O((TD+W)\log(N+2))
+\end{equation}
+and expected space $O((n+1)(Ta+W))$. The candidates that are input partitions and
+comparisons between input partitions use expected constant time per attached
+distance on each insertion or deletion.
+
+\subsubsection{Approximation and complexity}
+
+\begin{proof}[Proof of Theorem~\ref{fastnew:main}]
+For each trial, independently sample $k$ input indices and choose one
+of their positions uniformly. The two candidates are the Pivot partition
+on that sample and the input partition at the chosen position.
+Theorem~\ref{defer:maintenance} preserves the distribution of the Pivot
+candidate at each fixed update. Conditional on the sample, a mixture of the
+two candidates with weights $\beta$ and $1-\beta$ has expected approximation
+ratio on the sampled input partitions $\gamma=1.419$ by Theorem~\ref{floor:main}.
+Apply Lemma~\ref{thm:ensemble-transfer} with $\tau=\varepsilon/2$ to
+this mixture. At each fixed update the cheaper candidate has expected
+true cost at most $(1.419+\varepsilon/2)\operatorname{OPT}_t$.
+
+Apply Theorem~\ref{thm:ms-selection} with accuracy $\varepsilon/2$,
+an upper bound $U$ on the number of updates, and failure probability $\zeta$. The input
+partitions used to estimate costs and the partitions
+of the triple are sampled independently from the original inputs. This uses
+$T=O(\varepsilon^{-1}\Lambda)$ trials and
+$W=O(\varepsilon^{-2}\Lambda^2)$ maintained distances used for evaluation. For a pair sharing $j$ of the $k$ clusters, its probability of a positive sign
+is at least $10^{-5}j/k$. Theorem~\ref{defer:maintenance} therefore
+applies with $a=k$ and $\lambda=10^{-5}$. Its family bound
+\eqref{defer:combined} gives \eqref{fastnew:time} and expected space
+$O((n+1)(Tk+W))$. As $D=O(\varepsilon^{-2}\Lambda)$ and $N\le U$,
+the update bound is $O(\varepsilon^{-3}\Lambda^3)$. A query reads the
+selected candidate index and looks up one or two stored labels.
+\end{proof}
+
+\subsection{Selecting a partition using cost estimates}
+\label{sec:ms}
+
+The selection procedure compares candidates from several independent groups of
+trials. Each trial produces at most $b=O(1)$ partitions. Assume that
+the expected minimum of their costs is at most $\gamma\OPT$ at each
+update, where $1\le\gamma\le2$. The stream is oblivious, and the
+sequences of candidate partitions are independent of all input partitions used to estimate costs.
+
+\begin{theorem}
+\label{thm:ms-selection}
+For consensus clustering under $U\ge1$ updates chosen by an oblivious
+adversary, the selection procedure achieves approximation ratio $\gamma+\varepsilon$
+at all updates simultaneously with probability at least $1-\zeta$.
+It uses $O(\varepsilon^{-1}\log((U+2)/(\varepsilon\zeta)))$ independent
+trials and $O(\varepsilon^{-2}\log^2((U+2)/(\varepsilon\zeta)))$
+maintained distances between candidates and inputs or between inputs.
+\end{theorem}
+
+\paragraph{Selection rule.}
+
+For the analysis, let $\Lambda=\log((U+2)/(\varepsilon\zeta))$.
+Use independent randomness for generating candidates and for sampling
+the input partitions used to estimate costs.
+Keep the sampled input indices throughout the stream. Define
+\begin{align*}
+ J&=\left\lceil\log_2\frac{96}{\varepsilon}\right\rceil,
+ &d_j&=3\cdot2^{-j}\quad(1\le j\le J),
+ &\alpha_j&=d_j/36,\\
+ T_j&=\left\lceil\frac{32d_j}{\varepsilon}
+                         \log\frac{4U}{\zeta}\right\rceil,
+ &R&=\left\lceil\log_2\frac{4U}{\zeta}\right\rceil,
+ &M&=b\sum_{j=1}^JT_j.
+\end{align*}
+Let $\mathcal C_j$ be the candidates from the $T_j$ trials in group
+$j$. Associate each candidate with its group, even if an identical
+partition appears in another group. Independently sample $R$ uniform
+input partitions $A_1,\ldots,A_R$. We will select one of these
+partitions, denoted $A$, and compare every candidate with $A$.
+
+To choose $A$, independently sample a collection $S_A$ of
+\[
+ s_A=\left\lceil50\log\frac{8R^2U}{\zeta}\right\rceil
+\]
+uniform input partitions. At each update, let $A$ be a partition $A_r$
+minimizing $s_A^{-1}\sum_{P\in S_A}d(A_r,P)$.
+For each group independently sample another collection $S_j$ of input partitions,
+of size
+\begin{equation}
+ s_j=\left\lceil2\alpha_j^{-2}\log\frac{8MRU}{\zeta}\right\rceil.
+ \label{eq:ms-pool-sample}
+\end{equation}
+For $C\in\mathcal C_j$ and $1\le r\le R$, define
+\begin{equation}
+ U_j(C,A_r)=\frac1{s_j}\sum_{P\in S_j}
+               \bigl(d(C,P)-d(A_r,P)\bigr)+\alpha_jd(C,A_r).
+ \label{eq:ms-upper-score}
+\end{equation}
+Return a candidate minimizing $U_j(C,A)$ across all groups, where $A$
+is the input partition just selected. Break ties by fixed identifiers. The
+quantity is an upper confidence bound on $f(C)-f(A)$; the unknown value
+$f(A)$ is the same for all comparisons. Scan the $M$ records after each update to select a candidate.
+
+\paragraph{Approximation guarantee.}
+
+Each trial group uses a different cost threshold $a-d_j$. The number
+of trials in the group depends on $d_j$, so that a group is likely to
+contain a candidate meeting its threshold.
+
+\begin{lemma}
+\label{lem:ms-tail}
+Let $X\ge0$ satisfy $\mathbb E[X]\le\gamma\le2$.  With
+$a=\gamma+\varepsilon/8$ and $p_j=\Pr[X\le a-d_j]$,
+\[
+ \sum_{j=1}^Jd_jp_j\ge3\varepsilon/64.
+\]
+At an instance with positive optimum, independent groups of $T_j$
+trials therefore contain a candidate of cost at most
+$(a-d_j)\mathrm{OPT}$ in its own group $j$, except with probability
+$\zeta/(4U)$.
+\end{lemma}
+\begin{proof}
+Let $Y=(a-X)_+$.  Then $\mathbb E[Y]\ge\varepsilon/8$ and
+$0\le Y\le a\le17/8<3$.  Partition its range into $[0,d_J)$ and
+$[d_j,d_{j-1})$, where $d_0=3$.  On the latter interval $Y<2d_j$,
+so
+\[
+ \mathbb E[Y]\le d_J+2\sum_jd_j\Pr[Y\ge d_j].
+\]
+Since $d_J\le\varepsilon/32$, this proves the first claim.
+Apply it to the minimum trial cost divided by $\mathrm{OPT}$.
+Independence gives
+\begin{align*}
+ \Pr[\text{no group has the required candidate}]
+ &\le\prod_j(1-p_j)^{T_j}
+ \le\exp\!\left(-\sum_jT_jp_j\right)\\
+ &\le\exp\!\left(-\frac32\log\frac{4U}{\zeta}\right)
+ \le\frac{\zeta}{4U}.
+\end{align*}
+\end{proof}
+
+The next lemma bounds $f(A)$. The inequality $d(C,A)\le f(C)+f(A)$
+then bounds the distance between $A$ and a low-cost candidate $C$.
+
+\begin{lemma}
+\label{lem:ms-anchor}
+With probability at least $1-\zeta/2$, the selected input partition $A$ satisfies
+$f(A)\le6\mathrm{OPT}$ at all $U$ instances.
+\end{lemma}
+\begin{proof}
+For an optimum $F$, independent uniform inputs $P,Q$ satisfy
+\[
+ \mathbb E[d(P,Q)]\le\mathbb E[d(P,F)+d(F,Q)]=2\mathrm{OPT}.
+\]
+Thus a sampled input partition $A_r$ costs at most $4\mathrm{OPT}$ with probability
+at least $1/2$ when the optimum is positive.  Failure of all $R$
+choices of $A_r$ has probability at most $2^{-R}\le\zeta/(4U)$.
+
+Condition on the partitions $A_1,\ldots,A_R$ restricted to the vertex sets at all
+updates.  For any pair $A_r,A_q$,
+put $D=d(A_r,A_q)$.  Each sampled difference lies in $[-D,D]$.
+Hoeffding's inequality bounds the probability that its empirical mean
+differs from $f(A_r)-f(A_q)$ by more than $D/5$ by
+$2e^{-s_A/50}$.  If $D=0$ the error is zero.  Union bounding at most
+$R^2U$ comparisons gives failure probability at most $\zeta/4$.
+Let $A_*$ minimize true cost among $A_1,\ldots,A_R$.  Empirical
+minimality of $A$ and this event give
+\[
+ f(A)-f(A_*)\le\frac15d(A,A_*)
+                   \le\frac15(f(A)+f(A_*)),
+\]
+so $f(A)\le\tfrac32f(A_*)\le6\mathrm{OPT}$.
+A union bound over the events that no $A_r$ has cost at
+most $4\OPT$ completes the claim.  Zero-optimum instances have identical inputs
+so all $A_r$ have zero cost.
+\end{proof}
+
+Once we fix the candidates and $A_1,\ldots,A_R$, Hoeffding's inequality
+controls each estimate from the independent input partitions used to estimate costs.
+
+\begin{lemma}
+\label{lem:ms-confidence}
+Except with probability $\zeta/4$, all groups, candidates, indices $r$,
+and updates simultaneously satisfy
+\begin{equation}
+ f(C)-f(A_r)\le U_j(C,A_r)
+      \le f(C)-f(A_r)+2\alpha_jd(C,A_r).
+ \label{eq:ms-confidence}
+\end{equation}
+\end{lemma}
+\begin{proof}
+Condition on the candidates and the partitions $A_1,\ldots,A_R$ at every update, independently
+of the $S_j$.  For a comparison at distance $D=d(C,A_r)$, its sampled
+differences lie in $[-D,D]$.  The probability of error exceeding
+$\alpha_jD$ is at most
+$2\exp(-s_j\alpha_j^2/2)\le\zeta/(4MRU)$ by Hoeffding.
+The error is zero if $D=0$.  Union bound at most $MRU$ comparisons
+and remove the conditioning.  Because this event holds for every $A_r$, it also holds for the
+partition $A$ selected using $S_A$.
+\end{proof}
+
+\begin{proof}[Approximation in Theorem~\ref{thm:ms-selection}]
+The tail lemma fails at some instance with probability at most
+$\zeta/4$. The events in Lemmas~\ref{lem:ms-anchor} and~\ref{lem:ms-confidence} bring the total
+failure probability to at most $\zeta$.
+If $\OPT>0$, choose a candidate $C_*$ and its group $j$ as
+guaranteed by Lemma~\ref{lem:ms-tail}, and let $a=\gamma+\varepsilon/8$.
+Then
+\[
+ f(C_*)\le(a-d_j)\mathrm{OPT},\qquad
+ d(C_*,A)\le f(C_*)+f(A)\le\frac{65}{8}\mathrm{OPT}.
+\]
+Let $C_{\rm out}$ be the selected candidate, with group index $i$.
+By its minimum value of $U_i$ and \eqref{eq:ms-confidence},
+\[
+ f(C_{\rm out})-f(A)\le U_i(C_{\rm out},A)
+ \le U_j(C_*,A)\le f(C_*)-f(A)+2\alpha_jd(C_*,A).
+\]
+Therefore
+\[
+ f(C_{\rm out})\le
+ \left(a-d_j+\frac{65d_j}{144}\right)\mathrm{OPT}
+ \le(\gamma+\varepsilon/8)\mathrm{OPT}
+ \le(\gamma+\varepsilon)\mathrm{OPT}.
+\]
+
+If $\mathrm{OPT}=0$, all input partitions coincide on the active set.
+Each trial contains a zero-cost candidate almost surely, by its
+nonnegative expected-cost guarantee.  Every $A_r$ and every input partition used to estimate costs is that
+common partition, and
+$U_j(C,A)=(1+\alpha_j)d(C,A)$.  Thus the output has zero cost exactly.
+This also handles empty and single-vertex instances.
+\end{proof}
+
+\paragraph{Maintaining the cost estimates.}
+
+All relevant logarithms are $O(\Lambda)$.  Because
+$d_J\in(\varepsilon/64,\varepsilon/32]$, geometric sums give
+\begin{equation}
+ \sum_jT_j=O(\varepsilon^{-1}\Lambda),\quad
+ \sum_js_j=O(\varepsilon^{-2}\Lambda),\quad
+ \sum_jT_js_j=O(\varepsilon^{-2}\Lambda^2).
+ \label{eq:ms-sums}
+\end{equation}
+Also $R,s_A=O(\Lambda)$.  The total number of maintained distances is
+\begin{equation}
+ W:=b\sum_jT_js_j+R\sum_js_j+MR+Rs_A
+       =O(\varepsilon^{-2}\Lambda^2).
+ \label{eq:ms-score-budget}
+\end{equation}
+The four terms count, respectively, distances used to evaluate
+candidates in each group, evaluate $A_1,\ldots,A_R$ on each group
+sample, compare candidates with each $A_r$, and select $A$.
+Each maintained distance has an input partition as one argument.
+The cluster and intersection counts in Section~\ref{sec:preliminaries}
+update one distance in $O(1)$ expected amortized time per insertion,
+deletion, or reassignment, using $O(n+1)$ records on $n$ active
+vertices. Reading the distances and selecting the minimum cost estimate
+takes $O(W)$ time per update.
+
+\section{The cluster LP on a group of vertices}
+\label{app:packing}
+
+We construct the fractional solution used by
+Lemma~\ref{band:linear-seed}. Its input is a group $V_b$ of $s$ vertices,
+with input-cluster sizes at most $D$. The allowable error
+$\sigma sD$ lets us keep a bounded number of candidate clusters containing
+each vertex.
+
+\begin{lemma}\label{lem:band-packing}
+Under the assumptions of Lemma~\ref{band:linear-seed}, we can find
+feasible cluster LP weights of cost at most
+$\OPT+(500\sigma/601)sD$ in $O_{k,\sigma}(s)$ expected time
+and space. Every vertex belongs to a bounded number of sets
+of positive weight, and the weights have a common denominator
+depending only on $k,\sigma$.
+\end{lemma}
+\begin{proof}
+Let $w_{uv}=1-2d_{uv}$ be the saving in cost when $u,v$ are placed
+in the same cluster. The cost of a partition is the cost of the
+singleton partition minus the sum of $w_{uv}$ over pairs within its
+clusters. We construct feasible cluster LP
+weights with cost at most $\operatorname{OPT}+\omega sD$, where
+$\omega=500\sigma/601$.
+
+\emph{Bounding the diameter of optimal clusters.}
+Let $q=(k+1)/2$ and $m_k=\binom{k}{q}$. For each choice of $q$
+input positions, group vertices with identical labels on those
+positions. Every group has size at most $D$. For a
+parameter $\kappa>0$ to be chosen, call a group \emph{large} if its size
+is at least $\kappa D$ and \emph{small} otherwise. Replace $w_{uv}$ for a
+positive pair by $-1/k$ if it belongs to no common large group.
+All other nonpositive weights are at most $-1/k$ because $k$ is odd.
+Each pair whose weight changes belongs to a small group, and its
+weight decreases by at most two. For each choice of $q$ coordinates, the sum of the squared
+small-group sizes is at most $\kappa Ds$. Summing over the choices
+bounds the total weight loss by $m_k\kappa sD$.
+
+Consider an optimum for the modified weights. Within a cluster
+$C$ of size at least two, the graph of positive-weight pairs must
+be connected. Otherwise, separating its connected components
+strictly increases the total weight within clusters. If a vertex has $r$ positive neighbors
+in $C$, splitting it off cannot increase that total weight, so
+$r-(|C|-1-r)/k\ge0$. Its closed neighborhood, consisting of itself
+and its positive neighbors, has size at least $|C|/(k+1)$.
+The closed neighborhoods of every third vertex on a shortest
+path are disjoint. Therefore the diameter of this graph on $C$
+is at most $3(k+1)$. A vertex in no large group has no positive-weight
+neighbor and is a singleton.
+
+Assign each remaining vertex to one large group containing it. Use the graph of large
+groups in which two groups are
+adjacent if they intersect. For a fixed group and another fixed
+coordinate subset, all groups of that subset intersecting the given
+group lie in a single common input cluster because the coordinate subsets
+intersect since both have size $q$. These groups are disjoint and
+each contains at least $\kappa D$ vertices. Hence the graph has degree
+at most $m_k/\kappa$. The groups assigned to the endpoints of a positive pair have graph
+distance at most two, through a large group containing both endpoints. Consequently all
+groups assigned to the vertices of a
+nonsingleton optimal cluster are contained in a ball of radius
+$R=6(k+1)$ about any one of them. Let $L$ bound the size of any such
+ball, a constant depending only on $k,\kappa$. There are at most
+$m_k s/(\kappa D)$ large groups. All groups, vertex assignments and
+intersections can be built in $O_k(s)$ expected time by hashing label
+tuples and recording the pairs of large groups containing each vertex.
+
+\emph{Grouping vertices by frequent input labels.}
+Let $V_A$ be the vertices assigned to large group $A$. Fix $\eta>0$. In each coordinate
+keep labels that appear at
+least $\eta D$ times in $V_A$, and also keep the labels defining $A$
+on its $q$ fixed coordinates. Mark the remaining entries as missing.
+The resulting tuples partition $V_A$ into at most $(2+1/\eta)^k$
+\emph{equivalence classes}: two vertices are equivalent when their retained
+tuples are identical. Count a coordinate as agreeing only when
+the two labels are present and equal. The reduced weight $w'_{uv}$
+is therefore at most $w_{uv}$ and is constant for each pair of equivalence classes.
+For distinct vertices in the same equivalence class it is positive because the
+$q$ defining labels of group $A$ agree.
+
+For assigned groups $A,B$ at distance at most $R$ and one coordinate, at most
+$\eta D(|V_A|+|V_B|)$ ordered comparisons lose a matching label. When the label is unretained on the $A$ side, each vertex in $V_B$
+sees fewer than $\eta D$ such matches, and conversely. This bound
+also covers $A=B$. Since one lost match changes the weight by $2/k$,
+the sum of the weight reductions over all such pairs of assigned groups is at most
+$4L\eta sD$. Applied to the optimal clustering for the modified weights, this bounds the difference between
+its total original and reduced weights within clusters.
+By the first modification, the total original weight within its clusters
+is at least the total within the original optimal clusters minus
+$m_k\kappa sD$.
+
+To see that whole equivalence classes suffice, choose an independent uniform
+representative from each equivalence class and give its equivalence class the representative's
+cluster label in the modified optimum. The expected total weight between
+two distinct equivalence classes is unchanged because all pairs between them have
+the same reduced weight. Placing all vertices of a equivalence class in one cluster can
+only increase the total weight within clusters. Each resulting cluster uses only groups
+assigned to vertices of
+one cluster in the modified optimum, all within one radius-$R$ ball.
+Vertices assigned to no large group remain singleton clusters. Averaging gives a partition into
+unions of whole equivalence classes with at least the required total weight within clusters.
+
+\emph{Solving the packing LP.}
+Within every $R$-ball enumerate all nonempty subsets of its equivalence classes.
+For each union $E$ of equivalence classes let $c_E$ be the sum of its reduced internal weights,
+computed from equivalence-class sizes and retained label tuples, and retain candidate clusters with
+$c_E>0$. The variables $z_E\ge0$ have one constraint
+$\sum_{E\ni i}z_E\le1$ per equivalence class $i$ (membership here denotes containment
+of the equivalence class). The preceding partition, after omitting candidate clusters
+whose total internal weight is nonpositive, is feasible. Each candidate cluster contains a
+bounded number of equivalence classes, and each
+equivalence class belongs to a bounded number of candidate clusters. There are
+at most $L$ possible centers for balls containing that equivalence class, each with
+a bounded number of equivalence classes. Repeated candidate clusters can either be
+deduplicated or kept as separate variables. Each $c_E=O((LD)^2)$ and
+there are $O_{k,\kappa,\eta}(s/D)$ candidate clusters. Thus
+$\sum_E c_E\le K sD$, with $K$ depending only on $k,\kappa,\eta$.
+
+For an additive approximation to this packing LP, put
+$b_i=\max_{E\ni i}c_E$ (zero for unused equivalence classes),
+$g_E=c_E+\sum_{i\in E}b_i$, and $l_i(z)=\sum_{E\ni i}z_E$.
+Subject to $0\le z_E\le1$ for every candidate cluster $E$, maximize
+the concave function
+\[
+ P(z)=\sum_E c_Ez_E-\sum_i b_i(l_i(z)-1)_+ .
+\]
+A supergradient of a concave function gives an affine upper bound
+at its current point. For $P$ one such vector has coordinates
+$v_E=c_E-\sum_{i\in E:\,l_i(z)>1}b_i$, with $|v_E|\le g_E$.
+For a positive integer $M$, initialize $z_E=0$ for all $E$ and perform $M^2$ steps of
+$z_E\leftarrow[z_E+v_E/(Mg_E)]_0^1$, where the brackets denote clipping
+to the unit interval. Let $\bar z$ be the average of the vectors
+before these steps. For a feasible optimum $z^*$, clipping cannot
+increase squared distance to $z_E^*$, so
+\[
+ v_E(z_E^*-z_E)\le
+ \tfrac12 M g_E\big[(z_E-z_E^*)^2-(z_{E,\mathrm{new}}-z_E^*)^2\big]
+ +\tfrac{v_E^2}{2Mg_E}
+\]
+
+Summing over the $M^2$ steps telescopes the squared distances.
+Using $|v_E|\le g_E$ and concavity gives
+$P(\bar z)\ge\sum_E c_E z_E^*-\sum_E g_E/M$.
+
+To enforce feasibility, divide $\bar z_E$ by
+$\max\{1,\max_{i\in E}l_i(\bar z)\}$. The new load of any equivalence class is
+at most one, since each of its terms was divided by at least its
+old load if that load exceeded one. Charge the weight lost on $E$
+to a equivalence class $i$ attaining the largest load in $E$. For an overloaded
+equivalence class $i$, the sum of its charges is at most
+$b_i(1-1/l_i(\bar z))\sum_{E\ni i}\bar z_E=b_i(l_i(\bar z)-1)$.
+Thus the feasible packing has objective value at least $P(\bar z)$.
+The bounded number of candidate clusters per equivalence class implies $\sum_Eg_E=O_{k,\kappa,\eta}(sD)$.
+Round each feasible weight down to a multiple of $1/J$ for an integer
+$J$, losing at most $KsD/J$. Choose $\kappa$ first, then $\eta$,
+then $M,J$ sufficiently large, so that
+$m_k\kappa+4L\eta+(\sum_Eg_E)/(MsD)+K/J\le\omega$. Uniform choices
+are possible by the bounds above. Since all weights are multiples of
+$1/k$ and each equivalence class belongs to a bounded number of candidate clusters, the intermediate rationals
+have $O_{k,\sigma}(\log(s+2))$ bits. Empty candidate cluster families need no packing iterations. All
+enumeration and packing iterations require $O_{k,\sigma}(s)$ operations.
+
+Complete the weights with a singleton set for each vertex's
+unused weight. The true LP objective is at most
+$\OPT+\omega sD$ because the reduced pair weights are at most the
+original pair weights. Each vertex belongs to at most as many
+candidate clusters as its equivalence class and one added singleton. The counts
+and all candidate cluster lists use $O_{k,\sigma}(s)$ words.
+\end{proof}
+
+\section{Exact rounding calculations}
+\label{app:certificates}
+
+Both rounding analyses reduce to inequalities on pairs and triangles.
+The following programs check the inequalities using exact rational
+arithmetic.
+
+\subsection{Pivot using LP distances}
+\label{app:hybrid}
+Recall the pairwise upper bound $F(d,x)/w$ on the Pivot cost from Lemma~\ref{lp:hybrid},
+where $d$ is the input separation fraction and $x$ is the LP distance.
+Let $t$ equal one on a positive edge and zero on a negative edge.
+A decision that violates the sign pays $1-d$ if $t=1$ and $d$ if $t=0$.
+Multiplying the difference between $F$ and $w$ times this cost by
+$1000$ gives
+\[
+ G_t(d,x)=404d^2+(394t-2404y)d+1202y-197t,\qquad y=x^2/(1+x).
+\]
+For signs $(t_1,t_2,t_3)=(1,1,0)$ we must prove $\sum_iG_{t_i}\ge0$.
+On a rectangle in $(d,x)$, fixing $d$ makes $G_t$ affine in $y$,
+which is monotone in $x$. Thus a minimum is attained at one of the
+two $x$ endpoints. Given that endpoint, minimize the convex quadratic
+in $d$ by projecting $(2404y-394t)/808$ onto the permitted interval.
+
+The following Python~3 verifier evaluates those minima exactly and
+rounds each down. It covers the domains defined by the nonstrict sign inequalities, so equalities
+at the threshold are included. Every triangle or sign constraint
+used to tighten a box is necessary, and rounding a new endpoint
+outwards on the grid preserves the continuous feasible domain. Both
+closed children of a split include its midpoint and together cover
+the parent. The run visits $137737$ boxes and certifies $68869$ leaves.
+The least sum of scaled lower bounds among these leaves is $12037845$.
+\begin{Verbatim}[fontsize=\scriptsize]
+from fractions import Fraction as Q
+from functools import lru_cache
+
+N = 2**19
+T = 5*N//2
+S = 10**12
+
+@lru_cache(None)
+def edge(t, lo, hi, left, right):
+    values = []
+    for a in (left, right):
+        x = Q(a, N)
+        y = x*x/(1+x)
+        d = max(Q(lo, N), min(Q(hi, N), (2404*y-394*t)/808))
+        g = 404*d*d + (394*t-2404*y)*d + 1202*y - 197*t
+        values.append(g)
+    z = S*min(values)
+    return z.numerator//z.denominator
+
+todo = [[0, N, 0, N]*3]
+visited = leaves = 0
+smallest = None
+while todo:
+    box = todo.pop()
+    visited += 1
+    for iteration in range(4):
+        for i in range(3):
+            a, b, c = 4*i, 4*((i+1)%3), 4*((i+2)%3)
+            for j in (0, 2):
+                box[a+j] = max(box[a+j], box[b+j]-box[c+j+1],
+                               box[c+j]-box[b+j+1])
+                box[a+j+1] = min(box[a+j+1], box[b+j+1]+box[c+j+1])
+            if i < 2:
+                box[a+1] = min(box[a+1], (T-box[a+2]+3)//4)
+                box[a+3] = min(box[a+3], T-4*box[a])
+            else:
+                box[a] = max(box[a], (T-box[a+3])//4)
+                box[a+2] = max(box[a+2], T-4*box[a+1])
+    widths = [box[i+1]-box[i] for i in range(0, 12, 2)]
+    if min(widths) < 0:
+        continue
+    bound = sum(edge(int(i < 2), *box[4*i:4*i+4]) for i in range(3))
+    if bound >= 0:
+        leaves += 1
+        smallest = bound if smallest is None else min(smallest, bound)
+        continue
+    i = 2*widths.index(max(widths))
+    assert box[i+1]-box[i] >= 2
+    mid = (box[i]+box[i+1])//2
+    other = box.copy()
+    box[i+1], other[i] = mid, mid
+    todo.extend((box, other))
+assert (visited, leaves, smallest) == (137737, 68869, 12037845)
+\end{Verbatim}
+
+\paragraph{The same certificate at $6/5$.}
+Keep $u=\alpha/2$, $v=\alpha-1$, $w=1-u-v$ and set $\alpha=6/5$.
+The two metric triples
+\[
+  d=(2,490,490)/1000,\qquad x=(2,539,541)/1000
+\]
+give signs $(+,+,-)$. Each triple is realizable as partition separation
+fractions. Assign weight $(a+b-c)/2$ on the partition cutting
+edges with distances $a,b$, and similarly for the other two choices.
+Put the remaining weight on the partition with one cluster.
+Substituting the triples in the formula for $F$ yields
+$\sum_i F(d_i,x_i)/w<1988/1000$, whereas the three opposite
+decisions cost $1998/1000$. Thus the triangle certificate for this
+fixed threshold fails at $6/5$.
+
+\subsection{Pivot with sampled pair signs}\label{floor:verifier}
+The following Python 3 program uses only the standard library and
+exact integer or rational arithmetic.  It verifies the subdivision
+coverage, all triangle coefficients, and both pair inequalities.
+Homogeneous monomials are encoded by packing their first three
+exponents into seven-bit fields. The total degree determines
+the fourth exponent.  Since the largest total degree is $36<128$,
+addition of packed indices cannot carry between fields.  The positive
+integer scaling on a tetrahedron with coordinate denominator $D$ is
+$500000^2D^{36}$.  Thus the polynomial checked is precisely this
+scaling times the triangle gap in Lemma~\ref{floor:triangle}.
+
+For reproducibility, the SHA256 digest of the checked coefficient
+sequence, with one decimal integer and a newline per coefficient in
+the program's order, is
+\begin{center}\ttfamily\footnotesize
+27daeef28702b8afead2be2c5d4c1ec792d0370984c8b293b894daec0ac410ca.
+\end{center}
+The program verifies all coefficients and the subdivision coverage
+directly; the digest records the resulting coefficient sequence.
+\begin{Verbatim}[fontsize=\scriptsize,breaklines=true,breakanywhere=true]
+from fractions import Fraction as F
+from itertools import combinations
+from math import comb,gcd
+from functools import reduce
+import hashlib
+# Exact verification of the pair and triangle inequalities. Standard library only.
+# eta=1/100000, beta=585/1000, gamma=1419/1000.
+K,B,GN,BN,DEN=17,500000,1419,585,1000
+DEG=2*K+2
+BITS=7
+assert DEG < (1<<BITS)
+UNIT=[1,1<<BITS,1<<(2*BITS),0]
+def add(*args):
+ o={}
+ for a in args:
+  for k,v in a.items():o[k]=o.get(k,0)+v
+ return {k:v for k,v in o.items() if v}
+def scale(a,s):return {k:v*s for k,v in a.items() if v*s}
+def mul(a,b):
+ o={}
+ for i,u in a.items():
+  for j,v in b.items():
+   k=i+j;o[k]=o.get(k,0)+u*v
+ return {k:v for k,v in o.items() if v}
+def lin(vals):return {UNIT[i]:v for i,v in enumerate(vals) if v}
+L=lin([1]*4);LP=[{0:1}]
+for n in range(DEG):LP.append(mul(LP[-1],L))
+HCOEF={}
+r=K//2+1;t=K//2
+for j in range(r,K+1):HCOEF[j]=5*((-1)**(j-r))*comb(K,j)*comb(j-1,r-1)
+for j in range(t,K+1):HCOEF[j]=HCOEF.get(j,0)+comb(K,t)*((-1)**(j-t))*comb(K-t,j-t)
+
+HCOEF={i:99999*v for i,v in HCOEF.items()}
+HCOEF[1]=5
+
+def polys(tet):
+ D=reduce(lambda x,y:x*y//gcd(x,y),[v.denominator for row in tet for v in row],1)
+ ds=[lin([int(v[i]*D) for v in tet]) for i in range(3)]
+ ns=[add(scale(L,D),scale(d,-1)) for d in ds]
+ hs=[]
+ for d in ds:
+  powers=[{0:1}]
+  for k in range(K):powers.append(mul(powers[-1],d))
+  hs.append(add(*[scale(mul(powers[k],LP[K-k]),co*D**(K-k)) for k,co in HCOEF.items()]))
+ qs=[add(scale(LP[K],B*D**K),scale(h,-1)) for h in hs]
+ rs=[add(scale(LP[2*K],B*B*D**(2*K)),scale(mul(hs[(i+1)%3],hs[(i+2)%3]),-1)) for i in range(3)]
+ ac={};zc={}
+ for i in range(3):
+  j=(i+1)%3;k=(i+2)%3
+  ac=add(ac,mul(ds[i],mul(qs[j],qs[k])),mul(ns[i],add(mul(qs[j],hs[k]),mul(hs[j],qs[k]))))
+  zc=add(zc,scale(mul(mul(ds[i],ns[i]),rs[i]),2))
+ out=[]
+ for mask in [(0,0,0),(1,1,1),(0,1,1),(1,0,1),(1,1,0)]:
+  cc=add(*[mul(ns[i] if mask[i] else ds[i],rs[i]) for i in range(3)])
+  p=add(scale(mul(cc,L),GN*D),scale(mul(ac,L),-BN*D),scale(zc,-(DEN-BN)))
+  out.append(p)
+ return out
+
+origin=tuple(tuple(F(x) for x in row) for row in
+             [(0,0,0),(0,1,1),(F(1,2),F(1,2),1),(1,1,1)])
+def split(tet):
+ # combinations is lexicographic; max uses the first edge in a tie.
+ i,j=max(combinations(range(4),2),key=lambda ij:
+         sum((tet[ij[0]][q]-tet[ij[1]][q])**2 for q in range(3)))
+ mid=tuple((tet[i][q]+tet[j][q])/2 for q in range(3))
+ out={}
+ for x in (i,j):
+  child=list(tet);child[x]=mid;out[str(x)]=tuple(child)
+ return out
+paths=['312312', '312310', '312301', '3123030', '3123031', '3120', '3101', '3102', '3010', '3012', '3030', '30310', '30312', '0']
+assert len(paths)==len(set(paths))
+leaves=set(paths)
+def cover(prefix,tet):
+ if prefix in leaves:
+  assert not any(p!=prefix and p.startswith(prefix) for p in leaves)
+  return 1
+ assert any(p.startswith(prefix) for p in leaves),prefix
+ return sum(cover(prefix+x,child) for x,child in split(tet).items())
+assert cover('',origin)==14
+# Every degree-36 monomial: the omitted fourth exponent is 36-a-b-c.
+keys=[a+(b<<BITS)+(c<<(2*BITS)) for a in range(DEG+1)
+      for b in range(DEG-a+1) for c in range(DEG-a-b+1)]
+assert len(keys)==comb(DEG+3,3)==9139
+all_keys=set(keys);digest=hashlib.sha256();total=zero=0
+for path in paths:
+ tet=origin
+ for x in path:tet=split(tet)[x]
+ zeros=0
+ for p in polys(tet):
+  assert set(p)<=all_keys
+  for key in keys:
+   v=p.get(key,0)
+   assert v>=0,(path,key,v)
+   digest.update((str(v)+'\n').encode('ascii'))
+   zeros+=v==0
+ print(path,'PASS',45695-zeros,'positive',zeros,'zero',flush=True)
+ total+=45695;zero+=zeros
+assert total==639730
+print('TRIANGLES PASS:',total,'coefficients;',zero,'zero')
+print('Coefficient SHA256:',digest.hexdigest())
+# Pair inequalities: degree-17 Bernstein check after removing the zero
+# at d=0 when the optimum co-clusters the pair, or d=1 when it separates it.
+def bernstein(poly,left,right,degree):
+ c=[sum(poly.get(j,0)*comb(j,i)*left**(j-i)*(right-left)**i
+        for j in range(i,degree+1)) for i in range(degree+1)]
+ return [sum(c[i]*F(comb(j,i),comb(degree,i))
+             for i in range(j+1)) for j in range(degree+1)]
+for separated in (False,True):
+ p={}
+ def term(j,v):p[j]=p.get(j,0)+v
+ if separated:term(0,GN*B);term(1,-GN*B)
+ else:term(1,GN*B)
+ term(1,-BN*B-2*(DEN-BN)*B)
+ term(2,2*(DEN-BN)*B)
+ for j,v in HCOEF.items():term(j,-BN*v);term(j+1,2*BN*v)
+ if not separated:
+  assert p.get(0,0)==0
+  quotient={j-1:v for j,v in p.items() if j>0}
+ else:
+  reflected=[sum(p.get(j,0)*comb(j,i)*(-1)**i
+                 for j in range(i,19)) for i in range(19)]
+  assert reflected[0]==0
+  quotient={i-1:v for i,v in enumerate(reflected) if i>0}
+ coeffs=bernstein(quotient,F(0),F(1,2),17)
+ assert min(coeffs)>=0
+ print('PAIR',int(separated),'PASS; normalized quotient minimum',
+       min(coeffs)/(B*DEN))
+print('FULL COVER, ALL TRIANGLES, AND BOTH PAIR HALVES VERIFIED')
+\end{Verbatim}
+
+\section{Other implementations and a recourse lower bound}
+
+\subsection{Deterministic offline clusterings}
+\label{app:deterministic-seed}
+
+The online algorithm for adaptive arrivals calls the following
+deterministic offline procedure at each rebuild. It uses the
+same grouping by input-cluster size and deterministic choices for rounding.
+
+\begin{lemma}\label{off:det}
+For $0<\varepsilon\le1$, a deterministic algorithm achieves
+approximation ratio $601/500+\varepsilon$ in
+$O_\varepsilon(\operatorname{poly}(n,m))$ time. The polynomial degree
+is independent of $\varepsilon$.
+\end{lemma}
+\begin{proof}
+First fix a sample of $k$ inputs and a shift. The fractional packing
+construction in Lemma~\ref{band:linear-seed} is deterministic using
+sorted dictionaries and fixed tie rules. Sampling a representative
+of each equivalence class proves the existence of a feasible integral solution of the
+packing LP and requires no random choice in the algorithm.
+
+Derandomize the three candidates of Lemma~\ref{lp:hybrid} separately
+on each group $V_b$. For the input candidate, take the cheapest sample position.
+For the candidate from cluster-based rounding, reveal the weighted random order one set at
+a time. After any prefix of the order, two assigned vertices have
+known labels, and an assigned and an unassigned vertex must remain
+separated. For two unassigned vertices no incident set has appeared.
+Their conditional probability of being co-clustered is their remaining
+common weight divided by their remaining union weight. For each
+possible next set one can therefore compute the conditional expected
+sampled cost by summing over pairs. Choose a next set minimizing this
+expectation. For Pivot, choose a pivot whose newly decided cost is
+at most the sum of the pairwise upper bounds on the Pivot cost in
+Lemma~\ref{lp:hybrid} over its newly decided pairs. Existence follows
+from that lemma's one-step averaging argument, and testing all active
+vertices finds such a pivot. The cheapest of the three candidates meets
+the mixture's $\alpha=601/500$ fractional bound. The weights in each
+group are multiples of $1/J$ for an accuracy-dependent $J$, so all
+conditional co-clustering probabilities have denominators at most $2J$ and
+exact comparisons take polynomial bit time.
+
+With $\nu=\varepsilon/8$, choose the least-cost partition on each
+sample over all shifts. It costs at most the average over the shifts,
+which Lemma~\ref{lem:combine-bands} bounds by $\alpha+\nu$ times the
+optimum for the sampled input partitions. Take the least odd $k\ge25/\nu^2$. Enumerate
+the $(m k!)^2$ samples of Lemma~\ref{lem:finite-lists}. Uniform averaging
+over this family gives uniform, pairwise independent indices. The
+proof of Lemma~\ref{thm:ensemble-transfer} uses only unbiased sample
+means and the variance of each individual pair's separation estimate,
+which are unchanged under pairwise independence. The average true cost
+over all samples is therefore at most $(\alpha+2\nu)\operatorname{OPT}$.
+Evaluate the resulting partitions on all original input partitions and return the
+one with least true cost. The number of samples is $O_\varepsilon(m^2)$. Exhaustive pivot
+and next-set tests on each sample
+use a polynomial in $n$ of absolute degree. This proves the time bound.
+\end{proof}
+
+\subsection{A near-linear implementation with singly exponential accuracy dependence}
+\label{app:near-linear}
+
+The following implementation encodes the weighted sampled instance
+in an unweighted graph by replacing each vertex with several
+copies. This lets us invoke the near-linear cluster LP solver for
+unweighted correlation clustering. We then project the weights
+back to the sample and apply Lemma~\ref{lp:hybrid}.
+
+\begin{lemma}\label{lift:empirical}
+Let $0<\rho\le1/8$ be sufficiently small for the LP solver, and let $k$ be a prime with
+$\rho^{-2}\le k=O(\rho^{-2})$. On any sample of $k$ inputs and $s$ vertices, an algorithm has expected
+approximation ratio $(601/500)(1+\rho+2/\sqrt{k})$ and running time
+$\widetilde O(2^{\mathrm{poly}(1/\rho)}s)$.
+\end{lemma}
+\begin{proof}
+Index the inputs by the finite field $\mathbb F_k$ of $k$ elements.
+Replace each vertex $u$ by $Q=k^2$ copies $(u,a,b)$, one for each
+$a,b\in\mathbb F_k$. All edges between copies of the same original vertex are positive. For distinct $u,v$, the edge from $(u,a,b)$ to
+$(v,c,e)$ is positive precisely when $u,v$ agree in the input indexed
+by $r=ac+b+e$. This is symmetric in the two endpoints.
+
+For fixed $r$, the $Q$-by-$Q$ matrix $B_r$ with entries
+$\mathbbm{1}[ac+b+e=r]$ has $k$ ones per row and column. Two distinct rows
+with equal $a$ have disjoint supports. Rows with different $a$ have
+exactly one common column, since the two field equations determine
+$c,e$. Let $J$ be the $Q$-by-$Q$ all-ones matrix, $J_k$ the
+$k$-by-$k$ all-ones matrix, and $I_k$ the identity of size $k$.
+The row Gram matrix of $B_r-J/k$ is block diagonal, with blocks
+$kI_k-J_k$ indexed by $a$.
+Hence $\|B_r-J/k\|_{\mathrm{op}}=\sqrt{k}$. For an original pair let
+$S$ be its agreeing indices, $w=|S|/k$, and $p=\min(w,1-w)$. Its
+adjacency block is $A=\sum_{r\in S}B_r$. Since $\sum_rB_r=J$, applying
+the norm bound to either $S$ or its complement gives
+\[
+ \|A-wJ\|_{\mathrm{op}}\le\sqrt{k}\min(|S|,k-|S|)
+ = Qp/\sqrt{k}.
+\]
+
+Assigning all copies of a vertex to its cluster in a optimum for the sampled input partitions
+costs exactly $Q^2\operatorname{OPT}_{\rm sample}$. Run the unweighted
+cluster LP solver of Cao et al.~\cite[Theorem 1]{clusterLP25} with
+accuracy $\rho$. It returns feasible set weights $z_H$, with expected
+objective at most $(1+\rho)Q^2\operatorname{OPT}_{\rm sample}$.
+For each original vertex, choose one of its copies independently and uniformly,
+and restrict every LP set to the representatives. These weights remain
+feasible, since each representative has total incident weight one.
+
+To bound the cost of this restriction, give copy $i$ the unit vector
+$g_i=(\sqrt{z_H}\mathbbm{1}[i\in H])_H$. Let $G_u$ be the matrix
+whose rows are the unit vectors of the copies of $u$. Then
+$Y=G_uG_v^{\mathsf T}$ contains the fractional co-clustering values between
+the two sets of copies. The expected
+fractional cost of this pair under the restriction is
+$w+(1-2w)\langle J,Y\rangle/Q^2$. The cost between the two sets of copies in the unweighted LP, divided by
+$Q^2$, is $w+\langle J-2A,Y\rangle/Q^2$. Here $\langle D,Y\rangle$
+is the entrywise matrix inner product, equal to
+$\operatorname{tr}(G_u^{\mathsf T}DG_v)$. By Cauchy--Schwarz and
+the operator-norm bound on $A-wJ$, the absolute difference is at most
+\[
+ \frac{2}{Q^2}\|A-wJ\|_{\mathrm{op}}
+       \|G_u\|_{\mathrm F}\|G_v\|_{\mathrm F}
+ \le \frac{2p}{\sqrt k},
+\]
+where each Frobenius norm $\|G_u\|_{\mathrm F}$ is $\sqrt Q$
+because its rows are unit vectors.
+The costs between copies of the same vertex are nonnegative and
+$\sum_{u<v}p_{uv}\le\operatorname{OPT}_{\rm sample}$. Summing,
+taking expectations, and applying Lemma~\ref{lp:hybrid} to the sample
+proves the approximation guarantee.
+
+For the adjacency oracle, store each input cluster as an indexed array,
+including the position of each member. The oracle uses the solver's convention that
+every vertex has a positive self-loop. A copy
+therefore has $Q$ positive neighbors in its set of copies, counting itself.
+Self-loops contribute zero to the objective. For every $r$ there are
+$k(|P_r(u)|-1)$ further neighbors, where $P_r(u)$ is the cluster
+containing $u$. Store prefix sums of these counts. For a neighbor
+index beyond the range for copies of the same vertex, binary search determines $r$.
+The offset gives a vertex $v\in P_r(u)\setminus\{u\}$ and a field
+element $c$. Return $(v,c,r-ac-b)$. Degree and edge queries take
+constant time and indexed-neighbor queries take $O(\log k)$ time.
+The LP solver takes $\widetilde O(2^{\mathrm{poly}(1/\rho)}sQ)$
+such operations. Its positive set weights are at least
+$\Delta=\mathrm{poly}(\rho)$, so their total number of memberships of copies
+in LP sets is at most $sQ/\Delta$. We can restrict and round the
+reported sets within the asserted time, keeping separate entries for
+sets with identical nonempty restrictions. Each representative is in at
+most $1/\Delta$ such sets. Thus the subset index of Lemma~\ref{lp:hybrid}
+costs $2^{O(k+1/\Delta)}s$ expected time, within the claimed bound.
+The construction in the proof of Lemma~11 of the full version
+of~\cite{clusterLP25} stores the feasible weights as multiples of a common
+inverse integer depending only on accuracy. Projection preserves those
+weights. We can therefore compare key weights exactly and draw the
+order of exponentially distributed priorities with integer partial sums.
+\end{proof}
+
+The encoding gives an alternative to the solver for a group $V_b$ when
+controlling the dependence on inverse accuracy.
+
+\begin{theorem}\label{lift:offline}
+For $0<\varepsilon\le1$ and $0<\zeta<1$, an offline algorithm for
+consensus clustering on $n$ vertices has approximation ratio
+$1.21+\varepsilon$ and success probability at least
+$1-\zeta$ in $2^{\mathrm{poly}(1/\varepsilon)}
+n\,\mathrm{polylog}(n+2)\log(2/\zeta)$ expected time,
+independently of $m$.
+\end{theorem}
+\begin{proof}
+Let $\rho\le\varepsilon/128$ be the smaller of $\varepsilon/128$ and a
+fixed admissible solver accuracy. Choose a prime $k$ between
+$\lceil\rho^{-2}\rceil$ and $2\lceil\rho^{-2}\rceil$.
+For each trial draw a fresh sample of $k$ independent uniform original
+inputs and apply Lemma~\ref{lift:empirical}. The conditional expected
+approximation ratio on the sample is at most $601/500+6\rho$. Since
+$k\ge25/(\varepsilon/8)^2$, Lemma~\ref{thm:ensemble-transfer}
+with tolerance $\varepsilon/8$ bounds the expected true cost by
+$(601/500+\varepsilon/4)\operatorname{OPT}$.
+Lemma~\ref{lem:select-simple} with $U=1$, $\delta=\varepsilon/32$
+and failure probability $1/10$ yields a $(601/500+\varepsilon/2)$
+approximation with probability at least $9/10$.
+Apply Lemma~\ref{lem:offline-confidence} with $\gamma=601/500$
+to this algorithm. It attains the stated
+success probability with $O(\log(2/\zeta))$ expected calls and
+$O(\varepsilon^{-2}\log(2/\zeta))$ expected distance evaluations.
+All dependence on the sample size, including the index of key subsets for
+Pivot using LP distances, is absorbed by $2^{\mathrm{poly}(1/\varepsilon)}$.
+\end{proof}
+
+\subsection{Recourse per vertex under deletions}
+\label{app:recourse}
+
+The fully dynamic algorithms maintain their current partition
+through queries. The following construction shows the cost of
+requiring persistent explicit labels when deletions are allowed.
+
+\begin{theorem}
+\label{detext:two-barrier}
+Fix $1\le\alpha<2$. There is an oblivious sequence of vertex
+insertions and deletions in consensus clustering with four input partitions
+for which every sequence of outputs with approximation ratio $\alpha$ incurs
+$\Omega_{\alpha}(U)$ label changes on one of two continuously present
+vertices over $U$ updates. The maximum active size is a constant
+that depends only on $\alpha$. The statement holds for every assignment
+of persistent cluster identifiers. For a randomized algorithm, the
+lower bound holds on its event on which the approximation guarantee holds after all updates.
+\end{theorem}
+\begin{proof}
+Choose a positive integer $b$ such that
+\[
+ 2-\frac1{b+1}>\alpha.
+\]
+Two vertices $u,v$ remain active throughout. Every other vertex belongs
+to one of two groups, denoted $+$ and $-$. Vertices in the same group
+have identical labels in each input partition. Repeated labels in a row of the following table
+specify a single cluster of that partition.
+\[
+\begin{array}{c|cccc}
+ &u&v&+&-\\ \hline
+ P_1&1&1&1&1\\
+ P_2&1&1&1&2\\
+ P_3&1&2&1&2\\
+ P_4&1&2&2&2
+\end{array}
+\]
+Thus the fraction of inputs separating $u,v$ is $1/2$. A vertex in group $+$
+has separation fraction $1/4$ to $u$ and $v$. A vertex in group $-$
+has separation fractions $3/4$ to $u$ and $1/4$ to $v$.
+
+At a time with $b$ vertices in group $+$ and no vertices in group $-$, the
+partition with one cluster costs $(b+1)/2$. If an output separates
+$u$ and $v$, each vertex in group $+$ is separated from at least one of them.
+Its two pairs with $u$ and $v$ then contribute at least
+$3/4+1/4=1$. Adding the pair $\{u,v\}$ gives a lower bound of $b+1/2$.
+The ratio of this lower bound to the exhibited feasible cost is
+\[
+ \frac{b+1/2}{(b+1)/2}=2-\frac1{b+1}>\alpha.
+\]
+Hence every $\alpha$-approximate output assigns $u$ and $v$ to the same cluster.
+
+At a time with $b$ vertices in group $-$ and no vertices in group $+$, put
+all the vertices in group $-$ with $v$ and leave $u$ alone. This also
+costs $(b+1)/2$. If an output co-clusters $u$ and $v$, every vertex in group $-$
+belongs either to their cluster or to a different cluster. In either case its
+pairs to $u$ and $v$ contribute exactly one, giving the same lower bound
+$b+1/2$. Every $\alpha$-approximate output now separates $u$ and $v$.
+
+Alternate between the two configurations by deleting the $b$ current
+vertices and inserting $b$ fresh vertices of the other group, one
+vertex per update. The input sequence is fixed in advance and the
+maximum active size is $b+2$. Each completed transition consumes $2b$
+updates and changes the equality of the cluster identifiers of $u,v$. At
+least one of $u,v$ must therefore change its cluster identifier during that
+transition, irrespective of how clusters are labeled. After $q$ transitions,
+$\operatorname{rec}(u)+\operatorname{rec}(v)\ge q$, so one of $u,v$ has
+recourse at least $q/2$. Starting from the empty set requires $b+2$
+initial insertions, giving $U=b+2+2bq$ and the claimed bound. The
+argument applies on every execution for which the approximation guarantee
+holds after all updates.
+\end{proof}
+
+\end{document}

@@ -1,0 +1,303 @@
+\section{Preliminaries}
+\label{sec:preliminaries}
+
+\begin{table}[ht]
+\centering
+\caption{Notation used throughout the preliminaries.}
+\label{tab:notation}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{@{}>{\ttfamily}p{0.27\textwidth} >{\raggedright\arraybackslash}p{0.18\textwidth} X@{}}
+\toprule
+\normalfont\textbf{Command} & \textbf{Display} & \textbf{Meaning} \\
+\midrule
+\string\clustering & clustering & A partition of the vertex set \\
+\string\clusterings & clusterings & Partitions of the vertex set \\
+\string\Clustering & Clustering & Capitalized form of a clustering \\
+\string\Clusterings & Clusterings & Capitalized form of clusterings \\
+\string\cost & $f$ & Cost function \\
+\string\estcost & $\widehat{\cost}$ & Estimated cost \\
+\string\card\{X\} & $\card{X}$ & Cardinality of $X$ \\
+\texttt{\textbackslash dist\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\dist{\cls{C},\cls{P}}$ & Distance between the clusterings $\cls{C}$ and $\cls{P}$ \\
+\string\weight & $d$ & Edge weight (fraction of input clustering separates $ e $) \\
+\string\weight\{e\} & $\weight{e}$ & Weight of edge $e$ \\
+\string\estweight & $\widehat d$ & Estimated edge weight \\
+\string\estweight\{e\} & $\estweight{e}$ & Estimated weight of edge $e$ \\
+\string\mweight & $p$ & Minimum edge weight \\
+\string\mweight\{e\} & $\mweight{e}$ & Minimum weight $\min(\weight{e},1-\weight{e})$ of edge $e$ \\
+\string\summweight & $B$ & Sum of minimum edge weights $ := \sum_{e}\mweight{e} $\\
+\string\summweight\{t\} & $\summweight{t}$ & Sum of minimum edge weights at time $t$ \\
+\string\cls\{C\} & $\cls{C}$ & Generic clustering $ \cls{C} $\\
+\string\inpcls & $\mathcal P$ & A generic input clustering \\
+\string\inpcls\{i\} & $\inpcls{i}$ & $i$-th input clustering \\
+\string\outcls & $\mathcal S$ & Output clustering \\
+\string\outcls\{t\} & $\outcls{t}$ & Output clustering at time $t$ \\
+\string\nupdate & $\nupdate$ & Number of updates \\
+\texttt{\textbackslash ncocls\{\textbackslash cls\{C\}\}} & $\ncocls{\cls{C}}$ & Number of co-clustered pairs in $\cls{C}$ \\
+\texttt{\textbackslash ncocls\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\ncocls{\cls{C}, \cls{P}}$ & Number of co-clustered pairs in both $\cls{C}$ and $\cls{P}$ \\
+\string\expt & $\mathbb E$ & Expectation operator \\
+\string\expt\{X\} & $\expt{X}$ & Expectation of $X$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{\texorpdfstring{\Clusterings}{Clusterings}.}
+A \emph{\clustering} of a vertex set $ V $ is a collection of nonempty, pairwise
+disjoint subsets, called \emph{clusters}, whose union is that vertex set.
+In a \clustering, two vertices are \emph{co-clustered} if they belong to
+the same cluster, and \emph{separated} if they belong to different clusters.
+
+For two \clusterings $ \cls{C}, \cls{P} $ of a set $ V $, their distance $ \dist{\cls{C}, \cls{P}}$ is the number of unordered pairs that are co-clustered in exactly one of $ \cls{C},\cls{P} $:
+\begin{align}
+    \dist{\cls{C}, \cls{P}} = \card{\{ u,v \}\subset V:\ u,\ v \text{ are co-clustered in exactly one of } \cls{C} \text{ or } \cls{P}} \nonumber
+\end{align}
+For any subset $ V'\subseteq V $, let $ \cls{C}|_{V'} $ denote the restriction of $ \cls{C} $ to $ V' $.
+
+\paragraph{Consensus Clustering Problem.}\label{par:consensus_clustering_} % (fold)
+Given $ m $ \clusterings $ \inpcls{1}, \inpcls{2}, \dots, \inpcls{m} $ of a vertex set $ V $ as input, \emph{consensus clustering problem} seeks a \clustering $ \cls{C} $ of $ V $ that minimizes the \emph{cost} function
+\begin{align}
+    \cost_{ V }(\cls{C}) = \dfrac{1}{m} \sum_{i=1}^{m} \dist{\cls{C}, \inpcls{i}} .\nonumber
+\end{align}
+The subscript $ V $ is omitted when the vertex set is clear from context.
+
+We denote by $ \OPT = \min_{\cls{C}:\ \cls{C} \text{ is a \clustering\ } \text{ of } V}\cost(\cls{C}) $ the optimal cost of the consensus clustering problem on the given input \clusterings.
+% paragraph Consensus Clustering. (end)
+
+\tienlong{Rememeber to use throughout either identifier or labels}
+\paragraph{Presenting and Querying a \texorpdfstring{\Clustering}{clustering}.}
+Each input \clustering is presented by assigning a cluster label to each vertex.
+Two vertices are co-clustered if and only if they have the same label.
+
+\paragraph{Offline Setting.}\label{par:offline} % (fold)
+The whole input is given at once.
+% paragraph Offline (end)
+
+The algorithm can obtain a vertex's cluster identifier in any specified
+input in constant time and can sample a uniform input index in constant
+time. Input labels stay fixed while a vertex is active. We treat a
+reinserted vertex as a new vertex. We use a word RAM with counters and identifiers stored
+in a constant number of words at fixed accuracy. Dynamic perfect
+hashing gives worst-case constant lookup time and expected amortized
+constant time for insertions and deletions~\cite{Dietzfelbinger1994}.
+
+The offline algorithm outputs one cluster identifier for every vertex.
+The online algorithm starts empty, sees vertex insertions, and reports
+the new label and all changes to previously published labels. Recourse
+counts changes to an individual vertex's published label after it
+arrives. The fully dynamic algorithm also starts empty. Its updates
+insert or delete a vertex, and it provides an implicit \clustering
+through queries. A label query returns a vertex's identifier in the
+maintained \clustering. A same-cluster query tests equality of two such
+identifiers. When a probability guarantee holds simultaneously over the update
+sequence, a single event ensures the approximation or competitive ratio
+after every update.
+
+% (end)
+
+In a \emph{non-offline} setting, each vertex is inserted or deleted one at a time.
+Let $ \nupdate $ be a positive integer and let $ \{ 1,2,\dots, \nupdate \} $ index each time step where a vertex is inserted or deleted.
+For each $ t\in \{ 1,2, \dots, \nupdate \} $, an \emph{active set} $ V_t \subseteq V $ is the set of vertices that have arrived by time $ t $ and have not subsequently been deleted.
+We denote by $ \OPT_t $ the optimal cost of the consensus clustering problem on the input \clusterings restricted to $ V_t $.
+A clustering $ \cls{C} $ of $ V_t $ is $ \alpha $-approximation to $ \OPT_t $ if $ \cost_{V_{t}}(\cls{C}) \leq \alpha \OPT_{t} $.
+An \emph{expected approximation ratio} $\alpha$ means $\expt{\cost_{t}(C_t)}\le\alpha\OPT_t$. \tienlong{Specify later what is the randomness in the expectation.}
+
+In this paper, we consider two \emph{non-offline} settings: 
+
+\paragraph{Online with Recourse.}\label{par:online_} % (fold)
+Each vertex arrives one at a time, revealing upon arrival all its labels in the input \clusterings.
+
+\tienlong{Recourse is defined as the number of times a vertex's label changes between two consecutive time steps.}
+% paragraph Online. (end)
+
+\paragraph{Fully Dynamic}\label{par:fully_dynamic} % (fold)
+Nodes can be inserted or deleted one at a time. Each vertex reveals upon arrival all its labels in the input \clusterings.
+
+\tienlong{Update time is the time the algorithm takes to maintain the solution}
+\tienlong{Query time is the time the algorithm takes to answer a query}
+% paragraph Fully Dynamic (end)
+
+For a pair $e=\{u,v\}$, let $ \weight{e}= \weight{uv} $ be the fraction of inputs
+that separate its endpoints. The pair contributes $ \weight{e} $ to $ \cost(\cls{C}) $ if
+$ \cls{C} $ assigns its endpoints to the same cluster, and $ 1- \weight{e} $ otherwise. Its minimum possible contribution
+is $ \mweight{e}= \mweight{uv}=\min\{\weight{e},1-\weight{e}\}$. The sum $ \summweight=\sum_e \mweight{e} $, over unordered
+pairs, is therefore a lower bound on $\OPT$. The values $ \weight{uv} $ satisfy
+the triangle inequality because each input's separation indicators do.
+
+On insertion-only streams, $\summweight{t}$ and $\OPT_t$ are nondecreasing. The
+majority decision for a pair assigns its endpoints to the same cluster
+if $\weight{e}<1/2$ and to different clusters if $\weight{e}>1/2$. If $\summweight{t}<1/2$, there are no ties. The expected number of
+pairs on which a uniform input disagrees with the majority decisions
+is then $\summweight{t}<1$, so some input realizes all of them. That \clustering
+attains $\OPT_t$. Label each cluster by its smallest arrival index to
+preserve all old labels while $B_t<1/2$.
+
+
+\paragraph{Maintaining \clustering distances.}
+For \clusterings $C,P$, let $ \ncocls{C}$ count the pairs co-clustered in $C$
+and let $ \ncocls{C,P}$ count the pairs co-clustered in both $C$ and $P$. Then
+$\dist{C,P}=\ncocls{C}+\ncocls{P}-2\ncocls{C,P}$. Each term is the sum of $\binom b2$
+over the sizes $b$ of the clusters in $C$, the clusters in $P$, or
+their intersections, respectively. We can therefore evaluate one
+distance in $O(n)$ expected time or update it in expected amortized
+$O(1)$ time per insertion, deletion, or change of one vertex's label.
+We use the triangle inequality in the forms
+$|\dist(C,P)-\dist{A,P}|\le \dist{C,A}$ and $\dist{C,A}\le \cost(C)+\cost(A)$.
+
+\subsection{Sampling input \clusterings and selecting a candidate}
+\label{sec:ensemble-transfer}
+
+Unless specified otherwise, sample input indices independently and
+uniformly with replacement. Repetitions are allowed, and we retain the
+order of the sampled indices. Associate each vertex with the ordered tuple of its cluster identifiers
+in the corresponding input \clusterings. Let
+$\estcost$ denote the average cost over these \clusterings, and let
+$\estweight{e}$ be the fraction of them separating pair $e$. A
+\emph{candidate} is a \clustering produced by a run of an algorithm.
+To compare candidates, independently sample further input \clusterings
+and estimate the candidates' average distances to them. Only the pairs
+on which two candidates disagree can affect the error in their
+estimated cost difference.
+
+\begin{lemma}\label{lem:sample-difference}
+On a fixed vertex set $V$, let $\estweight{e}$ denote the separation
+fraction in a sample of $k$ independently sampled inputs. For $\delta>0$,
+let
+\[
+ R(V)=\sum_{e\subseteq V,\ |e|=2}(2|\estweight{e}-\weight{e}|-\delta)_+,
+ \qquad (x)_+=\max\{x,0\}.
+\]
+For any subset $W\subseteq V$ and \clusterings $C,F$ of $W$,
+\[
+ \big|(f_W(C)-f_W(F))-(\estcost_W(C)-\estcost_W(F))\big|
+ \le \delta \dist{C,F}+R(V).
+\]
+Moreover, $\expt{R(V)}\le\operatorname{OPT}_V/(k\delta)$.
+\end{lemma}
+\begin{proof}
+Only pairs on which $C$ and $F$ disagree contribute to the difference.
+Each contributes at most $2|\estweight{e}-\weight{e}|$ in absolute value.
+Apply $(2|x|-\delta)_+\le x^2/\delta$ and the variance of each sampled
+fraction to obtain
+\[
+ \expt{R(V)}\le\frac{1}{k\delta}\sum_e \weight{e}(1-\weight{e})
+ \le\frac{\operatorname{OPT}_V}{k\delta}.
+\]
+The last inequality uses $\weight{e}(1-\weight{e})\le \mweight{e}$ for each pair.
+\end{proof}
+
+The next lemma bounds the expected approximation ratio on all input
+\clusterings in terms of the ratio on a sample.
+
+\begin{lemma}\label{thm:ensemble-transfer}
+Let $1\le\gamma\le2$ and $0<\tau\le1$. If an algorithm has conditional
+expected approximation ratio $\gamma$ on every collection of
+$k\ge25/\tau^2$ sampled input \clusterings, its expected approximation ratio on the original instance
+is at most $\gamma+\tau$.
+\end{lemma}
+\begin{proof}
+Fix a fixed optimal \clustering $F$. Lemma~\ref{lem:sample-difference} bounds the
+error even when $C$ depends on the sampled input \clusterings. The \clustering triangle
+inequality gives $d(C,F)\le\estcost(C)+\estcost(F)$.
+Taking expectations and using $\expt{\estcost(F)}=\operatorname{OPT}$
+yields
+\[
+ \expt{\cost(C)}\le
+ \bigl(\gamma+\delta(\gamma+1)+1/(k\delta)\bigr)\operatorname{OPT}.
+\]
+Take $\delta=\tau/6$ and use the bound on $k$.
+\end{proof}
+
+We will also use a deterministic family of short sequences of input indices. Pairwise
+independence suffices in Lemma~\ref{thm:ensemble-transfer}, since its
+proof uses only the first two moments of the separation fractions.
+
+\begin{lemma}\label{lem:finite-lists}
+For any positive integer $k$, one can enumerate $(m k!)^2$ sequences of
+$k$ input indices such that a uniformly chosen sequence has pairwise
+independent, uniformly distributed entries.
+\end{lemma}
+\begin{proof}
+Set $w=k!$ and $N=mw$. Enumerate $a,b$ modulo $N$ and use input
+$1+\lfloor((a+ib)\bmod N)/w\rfloor$ at position $0\le i<k$.
+Conditional on $a+ib$ modulo $N$, the residue $a+jb$ is uniform
+in a congruence class modulo $\gcd(|j-i|,N)$. If $i\ne j$, this
+divisor divides $w$, so each interval of $w$ residues contains the
+same number of elements of that class.
+\end{proof}
+
+Generate candidates using independently sampled input \clusterings and
+independent rounding. To compare them, independently sample further
+input \clusterings and use the same \clusterings to estimate all candidate
+costs. The resulting cost-difference estimates suffice to select the
+candidate with the smallest estimated cost.
+
+\begin{lemma}\label{lem:select-simple}
+Suppose each trial has expected approximation ratio $\gamma$ at
+each of $U\ge1$ fixed instances, where $1\le\gamma\le2$.
+Fix $0<\delta\le1/12$ and $0<\zeta<1$. Run
+$T=\lceil (3/\delta)\log(2U/\zeta)\rceil$ independent trials and independently
+sample $R=\lceil2\delta^{-2}\log(4UT^2/\zeta)\rceil$ input \clusterings
+to estimate costs for all trials and instances. Selecting the candidate of smallest estimated cost gives
+approximation ratio $\gamma+6\delta$ at all instances simultaneously
+with probability at least $1-\zeta$.
+\end{lemma}
+\begin{proof}
+At an instance with $\OPT>0$, Markov's inequality gives a trial
+probability at least $\delta/(\gamma+\delta)\ge\delta/3$ of producing
+a candidate of cost at most $(\gamma+\delta)\OPT$. With probability
+at least $1-\zeta/2$, some candidate $C_\star$ meets this bound at each
+instance. When $\OPT=0$, every candidate has cost zero almost surely.
+
+Condition on all candidate \clusterings. The cost difference between two candidates
+$C,A$ on one input lies in $[-\dist{C,A},\dist{C,A}]$. By Hoeffding's inequality
+and a union bound over at most $UT^2$ comparisons, every average cost
+difference has error at most $\delta \dist{C,A}$ except with probability
+$\zeta/2$. In particular, for the candidate $C$ with smallest estimated
+cost, $\cost(C)-\cost(C_\star)\le\delta \dist{C,C_\star}\le\delta(\cost(C)+\cost(C_\star))$.
+The resulting factor is at most
+$(1+\delta)(\gamma+\delta)/(1-\delta)\le\gamma+6\delta$.
+\end{proof}
+
+The preceding rule is sufficient with constant success probability. The next
+lemma gives the full dependence on the offline failure probability using a linear number
+of comparisons in $\log(2/\zeta)$, without comparing every pair of
+candidates in a large sample.
+
+\begin{lemma}\label{lem:offline-confidence}
+Let $1\le\gamma\le2$ and $0<\varepsilon\le1$. An offline algorithm
+with approximation ratio $\gamma+\varepsilon/2$ and success probability
+$9/10$ can be amplified to approximation ratio $\gamma+\varepsilon$
+and success probability $1-\zeta$ using
+$O(\log(2/\zeta))$ expected independent calls to that algorithm and
+$O(\varepsilon^{-2}\log(2/\zeta))$ expected \clustering-distance
+evaluations.
+\end{lemma}
+\begin{proof}
+In each attempt, draw a candidate $C$ and $M=\Theta(\log(2/\zeta))$
+independent \clusterings from the given algorithm. For each resulting \clustering $Q$, let
+$D=\dist{C,Q}$. If $D>0$, average
+$(\dist{C,P}-\dist{Q,P})/D$ over $O(\varepsilon^{-2})$ independently sampled
+uniform input \clusterings $P$. The comparison accepts the candidate
+if this average is at most $\theta=\varepsilon/28$ or if $D=0$.
+Accept $C$ if at least half of its comparisons succeed. Otherwise
+start an independent attempt.
+
+Each normalized difference lies in $[-1,1]$. When $\cost(C)\le \cost(Q)$,
+one comparison accepts the candidate with probability at least $19/20$, by
+Hoeffding's inequality. If $\cost(C)>(\gamma+\varepsilon)\OPT$ and
+$\cost(Q)\le(\gamma+\varepsilon/2)\OPT$, the mean difference is at least
+$\varepsilon/(4\gamma+3\varepsilon)>2\theta$, since
+$D\le \cost(C)+\cost(Q)$. The mean is at least one when $\OPT=0$ in this
+case. Thus a candidate above the target is accepted in one comparison
+with probability at most $1/10+(9/10)/20=29/200$.
+
+With probability at least $1/4$, $\cost(C)$ is at or below the lower
+quartile of the output cost distribution. Conditional on such a
+candidate, a comparison accepts the candidate with probability at least
+$(3/4)(19/20)=57/80$. Choose the constant in $M$ so that
+Hoeffding's inequality gives unconditional acceptance probability
+at least $1/8$ and probability at most $\zeta/8$ of accepting a
+candidate above the target in any one attempt. Independent attempts
+then take at most eight repetitions in expectation and have eventual
+error at most $\zeta$. Counting the calls and evaluations gives the
+bounds.
+\end{proof}

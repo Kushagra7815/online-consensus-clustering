@@ -2,7 +2,11 @@
 
 \section{Explicit Dynamic Algorithm for Insertion-Only Streams}\label{sec:explicit_dynamic_algorithm_for_insertion_only_stream}
 
-We prove the following theorem.
+In this section, we consider the explicit dynamic model for insertion-only streams.
+In this model, at each update time $ t $, a new vertex $ v_{t} $ arrives.
+The algorithm needs to maintain the solution and reports $ v_t $ and its cluster label, and for each vertex whose cluster identifier has changed, reports the vertex and its new cluster identifier.
+
+Our results is an explicit dynamic algorithm for consensus clustering in the insertion-only stream model, which achieves a strictly better than $ 2 $ approximation ratio with probablity at least $ 1-\zeta $, and polylogarithmic amortized update time in expectation.
 \ExplicitDynamic*
 
 We use the vertex-arrival model of \cref{subsec:online-model}, with the input-label access of \cref{subsec:dynamic-model}.
@@ -34,7 +38,7 @@ Each query costs $ O(\log(|V_t|+2)) $ time.
 \end{definition}
 
 \paragraph{From clique buckets to the database model.}\label{par:explicit.bucket.queries}
-By the bucket representation of \cref{subsec:offline-buckets,subsec:dynamic-pivot}, two distinct vertices of a three-input majority graph are adjacent exactly when their input labels agree on some pair of coordinates.
+By the bucket representation of \cref{subsec:offline-buckets,subsec:dynamic-algorithm}, two distinct vertices of a three-input majority graph are adjacent exactly when their input labels agree on some pair of coordinates.
 For a vertex $ v $, the intersection of any two of its three pair buckets is the set of vertices agreeing with $ v $ on all three coordinates.
 Order each pair bucket by the remaining coordinate and then by vertex index in an order-statistic tree, so this intersection occupies one rank interval.
 The open neighborhood is the disjoint union of the common intersection with $ v $ removed and the complement of the intersection in each of the three buckets.
@@ -42,7 +46,7 @@ Summing these four sizes gives the degree, and a uniform rank in their concatena
 Thus insertions and all three database queries take $ O(\log(|V_t|+2)) $ time, using three bucket memberships per vertex.
 
 \begin{restatable}{lemma}{ExplicitDA}\label{lem:explicit.correlation.clustering}
-For some absolute constant $ \edFactor\ge1 $, the randomized algorithm $ \explicitDA $ in the database model~(\cref{def:query.model.label}) achieves an $ \edFactor $-approximation simultaneously at all prefixes of any fixed insertion-only stream with probability at least $ 1-N^{-2} $, where $ N=\max\{n,n_0\} $ for a sufficiently large absolute constant $ n_0 $.
+For some absolute constant $ \edFactor\ge1 $, there is an explicit randomized dynamic correlation clustering algorithm in the database model~(\cref{def:query.model.label}) achieves an $ \edFactor $-approximation simultaneously at all prefixes of any fixed insertion-only stream with probability at least $ 1-n^{-2} $.
 %The algorithm uses $ N $ as its size parameter and takes the majority of three independent runs of each agreement or heaviness test.
 For every $ t\le n $, the expected total work through insertion $ t $, including all reported label assignments, is $ O(t\polylog(n+2)) $.
 \end{restatable}
@@ -182,7 +186,7 @@ A union bound over $ t $ gives failure probability at most $ \zeta/4 $.
 
 For \eqref{eq:explicit.consensus.comparison}, condition on all candidate samples and solver choices, leaving the evaluation samples independent.
 For each $ a,t,j $, the difference of the two group means averages independent variables $ d(A_a(t),P_{J_{j,b}}^t)-d(F_t^*,P_{J_{j,b}}^t) $.
-By the same triangle-inequality argument used in \cref{lem:amplification-selection}, each variable lies in $ [-d(A_a(t),F_t^*),d(A_a(t),F_t^*)] $.
+By the triangle-inequality argument, each variable lies in $ [-d(A_a(t),F_t^*),d(A_a(t),F_t^*)] $.
 Hoeffding's inequality bounds the probability of a deviation larger than $ \gamma d(A_a(t),F_t^*) $ in either direction by $ 2\exp(-g\gamma^2/2) $.
 If the distance is zero, the comparison is exact.
 A union bound over $ KnL $ comparisons gives failure probability at most $ \zeta/4 $.
@@ -253,12 +257,12 @@ For each candidate, its $ L $ evaluation-group means can be maintained in $ O(ns
 Computing the estimated cost from the updated means takes $ O(L) $ time.
 \end{lemma}
 \begin{proof}
-Apply the counters and update formulas of \cref{subsec:dynamic-costs} separately to each evaluation group, with group size $ g $.
+Apply the counters and update formulas of \cref{subsec:dynamic-algorithm} separately to each evaluation group, with group size $ g $.
 Restore the input-only term following \eqref{eq:dynamic-score} to obtain the full group mean before taking its minimum or updating a history score.
 That term cannot be omitted here, since it varies across groups and times.
 For each candidate, keep its previous labels while processing the arriving vertex's assignment and then the old vertices' reported changes.
 A change to a previously unused label is an insertion into an empty block.
-As in \cref{subsec:dynamic-costs}, each assignment or move takes $ O(s\log(n+2)) $ time, including updates to all group sums.
+As in \cref{subsec:dynamic-algorithm}, each assignment or move takes $ O(s\log(n+2)) $ time, including updates to all group sums.
 Each of the $ s $ evaluation positions has at most $ n $ nonempty block-intersection records, giving the stated space bound.
 Computing the minimum over the $ L $ groups takes $ O(L) $ time per candidate per arrival.
 \end{proof}
@@ -340,114 +344,342 @@ Substituting $ s=Lg $ and $ \edTime{n}=\polylog(n+2) $ into \eqref{eq:explicit.c
 In this section, we prove the following lemma.
 \ExplicitDA*
 
-\tienlong{Note to myself: for whatever changes and fixes we made to DA, make sure we mention that the other part are unaffected}
-\subsection{Algorithm Description}\label{sub:algorithm_description} % (fold)
+We present the algorithm $ \explicitDA $, which is an explicit algorithm for correlation clustering.
+We demonstrate that $ \explicitDA $ obtains the properties stated in \cref{lem:explicit.correlation.clustering}.
 
+Throughout this section, we denote by $ G $ the underlying graph of the problem, and by $ G_{t} $ the induced subgraph of $ G $ on the first $ t $ vertices.
+\subsection{Algorithm \texorpdfstring{$ \explicitDA $}{ExplicitDA}}\label{sub:algorithm.explictDA} % (fold)
+The algorithm $ \explicitDA $ (\cref{alg.explicit.dynamic.agreement}) builds on an amplified version of $ \DA $ (\cite{CLMP2024Dynamic}), denoted by $ \ADA $, with additional data structures and procedures for reporting label changes.
 
-Dynamic Agreement Algorithm that reports explicit updated vertices.
+$ \DA $ is a randomized dynamic correlation-clustering algorithm.
+For each fixed time $ t $, its maintained clustering is an $ \edFactor $-approximation with probability at least $ 1-5/n $, for an absolute constant $ \edFactor $ \cite[Theorem~6]{CLMP2024Dynamic}.
+Its expected amortized update time is $ \polylog(n) $ \cite[Appendix~C, proof of Theorem~41]{CLMP2024Dynamic}.
+The algorithm does not report the vertices whose cluster labels change after an update; instead, its output procedure enumerates the entire clustering when requested \cite[Appendix~D]{CLMP2024Dynamic}.
 
-At the end of the Dynamic Agreement Algorithm, we call the LabelSync algorithm to report the updated vertices and their new labels.
+We amplify $ \DA $ to obtain $ \ADA $, which maintains an $ \edFactor $-approximation simultaneously at all prefixes with probability at least $ 1-n^{-2} $, while retaining $ \polylog(n) $ expected amortized update time.
+The amplification and its analysis are given in \cref{sub:amplify.da}.
 
-To support that, we use the following additional data structures:
+Whenever a vertex $ v_t $ arrives, $ \explicitDA $ executes $ \ADA $ to update the sparse graph and anchor set.
+To report the resulting label changes, it maintains the following additional data structures:
 \begin{itemize}
-    \item A journal $ \journal $ records every edge insertion, edge deletion, and change of anchor membership during update $ t $.
+    \item A journal $ \journal $ records every edge insertion, edge deletion, and change of anchor membership during the execution of $ \ADA $.
     For each edge modified during the update, the journal also records whether it was present immediately before its first modification.
-    \tienlong{The journal should be a data structrure of the $ \explicitDA $, not $ \LabelSync $}
-\item We use the dynamic connectivity structure of~\cite{holm2001poly} to maintain the connected components of the sparse graph $ \sparseG $ under edge insertions and deletions. This structure supports a query $ \comp{x} $ in $ O(\log n) $ time with the property that $ \comp{x}=\comp{y} $ if and only if $ x $ and $ y $ belong to the same component of the current graph. We refer to $ \comp{x} $ as the \emph{component identifier} of $ x $.
+
+    We denote by $ \journal{t} $ the changes recorded in the journal during the execution of $ \ADA $ on the arrival of $ v_t $.
+
+    \item The dynamic connectivity structure of \cite{holm2001poly}, denoted by $ \dyCC $, maintains the connected components of $ \sparseG $ under edge insertions and deletions.
+    It supports each edge update in $ O(\log^2 n) $ amortized time and a query $ \comp{x} $ in $ O(\log n) $ time.
+    At a fixed moment, $ \comp{x}=\comp{y} $ if and only if $ x $ and $ y $ belong to the same component of the current graph.
+    These component identifiers need not remain stable between updates.
+
+    \item After $ \ADA $ finishes an update, we use a $ \LabelSync $ procedure, which takes as input the journal $ \journal $, the $ \dyCC $ data structure, to maintain a data structure that assigns labels to arrived vertices.
+        At each time step $ t $, two vertices $ x $ and $ y $ have the same label if and only if they belong to the same connected component of the current sparse graph $ \sparseG{t} $.
+        The procedure $ \LabelSync $ updates the component identifiers of the vertices in $ \sparseG $ to reflect the connected components of the current sparse graph, and reports every vertex whose component identifier changed during update $ t $.
+    On the good event defined below, two vertices have the same label exactly when they belong to the same component of $ \sparseG{t} $.
 \end{itemize}
 
-\tienlong{Remember to add input and output}
 \begin{algorithm}[htbp]
     \SetKwInOut{KwIn}{Input}
     \SetKwInOut{KwOut}{Output}
-    \KwIn{}
-    \KwOut{}
-        A maintained sparsified graph $ \sparseG \gets \emptyset $
+    \KwIn{A known horizon $ n $ and an oblivious stream of at most $ n $ vertex insertions, accessed through the database model of \cref{def:query.model.label}.}
+    \KwOut{After each insertion, the new vertex and its label, followed by every previously arrived vertex whose label changed and its new label.}
+    Initialize the maintained sparse graph $ \sparseG \gets \emptyset $
 
-        A data structure to maintain connected components of $ \sparseG $. \tcc{{\color{red} Citation}}
+    Initialize the dynamic connectivity structure $ \dyCC $
 
-        \New{A journal to record the updates to $ \sparseG $: $ \journal \gets \emptyset $}
+    Initialize $ \LabelSync $
 
-        \On{arrival of $v_t$}{
-            $ \Notify{v_{t}, \epsDA } $
+    \On{arrival of $ v_t $}{
+        Initialize an empty journal $ \journal{t} $ and insert $ v_t $ into $ \dyCC $ as an isolated vertex
 
-            \ForAll{$ u \in \interestSet{t} $}{
-                $ \Clean{ u, \epsDA, t } $
+        Execute $ \ADA(v_t) $, recording every edge operation and anchor-membership change in $ \journal{t} $ and applying every edge operation to $ \dyCC $
 
-                $ \Anchor{ u, \epsDA, t } $
-
-                $ \Connect( u, \epsDA, t ) $
-            }
-
-        }
-
-        \New{$ L_{t} \gets \{ u \in \interestSet{t} \cap \anchorSet:\ h_{u} = \boolNo, \text{ or } \card{\closedN{\sparseG}{u}} \leq (1-\epsDA)\card{\closedN{\localG{t}}{u}} \} $} \tcc{Note that this Check for closed neighborhood}
-        
-        \New{delete every vertex of $ L_{t} $ from $ \anchorSet $}
-
-        \New{delete every vertex of $ \sparseG $ with no endpoint in $ \anchorSet $}
-
-        \New{
-            \ForAll{$ u \in \interestSet{t} \cap \anchorSet $}{
-                $ \snapshotN{u}\gets \openN{\sparseG}{u} $
-            }
-        }
-        \New{$ \LabelSync{t} $}
-
-        \KwRet{}
-    \caption{$ \explicitDA $: Explicit Dynamic Agreement Algorithm for Insertion-Only Stream}
+        Execute $ \LabelSync{t} $ using $ \journal{t} $ and $ \dyCC $
+    }
+    \caption{$ \explicitDA $: Explicit Dynamic Agreement Algorithm for Insertion-Only Streams}
     \label{alg.explicit.dynamic.agreement}
 \end{algorithm}
 
-\paragraph{\texorpdfstring{$ \LabelSync $}{LabelSync} Algorithm}\label{par:_texorpdfstring_labelsync_labelsync_algorithm} % (fold)
+To prove \cref{lem:explicit.correlation.clustering}, we state the following results about $ \ADA $ and $ \LabelSync $.
+
+\begin{restatable}{lemma}{AmplifiedDynamicAgreementLemma}
+    \label{lem:ada.guarantees}
+    Fix an oblivious insertion-only stream of at most $ n $ vertices.
+    For sufficiently large $ n $, with probability at least $ 1-n^{-2} $, the connected components of the sparse graph maintained by $ \ADA $ give an $ \edFactor $-approximation simultaneously at every prefix.
+    For every $ t\le n $, the expected total work of $ \ADA $ through insertion $ t $ is $ O(t\polylog(n)) $.
+\end{restatable}
+
+The following lemma summarizes the correctness and implementation cost of $ \LabelSync $, established in \cref{lem:labelsync.classes.are.connected.components,lem:labelsync.cost}.
+
+\begin{restatable}{lemma}{LabelSyncLemma}
+    \label{lem:labelsync.guarantees}
+    For sufficiently large $ n $ and any fixed oblivious insertion-only stream processed by $ \ADA $, with probability at least $ 1-n^{-2} $, $ \LabelSync $ correctly reports the labels of vertices whose labels changed during each update.
+    This holds jointly with the approximation guarantee in \cref{lem:ada.guarantees}.
+    For every execution, the work of $ \LabelSync $ during update $ t $, including all reports, is
+    \begin{align}
+        O((\jnTime{t}+1)\log n+\nChangedVers{t}),
+    \end{align}
+    where $ \jnTime{t} $ is the journal length and $ \nChangedVers{t} $ counts changed labels of previously arrived vertices.
+\end{restatable}
+
+\begin{proof}[Proof of~\cref{lem:explicit.correlation.clustering}]
+    By \cref{lem:ada.guarantees}, with probability at least $ 1-n^{-2} $, $ \ADA $ maintains an $ \edFactor $-approximation.
+    On each of these executions, by~\cref{lem:labelsync.guarantees}, the labels maintained by $ \LabelSync $ describe exactly the clustering maintained by $ \ADA $ at every prefix.
+
+    Fix a prefix of $ t $ insertions, and let $ W_t $ be the work performed by $ \ADA $ during this prefix.
+    \cref{lem:ada.guarantees} gives
+    \begin{align}
+        \mathbb E[W_t]=O(t\polylog(n+2)).
+    \end{align}
+    Recording an edge operation or an anchor-membership change takes constant additional work.
+    Every journal entry records an operation performed by $ \ADA $, so the total journal length
+    \begin{align}
+        H_t:=\sum_{s=1}^{t}\jnTime{s}
+    \end{align}
+    satisfies $ H_t=O(W_t+t) $ on every execution.
+    In particular, $ \sum_{s=1}^{t}\card{\delt{s}}\le H_t $, and $ \mathbb E[H_t]=O(t\polylog(n+2)) $.
+
+    By \cref{lem:number.of.updated.vertices}, the total number of changed labels of previously arrived vertices satisfies
+    \begin{align}
+        \sum_{s=1}^{t}\nChangedVers{s}
+        &=O\left(t\log n+\log n\sum_{s=1}^{t}\card{\delt{s}}\right) \\
+        &=O((H_t+t)\log n).
+    \end{align}
+    The newly inserted vertices contribute another $ t $ reported label assignments.
+    Summing the work bound in \cref{lem:labelsync.guarantees} over the prefix, the total work of $ \LabelSync $, including its reports, is therefore $ O((H_t+t)\log n) $.
+    There are at most $ H_t $ journalled edge operations, each requiring $ O(\log^2 n) $ amortized time in $ \dyCC $ by \cite{holm2001poly}; together with vertex initialization, maintaining $ \dyCC $ costs $ O((H_t+t)\log^2 n) $ time over the prefix.
+    Thus the total work of $ \explicitDA $ through insertion $ t $ is
+    \begin{align}
+        O(W_t+(H_t+t)\log^2 n).
+    \end{align}
+    Taking expectations yields $ O(t\polylog(n+2)) $, including all reported label assignments.
+    The graph queries are implemented in the database model of \cref{def:query.model.label}.
+    For the remaining bounded horizons, we can maintain an optimal clustering by exhaustive computation with constant work per insertion, including all reports.
+\end{proof}
+
+\subsection{Amplify \texorpdfstring{$ \DA $}{DynamicAgreement} Algorithm}
+\label{sub:amplify.da}
+We describe $ \ADA $.
+
+We first review $ \DA $.
+At every time $ t $, $ \DA $ maintains a sparse subgraph $ \sparseG{t} $ of the input graph $ G_t $ and an anchor set $ \anchorSet{t} $ satisfying
+\begin{align}
+    \text{every edge of } \sparseG{t} \text{ has an endpoint in } \anchorSet{t}. \tag{I} \label{eq:invariant.anchor}
+\end{align}
+The maintained clustering is the partition into connected components of $ \sparseG{t} $.
+
+Throughout the whole course of updates, $ \DA $ iteratively utilizes two queries: $ \ProbAgree$ (\cite[Algorithm 8]{CLMP2024Dynamic}) and $ \Heavy $ (\cite[Algorithm 9]{CLMP2024Dynamic}).
+They show that each query answer correctly with probability at least $ 1-n/2 $ (\cite[Lemma 49, Lemma 50, Lemma 52, Lemma 53]{CLMP2024Dynamic}).
+
+To obtain $ \ADA $, we replace each decision of the randomized tests ProbabilisticAgreement and Heavy by the majority of three independent executions.
+One execution of Heavy includes its internal calls to ProbabilisticAgreement, which are left unchanged.
+As shown in \cref{lem:da.amplified.tests}, amplification reduces the error probability of each test decision to at most $ 3n^{-6} $, with only constant-factor overhead per decision.
+The resulting whole-run guarantee is stated below and proved in \cref{sub:amplify.da}.
+
+\paragraph{Amplifying the randomized tests.}
+Dynamic Agreement uses the randomized tests ProbabilisticAgreement and Heavy.
+A response is called correct if it satisfies the acceptance and rejection guarantees established for that test in \cite[Appendix~E]{CLMP2024Dynamic}, with the corrections described above.
+Either response is permitted in the intermediate regimes where these guarantees prescribe no answer.
+
+\begin{lemma}[Amplified agreement and heaviness tests]
+    \label{lem:da.amplified.tests}
+    Replace each test decision by the majority of three independent executions of the corresponding test.
+    Conditional on the history before the decision, the amplified test gives a correct response with probability at least $ 1-3n^{-6} $.
+    Amplification incurs only a constant-factor overhead per test decision.
+\end{lemma}
+
+\begin{proof}
+    By \cite[Lemmas~49 and~50]{CLMP2024Dynamic}, one execution of ProbabilisticAgreement gives an incorrect response with probability at most $ n^{-3} $.
+    The analogous guarantee for Heavy follows from \cite[Lemmas~52 and~53]{CLMP2024Dynamic}, with the corrected rejection guarantee.
+
+    Conditioning on the preceding history fixes the graph and the test input.
+    Since the three executions use independent fresh randomness, their errors are independent under this conditioning.
+    The majority response can be incorrect only if at least two executions are incorrect.
+    A union bound over the three pairs bounds this probability by $ 3n^{-6} $.
+
+    Each amplified decision performs three executions of the original test.
+    One execution of Heavy includes its internal calls to ProbabilisticAgreement, which are left unchanged.
+\end{proof}
+
+\begin{lemma}[Number of test invocations,
+    {\cite[proof of Theorem~41, Appendix~C]{CLMP2024Dynamic}}]
+    \label{lem:da.test.count}
+    Fix an oblivious insertion-only stream of length at most $ n $.
+    Let $ Q_t $ denote the number of agreement and heaviness test invocations during update $ t $.
+    Then $ \mathbb E[Q_t]=O(\polylog(n)) $.
+    Consequently, for every prefix of length $ t $,
+    \begin{align}
+        \mathbb E\left[\sum_{s=1}^{t}Q_s\right]
+        =O(t\polylog(n)).
+    \end{align}
+\end{lemma}
+
+\paragraph{The good event for Dynamic Agreement.}
+Fix an oblivious insertion-only stream of length $ m\le n $.
+Following the proof of \cite[Theorem~6]{CLMP2024Dynamic}, we separate test correctness from the remaining structural events.
+
+Let $ \mathcal E_{\mathrm{test}}(t) $ denote the event that every amplified test decision through update $ t $ gives a correct response.
+For each fixed prefix $ t\le m $, we use the following two structural events from that analysis:
+\begin{enumerate}
+    \item $ \mathcal A_t $ is the event that every reference cluster considered in \cite[Theorem~23]{CLMP2024Dynamic} is contained in one component of the maintained sparse graph.
+    The bound in that theorem, together with the small-cluster correction and a union bound over at most $ n $ reference clusters, gives
+    \begin{align}
+        \Pr[
+            \mathcal E_{\mathrm{test}}(t)
+            \cap \overline{\mathcal A_t}
+        ]
+        \le n^{-7}.
+    \end{align}
+
+    \item $ \mathcal R_t $ is the aggregate regularity event used in the density analysis of \cite[Definition~28 and Observation~29]{CLMP2024Dynamic}.
+    The estimates in \cite[Lemmas~25 and~27]{CLMP2024Dynamic}, aggregated over the relevant vertices and indices as in that analysis, give
+    \begin{align}
+        \Pr[\overline{\mathcal R_t}]
+        \le n^{-100}.
+    \end{align}
+\end{enumerate}
+
+On $ \mathcal E_{\mathrm{test}}(t)\cap\mathcal A_t\cap\mathcal R_t $, the argument in \cite[proof of Theorem~6]{CLMP2024Dynamic} implies that the sparse connected components give an $ \edFactor $-approximation, for an absolute constant $ \edFactor $.
+Moreover, on $ \mathcal E_{\mathrm{test}}(t)\cap\mathcal R_t $, the density analysis in \cite[proof of Theorem~39]{CLMP2024Dynamic} gives the anchor-density property stated in \cref{lem:ccclass.is.dense}.
+
+Define
+\begin{align}
+    \successDA
+    :=
+    \mathcal E_{\mathrm{test}}(m)
+    \cap
+    \bigcap_{t=1}^{m}
+    (\mathcal A_t\cap\mathcal R_t).
+\end{align}
+
+\begin{lemma}[Anchor density, adapted from {\cite[proof of Theorem~39]{CLMP2024Dynamic}}]
+    \label{lem:ccclass.is.dense}
+    On $ \successDA $, for every time $ t\le m $, every component $ \ccclass $ of $ \sparseG{t} $ with $ \card{\ccclass}>1 $, and every $ a\in \ccclass\cap\anchorSet{t} $,
+    \begin{align}
+        |\openN{\sparseG{t}}{a}|\ge\tfrac34\card{\ccclass}-1.
+    \end{align}
+\end{lemma}
+
+\begin{restatable}{lemma}{successDAProb}
+    \label{lem:da.whole.run.success}
+    For sufficiently large $ n $, the amplified algorithm satisfies
+    \begin{align}
+        \Pr[\successDA]\ge1-n^{-2}.
+    \end{align}
+    On this event, its sparse connected components give an $ \edFactor $-approximation and satisfy the anchor-density property simultaneously at every prefix.
+\end{restatable}
+
+\begin{proof}
+    The insertion-only algorithm makes at most $ B_n=O(n^2\log^5 n) $ test decisions over the entire stream.
+    This deterministic bound follows by counting test invocations in the algorithm and using \cite[Lemma~40]{CLMP2024Dynamic}.
+    It holds independently of the test responses.
+
+    By \cref{lem:da.amplified.tests} and a union bound over invocation indices,
+    \begin{align}
+        \Pr[\overline{\mathcal E_{\mathrm{test}}(m)}]
+        \le 3B_n n^{-6}.
+    \end{align}
+    Combining this with the imported structural bounds gives
+    \begin{align}
+        \Pr[\overline{\successDA}]
+        &\le
+        \Pr[\overline{\mathcal E_{\mathrm{test}}(m)}]
+        +
+        \sum_{t=1}^{m}
+        \Pr[
+            \mathcal E_{\mathrm{test}}(t)
+            \cap\overline{\mathcal A_t}
+        ]
+        +
+        \sum_{t=1}^{m}
+        \Pr[\overline{\mathcal R_t}] \\
+        &\le 3B_n n^{-6}+n^{-6}+n^{-99} \\
+        &=O(n^{-4}\log^5 n)+n^{-6}+n^{-99}
+        \le n^{-2}
+    \end{align}
+    for sufficiently large $ n $.
+    The approximation and density conclusions follow from the implications stated above.
+\end{proof}
+
+% subsection Auxiliary Lemmas From~ (end)
+
+
+\subsection{Description of \texorpdfstring{$ \LabelSync $}{LabelSync} Algorithm}\label{sub:description_of_LabelSync} % (fold)
+
+% \paragraph{\texorpdfstring{$ \LabelSync $}{LabelSync} Algorithm}\label{par:_texorpdfstring_labelsync_labelsync_algorithm} % (fold)
 At the end of update $ t $, $ \LabelSync $ maintains a partition $ \ccclasses{t} $ of the current vertex set $ V_t $.
 We call each member of $ \ccclasses{t} $ a \emph{class}.
-Each class $ \ccclass $ has a distinct label $ \ell(\ccclass) $, and every vertex $ w\in\ccclass $ stores this label as $ \ell_t(w)=\ell(\ccclass) $.
+Each class $ \ccclass $ has a distinct label $ \complabel(\ccclass) $, and every vertex $ w\in\ccclass $ stores this label as $ \complabel_t(w)=\complabel(\ccclass) $.
 The partition $ \ccclasses{t} $ is the solution reported by $ \explicitDA $.
-At the end of each update $ t $, the algorithm reports only the vertices that changed clusters, that is, $ (v_t,\ell_t(v_t)) $ and every $ (w,\ell_t(w)) $ with $ w\in V_{t-1} $ and $ \ell_t(w)\ne\ell_{t-1}(w) $.
+At the end of each update $ t $, the algorithm reports only the vertices that changed clusters, that is, $ (v_t,\complabel_t(v_t)) $ and every $ (w,\complabel_t(w)) $ with $ w\in V_{t-1} $ and $ \complabel_t(w)\ne\complabel_{t-1}(w) $.
 We prove in \cref{sub:analysis_for_labelsync} that, on the success event $ \successDA $, the classes in $ \ccclasses{t} $ are exactly the connected components of $ \sparseG{t} $.
 % paragraph LabelSync Algorithm (end)
 
-\paragraph{Data structures for \texorpdfstring{$ \LabelSync $}{LabelSync}}\label{par:data_structure_of_labelsync}
-To implement $ \LabelSync $, we maintain the following data structures.
-\begin{itemize}
-    \item For each class $ \ccclass $, we store its size and a doubly linked list of its vertices.
-    \item For each vertex $ w $ of a class $ \ccclass $, we stores its label and a pointer to its position in the doubly linked list of $ \ccclass $. Additionaly, $ w $ stores its membership in $ \anchorSet{t} $ and its degree $ \deg_t(w):=\card{\openN{\sparseG{t}}{w}} $ in the sparse graph.
-    These values, together with the class lists and vertex labels, are updated only in the final step of $ \LabelSync $.
-    Until that step, they refer to time $ t-1 $.
-\end{itemize}
-
-\paragraph{Description of \texorpdfstring{$ \LabelSync $}{LabelSync} Algorithm}\label{par:description_of_texorpdfstring_labelsync_labelsync_algorithm} % (fold)
+\tienlong{Brevity: $ \ADA(t) $}
+\paragraph{Overview of \texorpdfstring{$ \LabelSync $}{LabelSync}}\label{par:overview.of.LabelSync} % (fold)
 The input to $ \LabelSync $ includes the sparse graph $ \sparseG{t} $ (after the update from time $ t-1 $ to time $ t $), the journal $ \journal $ of update $ t $, the arriving vertex $ v_t $, the data structure of $ \LabelSync $ at time $ t-1 $.
 
 The goal is to update the data structure to reflect the connected components of $ \sparseG{t} $ and to report the vertices whose labels changed.
 
-On a high level, the algorithm achieves this by performing a \emph{split} and a \emph{merge} operation. Suppose that at time step $ t-1 $, $ \LabelSync $ successfully maintained the $ \ccclasses{t-1} $ as the connected components of $ \sparseG{t-1} $. At time step $ t $, vertices in some components in $ \ccclasses{t-1} $ may not belong to the same components in $ \sparseG{t} $, and some vertices in different components in $ \ccclasses{t-1} $ may belong to the same component in $ \sparseG{t} $. To fix this, we first perform the split operation, which partitions each old class $ \ccclass \in \ccclasses{t-1} $ into \piece{s}, where each \piece{} is a subset of vertices of $ \ccclass $ that belong to the same component in $ \sparseG{t} $. After that, the merge operation groups \piece{s} that belong to the same component in $ \sparseG{t} $ together. Finally, we update the labels of vertices in the new classes and report the vertices whose labels changed.
+On a high level, the algorithm achieves this by performing a \emph{split} and a \emph{merge} operation.
+Suppose that at time step $ t-1 $, $ \LabelSync $ successfully maintained the $ \ccclasses{t-1} $ as the connected components of $ \sparseG{t-1} $.
+At time step $ t $, vertices in some components in $ \ccclasses{t-1} $ may not belong to the same components in $ \sparseG{t} $, and some vertices in different components in $ \ccclasses{t-1} $ may belong to the same component in $ \sparseG{t} $.
+To fix this, we first perform the split operation, which partitions each old class $ \ccclass \in \ccclasses{t-1} $ into \piece{s}, where each \piece{} is a subset of vertices of $ \ccclass $ that belong to the same component in $ \sparseG{t} $.
+After that, the merge operation groups \piece{s} that belong to the same component in $ \sparseG{t} $ together.
+Finally, we update the labels of vertices in the new classes and report the vertices whose labels changed.
 
-\tienlong{May be briefly mention we need to design the algorithm so that it operates mostly on the updated vertices and edges.}
-In more details, the algorithm consists of the four following steps.
+A direct approach to perform the split and merge operations would traverse the entire graph $ \sparseG{t} $ to find the connected components, which in the worst case takes $ O(n\polylog(n)) $ time.
+To avoid this, we follow vertices and edges affected by $ \ADA(t) $ to perform the split and merge operations.
+Note that, the length of the journal $ \journal{t} $ is at most the update time of $ \ADA $, therefore, we can afford to scan the whole journal for each update $ t $.
+By reading off $ \journal{t} $, the algorithm can identify edges and vertices that were updated after the execution of $ \ADA $ for update $ t $.
+It suffices to focus on the edges that were deleted to perform the split operation.
+In particular, consider a component $ \ccclass \in \ccclasses{t-1} $.
+If there are many edges inside $ \ccclass $ deleted by $ \ADA(t) $, we can safely scan the entire component $ \ccclass $ to split it into \piece{s}.
+On the other hand, if only a few edges inside $ \ccclass $ were deleted, we demonstrate that in this case, all the vertices in $ \ccclass \cap \anchorSet{t-1} $ remain in the same component in $ \sparseG{t} $.
+With the invariant~\eqref{eq:invariant.anchor} being maintained, one endpoint of each deleted edge is in $ \anchorSet{t-1} $.
+This enables us to perform the split operation for $ \ccclass $ solely on the deleted edges and their endpoints not in $ \anchorSet{t-1} $.
+After the split step, the merge step now operates on the \piece{s} created in the split step and the other components in $ \ccclasses{t-1} $ that have edges added by $ \ADA(t) $.
+While merging \piece{s} in the same component of $ \sparseG{t} $ together, we take the label of a largest \piece{} in the component and assign it to all the vertices in the component.
+Under this rule, intuitively, every time a vertex changes its label, the size of its component at least doubles.
+Thus, on avarage, each vertex can change its label at most $ O(\log n) $ times, which gives a bound on the number of vertices reported by $ \LabelSync $.
 
-\noindent\textbf{Step 1.}
-From the journal, we compute
+% paragraph Overview of LabelSync (end)
+
+\paragraph{Detailed Description of \texorpdfstring{$ \LabelSync $}{LabelSync}}\label{par:detailed_description_of_labelsync_} % (fold)
+We provide the algorithm in more details with its main steps, data structure and the implementation.
+The summary of the algorithm is given in \cref{alg.label.sync}.
+
+Prior to the execution of $ \LabelSync{t} $, each class $ \ccclass \in \ccclasses{t-1} $ is represented by a record containing its label, size, and a doubly linked list of its vertices.
+A set data structure is maintained to store the records of classes in $ \ccclasses{t-1} $.
+We refer to this set as $ \setClasses$.
+Each vertex $ w $ of $ \ccclass $ keeps a record of its label, a pointer to the record of $ \ccclass $, a pointer to $ w $'s position in $ \ccclass $'s doubly linked list, $ w $'s membership in $ \anchorSet{t-1} $, and its degree $ \deg_{t-1}(w):=\card{\openN{\sparseG{t-1}}{w}} $ in the sparse graph.
+
+The algorithm consists of the following four steps.
+
+\noindent\setword{\textbf{Step 1 (Identify Updated Edges)}}{StepOneLabelSync}:
+In this step, we identify the edges that are updated after executing $ \ADA $ to handle update $ t $.
+In particular, we compute
 \begin{align}
     \delt{t}:=E(\sparseG{t-1})\setminus E(\sparseG{t}), \nonumber
     \qquad
     \addt{t}:=E(\sparseG{t})\setminus E(\sparseG{t-1}), \nonumber
 \end{align}
-the sets of edges deleted and added during update $ t $, respectively.
-These sets can be computed in one pass over the journal.
-For each old class $ \ccclass\in\ccclasses{t-1} $, define
-\[
-    D_{\ccclass}:=\{(x,y) \in\delt{t}:x,y\in\ccclass\},
-    \qquad d_{\ccclass}:=\card{D_{\ccclass}}.
-\]
-For each $ w\in\ccclass $, define
-\[
-    \delIncEdge{w}:=\card{\{e\in D_{\ccclass}:w\in e\}}.
-\]
-We can construct the lists $ D_{\ccclass} $ and accumulate the counts $ d_{\ccclass} $ and $ \delIncEdge{w} $ in one pass over $ \delt{t} $. \tienlong{Probably mention when analyze the running time that this step can be implemented using hashmap}
+the sets of edges deleted and added between $ \sparseG{t-1} $ and $ \sparseG{t} $ by $ \ADA $, respectively.
+Note that, during the execution of $ \ADA $, an edge between two vertices $ u $ and $ v $ may be deleted and then added back, or added and then deleted, multiple times.
+Here, $ \delt{t} $ and $ \addt{t} $ only record the edges that are present in $ \sparseG{t-1} $ (before update $ t $) but not in $ \sparseG{t} $, and vice versa, after $ \ADA $ finishes.
 
-\noindent\textbf{Step 2 (Split).}
+Additionally, for each old class $ \ccclass\in\ccclasses{t-1} $, let $ D_{\ccclass}:=\{(x,y)\in\delt{t}:x,y\in\ccclass\} $ be its deleted edges, and let $ d_{\ccclass}:=\card{D_{\ccclass}} $.
+For each endpoint $ w $ of an edge in $ D_{\ccclass} $, let $ \delIncEdge{w}:=\card{\{e\in D_{\ccclass}:w\in e\}} $.
+
+\textit{Implementation and data structures.}
+We store $ \delt{t} $ and $ \addt{t} $ as lists, with each edge occurring at most once.
+For each edge considered during the execution of $ \ADA $ for update $ t $, the journal $ \journal $ records its status in $ \sparseG{t-1} $ and $ \sparseG{t} $.
+Hence, one pass over the journal establishes $ \delt{t} $ and $ \addt{t} $.
+For each old class $ \ccclass $ with $ D_{\ccclass}\ne\emptyset $, we have a dictionary mapping its label $ \complabel(\ccclass) $ to the pair $ (D_{\ccclass},d_{\ccclass}) $, where $ D_{\ccclass} $ is a list of deleted edges and $ d_{\ccclass}=\card{D_{\ccclass}} $.
+A second dictionary is employed to map each endpoint $ w $ of a deleted edge to its count $ \delIncEdge{w} $.
+We fill both dictionaries in one pass over $ \delt{t} $.
+
+\noindent\setword{\textbf{Step 2 (Split)}}{StepTwoLabelSync}:
 We partition each old class into temporary sets called \emph{\piece{s}}, such that each \piece{} lies entirely within one component of $ \sparseG{t} $.
 
 To do that, observe that conditioned on $ \successDA $, the \piece{s} of an old class $ \ccclass $ will be exactly
@@ -455,24 +687,25 @@ To do that, observe that conditioned on $ \successDA $, the \piece{s} of an old 
     \mathcal P_{\ccclass}
     =\{\ccclass\cap K:K\text{ is a component of }\sparseG{t},\ \ccclass\cap K\ne\emptyset\}. \nonumber
 \end{align}
-Among \piece{s} in $ \mathcal P_{\ccclass} $, we choose one \piece{} to inherit the old label $ \ell(\ccclass) $. We refer to this \piece{} as the \emph{retained \piece{}} of $ \ccclass $, and denote it by $ \retainedPieces{\ccclass} $.
+Among the \piece{s} in $ \mathcal P_{\ccclass} $, we choose one to inherit the old label $ \complabel(\ccclass) $.
+We refer to it as the \emph{retained \piece{}} of $ \ccclass $ and denote it by $ \retainedPiece{\ccclass} $.
 The other \piece{s} initially have no assigned label.
 
-If $ d_{\ccclass}=0 $, the class is represented by the single retained \piece{} $ R_{\ccclass}=\ccclass $, without listing its vertices.
+If $ d_{\ccclass}=0 $, the class is represented by the single retained \piece{} $ \retainedPiece{\ccclass}=\ccclass $.
 For each class with $ d_{\ccclass}>0 $, we distinguish two cases.
 \begin{itemize}
     \item If $ d_{\ccclass}\ge\card{\ccclass}/2-1 $, we traverse $ \ccclass $ and group its vertices into \piece{s} such that, $ x,y \in \ccclass $ are grouped into the same \piece{} if and only if $ \comp{x}=\comp{y} $.
 
-    A largest \piece{}  is chosen as $ \retainedPieces{\ccclass} $.
+    A largest \piece{} is chosen as $ \retainedPiece{\ccclass} $.
     % Since $ \card{\ccclass}\le 2d_{\ccclass}+2\le 4d_{\ccclass} $, the number of vertices examined is proportional to $ d_{\ccclass} $.
     \item If $ d_{\ccclass}<\card{\ccclass}/2-1 $, choose an endpoint $ r\in\ccclass\cap\anchorSet{t-1} $ of an edge in $ D_{\ccclass} $.
     Such an endpoint exists because every old edge has an endpoint in $ \anchorSet{t-1} $, by definition of the anchor set.
     Define
     \begin{align}
-        W_{\ccclass}:=\{w\in\bigcup_{e\in D_{\ccclass}}e:
+        W_{\ccclass}:=\{w|\ \exists e\in D_{\ccclass}: w\in e, \ \text{and }
         w \in \ccclass\setminus\anchorSet{t-1},\ \delIncEdge{w}=\deg_{t-1}(w)\}, \nonumber
     \end{align}
-    the set of vertices in $ \ccclass\setminus \anchorSet{t-1} $ whose all edges edges in time $ t-1 $ are deleted in time $ t $.
+    the set of vertices in $ \ccclass\setminus \anchorSet{t-1} $ whose incident edges at time $ t-1 $ are all deleted during update $ t $. \tienlong{Need to explain about $ \delIncEdge{w}=\deg_{t-1}(w) $}
     We will show that (\cref{lem:labelsync.robust.components}), on $ \successDA $, every vertex of $ \ccclass\setminus W_{\ccclass} $ remains connected to $ r $ after the deletions.
     For each vertex $ w\in W_{\ccclass} $, we group it with the same \piece{} as $ r $ if and only if $ \comp{w}=\comp{r} $.
     For the remaining vertices in $ W_{\ccclass} $, we group them into \piece{s}
@@ -482,16 +715,38 @@ For each class with $ d_{\ccclass}>0 $, we distinguish two cases.
     for each $ \kappa\ne\comp{r} $ attained in $ W_{\ccclass} $.
     The retained \piece{} is
     \[
-        R_{\ccclass}:=\ccclass\setminus\bigcup_{\kappa\ne\comp{r}}P_{\ccclass,\kappa},
+        \retainedPiece{\ccclass}:=\ccclass\setminus\bigcup_{\kappa\ne\comp{r}}P_{\ccclass,\kappa},
     \]
     where the union ranges only over the identifiers attained in $ W_{\ccclass} $.
     % We store $ R_{\ccclass} $ implicitly, with representative $ r $ and size $ \card{\ccclass}-\sum_{\kappa\ne\comp{r}}\card{P_{\ccclass,\kappa}} $.
     % The set $ W_{\ccclass} $ is found from the endpoints of $ D_{\ccclass} $, and its vertices are grouped using a hash map indexed by their component identifiers.
     % Thus this case does not require listing $ \ccclass $.
-    We note that this case can be implemented by traversing $ D_{\ccclass} $ and $ W_{\ccclass} $, instead of traversing the entire class $ \ccclass $.
 \end{itemize}
 
-The \piece{s} of all old classes, together with the singleton $ \{v_t\} $, form a partition $ \mathcal P $ of $ V_t $.
+The \piece{s} of all old classes, together with the singleton $ \{v_t\} $, form a partition $ \mathcal P $ of $ V_t $. \tienlong{Not clear}
+
+\textit{Implementation and data structures.}
+For each class $ \ccclass $ participating in this step, we remove $ \ccclass $ from $ \setClasses $.
+
+For each such $ \ccclass $, to group vertices of $ \ccclass $ with the same component identifier into one \piece{}, we utilize a dictionary mapping each identifier to the record containing a doubly linked list of vertices with that identifier.
+We refer to this dictionary as $ \groupdict(\ccclass) $ for each such $ \ccclass $.
+
+This dictionary is constructed as follows.
+
+If $ d_{\ccclass}\ge\card{\ccclass}/2-1 $, the algorithm builds $ \groupdict(\ccclass) $ by traversing the vertices of $ \ccclass $.
+In particular, for each vertex $ w\in \ccclass $, we add $ w $ to the doubly linked list of the record corresponding to the key $ \comp{w} $ in $ \groupdict(\ccclass) $.
+We remove $ w $ from $ \ccclass $'s list, update $ w $'s pointers to the corresponding record in $ \groupdict(\ccclass) $ and its new position in the list of this record.
+After the traversal, the record of a largest \piece{} in $ \groupdict(\ccclass) $ takes the label of $ \ccclass $, and the other records have no assigned label.
+
+If $ 0<d_{\ccclass}<\card{\ccclass}/2-1 $, the algorithm first finds $ r $ and constructs the set $ W_{\ccclass} $ by examining each endpoints of $ D_{\ccclass} $.
+We build $ \groupdict(\ccclass) $ just like in the previous case, but by traversing only the vertices in $ W_{\ccclass} $ instead of the whole class $ \ccclass $.
+Also, during the traversal, we do not create a key in $ \groupdict(\ccclass) $ and the corresponding record for vertices with the same component identifier as $ r $, and also not remove them from the list of $ \ccclass $'s record.
+After the traversal, the list of the record of the original class $ \ccclass $ now contains only the vertices of $ \retainedPiece{\ccclass} $.
+Hence, we can use the record of $ \ccclass $ to represent $ \retainedPiece{\ccclass} $.
+This record is added to $ \groupdict(\ccclass) $ with key $ \comp{r} $.
+
+Note that, in both cases, whenever a vertex is moved from one list into another, we also update the size the corresponding records containing such lists.
+
 % The singleton $ \{v_t\} $ initially has no assigned label.
 % For each represented \piece{} $ P $, we store its size, a representative $ x_P\in P $, and its inherited label $ \lambda(P) $, where $ \lambda(P)=\bot $ if it has none.
 % The inherited labels are temporary attributes of \piece{s}; vertex labels remain unchanged until Step 4.
@@ -499,95 +754,149 @@ The \piece{s} of all old classes, together with the singleton $ \{v_t\} $, form 
 % A hash map records the \piece{} containing each old vertex outside a retained part.
 % Every other old vertex belongs to the retained \piece{} of its old class, so the \piece{} containing any given vertex can be found without listing its class.
 
-\tienlong{Auditing has not been performed beyond this point.}
-\noindent\textbf{Step 3 (Merge).}
-Let $ \mathcal Z $ contain all \piece{s} constructed for classes with $ d_{\ccclass}>0 $, the singleton $ \{v_t\} $, and the \piece{} containing each endpoint of an edge in $ \addt{t} $.
-Each \piece{} occurs only once in $ \mathcal Z $.
-If an endpoint belongs to a class with $ d_{\ccclass}=0 $, we create its \piece{} record when needed, using that endpoint as its representative and $ \ell(\ccclass) $ as its inherited label.
-For each $ P\in\mathcal Z $, define its \emph{component key} by $ \mathrm{key}(P):=\comp{x_P} $.
-We group the \piece{s} by their component keys using a hash map.
-For each key $ \kappa $ that occurs, choose a largest \piece{} $ P^* $ with that key, breaking ties arbitrarily.
-If $ \lambda(P^*)\ne\bot $, all \piece{s} with key $ \kappa $ are assigned $ \lambda(P^*) $.
-Otherwise, they are assigned a previously unused label.
-Classes whose \piece{s} are outside $ \mathcal Z $ keep their old labels.
+\noindent\setword{\textbf{Step 3 (Merge)}}{StepThreeLabelSync}:
+Let $ \piecesToMerge $ be a set containing all \piece{s} constructed for classes with $ d_{\ccclass}>0 $, the singleton $ \{v_t\} $, and the \piece{s} containing each endpoint of an edge in $ \addt{t} $.
+This step groups \piece{s} in $ \piecesToMerge $ that belong to the same component of $ \sparseG{t} $ and assigns a label to each group.
+Classes (\piece{s}) that are not in $ \piecesToMerge $ remain unchanged, and their labels are not modified.
 
-\noindent\textbf{Step 4 (Report).}
-For every \piece{} whose assigned label differs from the old label of its vertices, we list its vertices and collect their new labels.
-We also collect the label assigned to $ v_t $.
-An implicit retained \piece{} is listed by traversing its old class and omitting vertices recorded in other \piece{s} of that class.
-After all such traversals, we apply the collected changes and update the class lists and sizes.
-We then refresh the stored degrees and anchor memberships at vertices appearing in $ \journal $ and at $ v_t $; all other stored values remain valid.
-Finally, we report $ (v_t,\ell_t(v_t)) $, followed by every $ (w,\ell_t(w)) $ with $ w\in V_{t-1} $ and $ \ell_t(w)\ne\ell_{t-1}(w) $.
-% paragraph Description of LabelSync Algorithm (end)
+For each $ \pieceToMerge \in \piecesToMerge $, define its \emph{component key} as $ \comp{x} $, for any $ x\in\pieceToMerge $.
+The component key is well-defined because all vertices of a \piece{} share the same component identifier in $ \sparseG{t} $.
 
+After all the \piece{s} in $ \piecesToMerge $ have been assigned a component key, we group the \piece{s} by their component keys.
+For each such key $ \kappa $, choose a largest \piece{} $ \pieceToMerge^* $ with key $ \kappa $, breaking ties arbitrarily.
+If $ \pieceToMerge^* $ has no assigned label, we assign it a previously unused label.
+Vertices from the lists of all other \piece{s} with key $ \kappa $ are inserted into the list of $ \pieceToMerge^{*} $, which represents the new class.
+The label of these vertices is updated to the label of $ \pieceToMerge^{*} $.
+
+\textit{Implementation and data structures.}
+We store $ \piecesToMerge $ in a set data structure containing records, initially containing a record for the singleton $ \{v_t\} $.
+Other \piece{s} are added to $ \piecesToMerge $ as follows.
+
+Recall that after~\ref{StepTwoLabelSync}, for each participating class $ \ccclass $, $ \groupdict(\ccclass) $ is a dictionary containing the records of all \piece{s} split from $ \ccclass $.
+We add all such records to $ \piecesToMerge $ by traversing $ \groupdict(\ccclass) $.
+
+For each endpoint $ x $ of an added edge (edges in $ \addt{t} $), based on its record, we can find the record of the \piece{} containing $ x $ and add it to $ \piecesToMerge $.
+We also remove that record from $ \setClasses $, if it is currently in $ \setClasses $.
+
+To group the \piece{s} in $ \piecesToMerge $ by their component keys, we use a dictionary mapping each key to a list of records of \piece{s} with that key.
+We iterate over $ \piecesToMerge $, compute the component key of each \piece{}, and add its record to the list corresponding to that key in the dictionary.
+We refer to this dictionary as $ \compdict $.
+
+For each list of records with the same component key, we scan the list to find a largest \piece{} $ \pieceToMerge^* $ and assign it a new label if it does not have.
+If $ \pieceToMerge^* $ is assigned a new label, so are its vertices.
+After that, the lists of vertices of all the other \piece{s} in the same list with $ \pieceToMerge^* $ are inserted into the list of vertices of $ \pieceToMerge^* $, and the labels of these vertices are updated to the label of $ \pieceToMerge^* $.
+
+Note that, records of all such vertices are also updated so that their pointers point to the record of the new class and the positions in the list.
+The record of $ \pieceToMerge^{*} $ increases its size to reflect the number of vertices its list now contains.
+$ \setClasses $ adds to itself the record of $ \pieceToMerge^* $.
+
+To keep track of the vertices whose labels changed, we maintain a list $ \changedList $, which is initially empty.
+While assigning labels to \piece{s} in the same component, we add a vertex with it label to $ \changedList $ whenever the \piece{} containing it is assigned a new label or when it is merged into another \piece{}.
+
+\noindent\setword{\textbf{Step 4 (Report and Sync)}}{StepFourLabelSync}:
+This step reports the newly arrived vertex $ v_{t} $ and its assigned label, and lists each vertex whose label changed together with its new label.
+At the end, we also update the anchor memberships in $ \anchorSet{t} $ and degrees of vertices in $ \sparseG{t} $ for vertices with these updated information.
+
+\textit{Implementation and data structures.}
+Reporting the vertices with changed labels is proceeded by one pass over $ \changedList $, which keeps track of all vertices whose labels changed in~\ref{StepThreeLabelSync}.
+
+To update the degrees in $ \sparseG{t} $ and membership in $ \anchorSet{t} $, we traverse the journal $ \journal $ and update the such values for only the vertices appearing in $ \journal $.
+If $ v_t $ does not appear in $ \journal $, its degree is set to $ 0 $ and it is not a member of $ \anchorSet{t} $.
+
+\tienlong{Remember to revise the input and output of the algorithm}
 \begin{algorithm}[htbp]
   \small
   \DontPrintSemicolon
   \SetKwInOut{KwIn}{Input}
   \SetKwInOut{KwOut}{Output}
   \KwIn{The journal $ \journal $ of update $ t $, the arriving vertex $ v_t $, the stored state at time $ t-1 $, and connectivity queries in $ \sparseG{t} $.}
-  \KwOut{$ (v_t,\ell_t(v_t)) $ and every $ (w,\ell_t(w)) $ with $ w\in V_{t-1} $ and $ \ell_t(w)\ne\ell_{t-1}(w) $.}
+  \KwOut{$ (v_t,\complabel_t(v_t)) $ and every $ (w,\complabel_t(w)) $ with $ w\in V_{t-1} $ and $ \complabel_t(w)\ne\complabel_{t-1}(w) $.}
 
-  Compute $ \delt{t} $, $ \addt{t} $, the lists $ D_{\ccclass} $, and the counters $ d_{\ccclass} $ and $ \delIncEdge{w} $ from $ \journal $\;
-  $ \piecesToMerge\gets\{\{v_t\}\} $, with $ \lambda(\{v_t\})=\bot $\;
+    $ \piecesToMerge\gets\{\{v_t\}\} $, $ \complabel(\{ v_{t} \})\gets \perp $
 
-  \tcc{Split old classes; vertex labels are not changed.}
-  \ForEach{$ \ccclass $ with $ d_{\ccclass}>0 $}{\nllabel{line:labelsync.split.begin}
-    \uIf{$ d_{\ccclass}\ge \card{\ccclass}/2-1 $}{\nllabel{line:labelsync.split.large.deletion.begin}
-      $ \mathcal K_{\ccclass}\gets\{\comp{x}:x\in \ccclass\} $\;
-      $ P_{\ccclass,\kappa}\gets\{x\in \ccclass:\comp{x}=\kappa\} $ for each $ \kappa\in\mathcal K_{\ccclass} $\;
-      $ \mathcal P_{\ccclass}\gets\{P_{\ccclass,\kappa}:\kappa\in\mathcal K_{\ccclass}\} $\;
-      Choose $ R_{\ccclass}\in\arg\max_{P\in\mathcal P_{\ccclass}}|P| $\;
-      Store the \piece{s} as explicit lists, each with a representative\;
-      \nllabel{line:labelsync.split.large.deletion.end}
+    \tcc{\ref{StepOneLabelSync}}
+    \tcp{Make one scan over $ \journal $ to compute the following}
+    $ \delt{t} \gets E(\sparseG{t-1})\setminus E(\sparseG{t}) $
+
+    $ \addt{t} \gets E(\sparseG{t}) \setminus E(\sparseG{t-1}) $
+
+    \tcp{Make one scan over $ \delt{t} $ to compute the following}
+    $ D_{\ccclass} = \{(x,y)\in\delt{t}:x,y\in\ccclass\} $, $ d_{\ccclass} = \card{D_{\ccclass}} $ for each $ \ccclass \in \ccclasses{t-1} $ such that $ D_{\ccclass} \neq \emptyset $
+
+    $ \delIncEdge{w}:=\card{\{e\in D_{\ccclass}:w\in e\}} $ for each $ w $ such that $ \delIncEdge{w} > 0 $
+
+    \tcc{\ref{StepTwoLabelSync}}
+    \ForEach{$ \ccclass $ with $ d_{\ccclass}>0 $}{\nllabel{line:labelsync.split.begin}
+        \uIf{$ d_{\ccclass}\ge \card{\ccclass}/2-1 $}{\nllabel{line:labelsync.split.large.deletion.begin}
+            \tcp{Make one scan over $ \ccclass $ to decompose it into \piece{s}.}
+            $ \mathcal P_{\ccclass} \gets \{ \ccclass_{1}, \ccclass_{2}, \dots \} $ such that $ \ccclass = \cup_{\ccclass_{i}\in \mathcal P_{\ccclass}} \ccclass_{i} $, and $ x,y \in \ccclass_{i} $ if and only if $ \comp{x} = \comp{y} $
+
+
+            $ \retainedPiece{\ccclass} \gets \argmax_{\ccclass_{i} \in \mathcal P_{\ccclass}}\card{\ccclass_{i}} $ is the retained \piece{} of $ \ccclass $ \tcp*[r]{Break ties arbitrarily.}
+        \nllabel{line:labelsync.split.large.deletion.end}
+        }
+        \Else{\nllabel{line:labelsync.split.few.deletion.begin}
+            \tcp{Make one scan over $ D_{\ccclass} $ to compute the following}
+            One vertex $ r\in \ccclass\cap\anchorSet{t-1} $ incident to an edge of $ D_{\ccclass} $
+
+            $ W_{\ccclass}\gets\{w\in\bigcup_{e\in D_{\ccclass}}e: w\notin\anchorSet{t-1},\ \delIncEdge{w}=\deg_{t-1}(w)\} $\;
+
+            \tcp{Make one scan over $ W_{\ccclass} $ to decompose $ \ccclass $ into \piece{s}.}
+            $ \mathcal P_{\ccclass} \gets \{ \ccclass_{1}, \ccclass_{2}, \dots \} $ such that $ \ccclass = \cup_{\ccclass_{i}\in \mathcal P_{\ccclass}} \ccclass_{i} $, and $ x,y \in \ccclass_{i} $ if and only if $ \comp{x} = \comp{y} $
+
+            $ \retainedPiece{\ccclass} \gets \ccclass_{i} := \{ x: \comp{x} = \comp{r} \} $ is the retained \piece{} of $ \ccclass $
+        }
+        $ \complabel(\retainedPiece{\ccclass}) \gets \complabel(\ccclass) $
+
+        $ \complabel(\ccclass_{i}) \gets \perp $ for all $ \ccclass_{i} \in \mathcal P_{ \ccclass } \setminus \{ \retainedPiece{\ccclass} \} $\;
+        $ \piecesToMerge \gets \piecesToMerge \cup \{ \ccclass_{i}|\  \ccclass_{i}\in \mathcal P_{ \ccclass } \} $
+    }\nllabel{line:labelsync.split.end}
+
+    \tcc{\ref{StepThreeLabelSync}}
+    \tcp{Make one scan over $ \addt{t} $ to add \piece{s} containing endpoints of edges in $ \addt{t} $ to $ \piecesToMerge $.}
+    $ \piecesToMerge\gets\piecesToMerge\cup\{P: P \text{ is a \piece{} containing a vertex } x\in e\in \addt{t} \text{ and } P \text{ is not already in }\piecesToMerge\} $ \nllabel{line:labelsync.merge.begin} \nllabel{line:labelsync.piecesToMerge.include.addt}
+
+    \BlankLine
+    \tcp{Compute the component key of each \piece{} in $ \piecesToMerge $.}
+    \ForEach{$ \pieceToMerge \in\piecesToMerge $}{ 
+        $ \mathrm{key}(\pieceToMerge )\gets\comp{x} $, for any $ x\in\pieceToMerge $ \tcp*[r]{note that $ \comp{x} = \comp{y} $ for any $ x,y\in\pieceToMerge $} \nllabel{line:labelsync.assign.key}
     }
-    \Else{\nllabel{line:labelsync.split.few.deletion.begin}
-      Choose $ r\in \ccclass\cap\anchorSet{t-1} $ incident to an edge of $ D_{\ccclass} $\;
-      $ W_{\ccclass}\gets\{w\in\bigcup_{e\in D_{\ccclass}}e: w\notin\anchorSet{t-1},\ \delIncEdge{w}=\deg_{t-1}(w)\} $\;
-      $ \kappa_r\gets\comp{r} $\;
-      $ \mathcal K_{\ccclass}\gets\{\comp{w}:w\in W_{\ccclass}\}\setminus\{\kappa_r\} $\;
-      $ P_{\ccclass,\kappa}\gets\{w\in W_{\ccclass}:\comp{w}=\kappa\} $ for each $ \kappa\in\mathcal K_{\ccclass} $\;
-      $ R_{\ccclass}\gets \ccclass\setminus\bigcup_{\kappa\in\mathcal K_{\ccclass}}P_{\ccclass,\kappa} $\;
-      $ \mathcal P_{\ccclass}\gets\{R_{\ccclass}\}\cup \{P_{\ccclass,\kappa}:\kappa\in\mathcal K_{\ccclass}\} $\;
-      Store each $ P_{\ccclass,\kappa} $ explicitly; represent $ R_{\ccclass} $ implicitly, with representative $ r $ and size $ \card{\ccclass}-\sum_{\kappa\in\mathcal K_{\ccclass}}|P_{\ccclass,\kappa}| $\;
-    }
-    $ \lambda(R_{\ccclass})\gets\ell(\ccclass) $; $ \lambda(P)\gets\bot $ for each $ P\in\mathcal P_{\ccclass}\setminus\{R_{\ccclass}\} $\;
-    $ \piecesToMerge\gets\piecesToMerge\cup\mathcal P_{\ccclass} $\;
-  }\nllabel{line:labelsync.split.end}
 
-  \tcc{Merge \piece{s} with the same component key.}
-  \tcp{May be rewrite the following line into:}
-  \tcp{$ \piecesToMerge\gets\piecesToMerge\cup\{P: P \text{ is a \piece{} containing a vertex } x\in \addt{t} \text{ and } P \text{ is not already in }\piecesToMerge\} $, where $ P(x) $ is the \piece{} containing $ x $}
-  \ForEach{endpoint $ x $ of an edge in $ \addt{t} $}{\nllabel{line:labelsync.merge.begin}
-    $ \piecesToMerge\gets\piecesToMerge\cup\{P(x)\} $, where $ P(x) $ is the \piece{} containing $ x $\; \nllabel{line:labelsync.piecesToMerge.include.addt}
-  }
-  \ForEach{$ \pieceToMerge \in\piecesToMerge $}{
-    $ \mathrm{key}(\pieceToMerge )\gets\comp{x_P} $\;\nllabel{line:labelsync.assign.key}
-  }
-  \ForEach{distinct key $ \kappa $ represented in $ \piecesToMerge $}{
-    $ \piecesToMerge_\kappa\gets\{\pieceToMerge \in\piecesToMerge:\mathrm{key}(\pieceToMerge )=\kappa\} $\;\nllabel{line:labelsync.group.key}
-    Choose $ \pieceToMerge^*\in\arg\max_{\pieceToMerge \in\piecesToMerge_\kappa} \card{\pieceToMerge} $\;
-    $ L_\kappa\gets\lambda(\pieceToMerge ^*) $ if $ \lambda(\pieceToMerge ^*)\ne\bot $; otherwise let $ L_\kappa $ be a fresh label\;
-    $ \widehat\ell(\pieceToMerge )\gets L_\kappa $ for every $ \pieceToMerge \in\piecesToMerge_\kappa $\;\nllabel{line:labelsync.assign.label}
-  }\nllabel{line:labelsync.merge.end}
+    $ \changedList \gets \{  \} $ \tcp*[r]{List to keep track of vertices whose labels changed.}
+    \BlankLine
+    \tcp{Group \piece{s} in $ \piecesToMerge $ by their component keys and assign labels.}
+    \ForEach{distinct component key $ \kappa $ represented in $ \piecesToMerge $}{
+        $ \piecesToMerge_\kappa\gets\{\pieceToMerge \in\piecesToMerge:\mathrm{key}(\pieceToMerge )=\kappa\} $\;\nllabel{line:labelsync.group.key}
 
-  \tcc{Apply the assignments and report changes.}
-  Collect all required vertex-label changes before modifying any class list\;
-  Apply the collected changes and update the class lists and sizes; classes outside $ \piecesToMerge $ keep their labels\;
-  Refresh stored degrees and anchor flags only at vertices appearing in $ \journal $, and at $ v_t $\;
-  \Return{$ (v_t,\ell_t(v_t)) $, followed by all $ (w,\ell_t(w)) $ with $ w\in V_{t-1} $ and $ \ell_t(w)\ne\ell_{t-1}(w) $}\;
+        $ \pieceToMerge^* \gets \argmax_{\pieceToMerge \in\piecesToMerge_\kappa} \card{\pieceToMerge} $ \tcp*[r]{Break ties arbitrarily.}
+
+        \uIf{$ \complabel(\pieceToMerge^*) = \perp $}{
+            $ \complabel(\pieceToMerge^*) \gets \text{a previously unused label} $ \tcp*[r]{Assign a new label to $ \pieceToMerge^* $}
+
+            Add $ (v, \complabel(\pieceToMerge^*)) $ to $ \changedList $, and update the label of $ v $ to $ \complabel(\pieceToMerge^*) $, for all $ v\in\pieceToMerge^* $
+        }
+
+        Add $ (v, \complabel(\pieceToMerge^*)) $ to $ \changedList $ for all $ v\in\pieceToMerge $, for all $ \pieceToMerge \in\piecesToMerge_\kappa\setminus\{\pieceToMerge^*\} $ \nllabel{line:labelsync.merge.add.small.pieces.changedlist}
+
+        Merge $ \pieceToMerge $ to $ \pieceToMerge^* $ for all $ \pieceToMerge \in\piecesToMerge_\kappa\setminus\{\pieceToMerge^*\} $ and update the labels of vertices in $ \pieceToMerge $ to $ \complabel(\pieceToMerge^*) $
+
+
+    }\nllabel{line:labelsync.merge.end}
+
+    \tcc{\ref{StepFourLabelSync}}
+    Make one scan over $ \journal{t} $ to update the degrees of vertices in $ \sparseG{t} $ and their membership in $ \anchorSet{t} $
+
+    \Return{$ \changedList $}
   \caption{$ \LabelSync $ at the end of update $ t $.}
   \label{alg.label.sync}
 \end{algorithm}
+% paragraph Detailed Description of LabelSync (end)
 
+
+% subsection Description of LabelSync (end)
 
 \subsection{Analysis for \texorpdfstring{$ \LabelSync $}{LabelSync}}
 \label{sub:analysis_for_labelsync}
-
-{\color{red} As shown in~\cite{CLMP2024Dynamic}}, the following invanriant holds for every time step $ t $:
-\begin{align}
-    \text{every edge of } \sparseG{t} \text{ has an endpoint in } \anchorSet{t}. \tag{I} \label{eq:invariant.anchor}
-\end{align}
 
 \paragraph{Correctness.}
 \label{par:correctness}
@@ -663,8 +972,7 @@ Conditioned on $ \successDA $, after every update $ t $, the classes maintained 
     For each \piece{} $ \pieceToMerge \in \piecesToMerge $, \cref{line:labelsync.assign.key} assigns a key $ \mathrm{key}(\pieceToMerge) = \comp{x} $, for some $ x \in \pieceToMerge $.
     We have shown above that all vertices in $ \pieceToMerge $ are in the same connected component of $ \sparseG{t} $, and hence, they have the same component identifier.
     It follows that, two \piece{s} share the same key if and only if they are in the same connected component of $ \sparseG{t} $.
-    By grouping \piece{s} by their keys in \cref{line:labelsync.group.key}, the algorithm merges all \piece{s} which forms exactly one connected component of $ \sparseG{t} $.
-    These \piece{s} are assigned the same label in \cref{line:labelsync.assign.label}.
+    By grouping \piece{s} by their keys, the algorithm merges all \piece{s} which forms exactly one connected component of $ \sparseG{t} $ (\cref{line:labelsync.group.key}-\cref{line:labelsync.merge.end}).
 
     Finally, we argue that different components receive different labels. Indeed, each old label is inherited by exactly one retained \piece{}, and fresh labels are distinct and have never been used before.
     The classes after update $ t $ are therefore exactly the components of $ \sparseG{t} $.
@@ -771,18 +1079,51 @@ Conditioned on $ \successDA $, after every update $ t $, the classes maintained 
     % paragraph Bounding $ \smallpiecesize{t'} $ (end)
 \end{proof}
 
-
-\subsection{Auxiliary density bound}
-\label{sub:auxiliary_lemmas_from_}
-
-\begin{lemma}
-\label{lem:ccclass.is.dense}
-Conditioned on $ \successDA $, for every time $ t $, every component $ \ccclass $ of $ \sparseG{t} $ with $ \card{\ccclass}>1 $, and every $ a\in \ccclass\cap\anchorSet{t} $,
-\[
-  |\openN{\sparseG{t}}{a}|\ge\tfrac34\card{\ccclass}-1.
-\]
+\begin{lemma}\label{lem:labelsync.cost}
+    Suppose that after the update time $ t $, the length of the journal is $ \jnTime{t} $ and the number of vertices whose cluster label changes is $ \nChangedVers{t} $. 
+    \tienlong{May be later remove this number of vertices whose cluster label changes, it seems confusing when bounding the running tim of the algorithm, or may be not, for example, suffix tree finding k matches}
+    Then the running time of $ \LabelSync $ is $ O(\jnTime{t}\log n + \nChangedVers{t}) $.
 \end{lemma}
 
-% subsection Auxiliary Lemmas From~ (end)
+\begin{proof}
+    Write $ D= \card{\delt{t}} $ and $ A= \card{\addt{t}} $.
+    Since the journal records all the edges that are removed or added, we have $ D+A\leq \jnTime{t} $.
+
+    Scanning the journal.
+    Identifying the deleted and added edges takes $ O(\jnTime{t}) $ dictionary operations.
+    Scanning $\delt{t}$ then computes the counters and groups deleted edges by old class in $O(D)$ operations.
+    Neither operation scans all vertices or all classes.
+
+    Processing splits. There are at most $D$ processed classes, since each has $d_C\ge1$, and $\sum_C d_C\le D.$
+    For a class in the many-deletions case, $|C|\le4d_C$, so enumerating and grouping its vertices takes $O(d_C\log n)$ time.
+    In the few-deletions case, scanning its deleted edges identifies $W_C$ and $r$ in $O(d_C)$ operations, and querying and grouping the stranded vertices takes $O(d_C\log n)$ time.
+    The retained piece remains in the old class list without enumerating it in the few-deletions case.
+    Moving vertices into new piece lists takes time proportional to their number.
+
+    Consequently, the entire split step takes $O(D\log n)$ time.
+    Moreover, if $\sigma_t$ is the total number of vertices in new pieces, then $\sigma_t\le4D.$
+
+    Bounding and constructing $\piecesToMerge$.
+    There are at most $\sigma_t\le4D$ new pieces, since each is nonempty, and at most $D$ retained pieces, one per processed class.
+    Added-edge endpoints introduce at most $2A$ further pieces, and $v_t$ contributes one singleton.
+    Hence $|\piecesToMerge|\le4D+D+2A+1=O(\jnTime{t}+1)$.
+    Using the piece lookup and deduplication described above, constructing this collection takes $O(\jnTime{t}+1)$ dictionary operations.
+
+    Grouping and choosing labels.
+    Querying one representative per piece and grouping by component identifier takes $O(|\piecesToMerge|\log n)$ time.
+    Finding a largest piece in each group and deciding its final label takes $O(|\piecesToMerge|)$ further operations.
+
+    Enumerating relabelled vertices.
+    Every piece is enumerated directly from its linked list only when its vertices receive a different label.
+    This includes a winning new piece that receives a fresh label; the newly inserted vertex contributes one additional operation.
+    Thus all enumeration takes $O(\nChangedVers{t}+1)$ time.
+
+    Reporting and bookkeeping.
+    Applying the collected moves and reporting labels takes $O(\nChangedVers{t}+1)$ operations.
+    Updating flags and degrees for journal vertices takes $O(\jnTime{t}+1)$ operations.
+
+    Combining these bounds gives $O((\jnTime{t}+1)\log n+\nChangedVers{t})$.
+    Separately, there are at most $\jnTime{t}$ journalled edge operations, each requiring $O(\log^2 n)$ amortized connectivity-update time.
+\end{proof}
 
 % section Explicit Dynamic Correlation Clustering Algorithm for Insertion-Only Stream (end)
