@@ -616,133 +616,181 @@ arrivals is given in \cref{det:section}.
 \subsection{Online Algorithm}
 \label{sec:algorithms-online}
 
-In this section, we describe the online algorithm for consensus
-clustering. The algorithm maintains several candidate clusterings,
-which we call \emph{copies}, and publishes the clustering of one
-selected copy. Each copy is constructed from a fixed sample of input
-clusterings. At designated arrival times, all copies are rebuilt using
-the offline algorithm. Between rebuilds, a copy assigns labels to new
-vertices without changing any label it has already assigned. The
-selection rule uses the copies' estimated costs over their entire
-histories to limit how often the published copy changes.
+In this section, we describe the online algorithm for consensus clustering.
+Recall that the input consists of a sequence of at most $n$ vertices,
+arriving one at a time, with access to each arriving vertex's labels in
+$m$ fixed input clusterings $P_1,\ldots,P_m$. The algorithm is also
+given an upper bound $n\ge2$ on the number of arrivals, an accuracy
+parameter $0<\varepsilon\le1$, and a failure probability $0<\zeta<1$.
+For each time $t$, let $V_t$ be the set of arrived vertices, with
+$V_0=\varnothing$, and write $f_t(C)=f_{V_t}(C)$ for the cost of a
+clustering $C$ on the original inputs. As in \cref{sec:preliminaries},
+$\OPT_t$ denotes the minimum possible cost on $V_t$.
 
-Write $V_t$ for the first $t$ arriving vertices and
-$f_t(C)=f_{V_t}(C)$ for the cost of a clustering $C$ of $V_t$ on all
-input clusterings. The notation $\OPT_t$ retains its meaning from
-\cref{sec:preliminaries}. All input indices sampled below are uniform
-and sampled independently with replacement.
+The desired output after each arrival is a clustering $C_t$ of $V_t$,
+represented by cluster labels, such that
+$f_t(C_t)\le(1.21+\varepsilon)\OPT_t$ simultaneously for all $t$
+with probability at least $1-\zeta$. The algorithm reports the new
+vertex's label and every change to an earlier vertex's label, with at
+most $O(\varepsilon^{-3}\log n+\log(2/\zeta))$ changes per vertex
+on every execution. We achieve this through the following six steps.
 
-\paragraph{Parameters and samples.}
+\begin{enumerate}
+\item \textbf{Construct the sampled copies.}
 Set $\delta=\varepsilon/100$, $\gamma=601/500$, and
 $h=\log(n+2)$. Let $k$ be the least odd integer at least
-$52\delta^{-2}$, and define
+$52\delta^{-2}$. For a sufficiently large absolute constant $C$,
+define
 \[
  b=3+\left\lceil\frac{\log(1+8n^2)}{\log(1+\delta)}\right\rceil,
  \qquad
  T=\left\lceil C\log\frac{16b}{\zeta}\right\rceil,
- \qquad q=\lceil T/200\rceil,
+ \qquad q=\lceil T/200\rceil.
 \]
-where $C$ is a sufficiently large absolute constant. The quantity $b$
-bounds the number of ranges of optimum values used in the analysis.
-For each $j\in\{1,\ldots,T\}$, independently sample $k$ input
-clusterings, denoted by $P_{j,1},\ldots,P_{j,k}$. These clusterings
-remain fixed throughout the execution. For a pair $e$, let $d_{j,e}$
-be the fraction of this sample that separates $e$, and put
+For each $j\in\{1,\ldots,T\}$, sample $k$ input indices
+$I_{j,1},\ldots,I_{j,k}$ independently and uniformly from
+$\{1,\ldots,m\}$, with replacement, and let
+$P_{j,a}=P_{I_{j,a}}$ for $a\in\{1,\ldots,k\}$.
+Copy $j$ is an instance of the clustering procedure that uses this
+sample to maintain a candidate consensus clustering, denoted by
+$C_t^j$ whenever the copy is maintained on all of $V_t$. The copies'
+samples are independent and remain fixed throughout the execution,
+including across rebuilds.
+
+Let $\lambda_i(v)$ be the label of vertex $v$ in input clustering
+$P_i$. The \emph{label tuple} of $v$ in copy $j$ is
+\[
+ x_j(v)=\bigl(\lambda_{I_{j,1}}(v),\ldots,
+                  \lambda_{I_{j,k}}(v)\bigr).
+\]
+For a pair $e=\{u,v\}$, let $d_{j,e}$ be the fraction of copy $j$'s
+sampled inputs that separate $u$ and $v$, and define
 \[
  p_{j,e}=\min\{d_{j,e},1-d_{j,e}\},\qquad
  B_j(t)=\sum_{e\in\binom{V_t}{2}}p_{j,e},\qquad
  D_j(t)=\sum_{e\in\binom{V_t}{2}}d_{j,e}(1-d_{j,e}).
 \]
-For any clustering $C$ of $V_t$, its cost on copy $j$'s sample is
+The sampled cost of a clustering $C$ of $V_t$ is
 \[
- f_t^j(C)=\frac1k\sum_{i=1}^k d(C,P_{j,i}|_{V_t}).
+ f_t^j(C)=\frac1k\sum_{a=1}^k d(C,P_{j,a}|_{V_t}).
 \]
-Thus $B_j(t)$ is a lower bound on the optimum for that sample; it
-need not equal the lower bound $B_t$ for the full input instance.
+Here $p_{j,e}$ is the minimum possible sampled contribution of pair
+$e$, so $B_j(t)$ lower-bounds the optimum on the sample. The
+quantity $D_j(t)$ satisfies $B_j(t)/2\le D_j(t)\le B_j(t)$ and
+determines when the copy must stop extending its candidate.
 
-Define the deterministic bound
+\item \textbf{Initialize or rebuild the candidate clusterings.}
+A \emph{rebuild} replaces every copy's candidate on the current
+vertex set and starts a new rebuilding interval. Write $s$ for its
+arrival time. Initially, $s=0$ and every copy has the empty clustering
+$C_0^j=\varnothing$. Define
 \[
  J_0=1+\frac{T}{q}\left(
- 1+\frac{\log(1+n^2)}{\log(1+\delta/(18k))}\right).
+ 1+\frac{\log(1+n^2)}{\log(1+\delta/(18k))}\right),
 \]
-The analysis shows that there are at most $J_0$ intervals between
-rebuilds. Every offline call uses independent internal randomness and
-failure probability at most $1/(4000J_0)$. On success, it returns a
-$(\gamma+\delta)$-approximation on the copy's sample, using the
-construction in the proof of \cref{off:linear} at accuracy $\delta$.
+which bounds the number of rebuilding intervals by
+\cref{lem:online-rebuilds}.
 
-\paragraph{Preparing and extending a copy.}
-Consider a rebuilding time $s$. If $D_j(s)\ge1/4$, copy $j$
-computes an offline clustering on $V_s$, called its \emph{initial
-clustering}. It then applies the cost-nonincreasing preparation
-procedure of \cref{sig:prepare}. The procedure groups vertices with
-the same tuple of sampled input labels into a single cluster and
-ensures the average-distance property stated in that lemma.
+At a rebuild with $D_j(s)\ge1/4$, apply the offline construction in
+the proof of \cref{off:linear} to copy $j$'s sample restricted to
+$V_s$, with accuracy $\delta$ and failure probability
+$1/(4000J_0)$. Each call uses independent internal randomness and,
+on success, returns a $(\gamma+\delta)$-approximation for the sampled
+objective. Apply the preparation procedure of \cref{sig:prepare}
+to obtain an \emph{initial clustering} $\mathcal C_{j,s}$ of no
+greater sampled cost. This procedure places all vertices with the
+same label tuple in a single cluster and establishes the
+average-distance bound of that lemma. Assign distinct local labels
+to its clusters and set $C_s^j=\mathcal C_{j,s}$.
 
-The prepared clustering determines all assignments until the next
-rebuild. If a label tuple forms a strict majority of an initial
-cluster, every later vertex with that tuple joins that cluster.
-Every other tuple receives its own new cluster label when it first
-appears after time $s$, and all later vertices with that tuple receive
-the same label. These new labels are distinct from the initial cluster
-labels. In particular, no existing label changes during this
-extension. Its cost is bounded in \cref{sig:extend}.
+If $D_j(s)<1/4$, instead initialize the copy with the clustering
+consistent with all sampled majority decisions. This clustering
+exists and is optimal while $D_j(t)<1/4$, by
+\cref{sec:preliminaries}. Label each of its clusters by the smallest
+arrival index of one of its vertices.
 
-If $D_j(s)<1/4$, copy $j$ instead maintains the clustering consistent
-with all majority decisions of its sample while $D_j(t)<1/4$.
-Such a clustering exists and is optimal, as explained in
-\cref{sec:preliminaries}. Label each cluster by the smallest arrival
-index of one of its vertices; these labels persist while this rule
-applies.
+\item \textbf{Extend a candidate without changing earlier labels.}
+Suppose the threshold test in Step~4 permits copy $j$ to continue
+from the latest rebuilding time $s$. If $D_j(s)<1/4$, update the
+exact majority clustering described in Step~2; its labels on earlier
+vertices persist while $D_j(t)<1/4$.
 
-\paragraph{Active copies and synchronized rebuilds.}
-A copy is \emph{active} if it has not violated its applicable
-threshold since the last rebuilding time $s$. A copy with
-$D_j(s)\ge1/4$ remains active while
+Otherwise, let $v_t$ be the arriving vertex and let $x=x_j(v_t)$.
+For each cluster $S\in\mathcal C_{j,s}$, define
+$S_x=\{u\in S:x_j(u)=x\}$. If there exists a cluster $S$ with
 \[
- D_j(t)\le\left(1+\frac{\delta}{18k}\right)D_j(s),
+ |S_x|>\frac{|S|}{2},
 \]
-and a copy with $D_j(s)<1/4$ remains active while $D_j(t)<1/4$.
-Once a copy violates its threshold, it becomes inactive and receives
-no further assignments until the next rebuild. If at least $q$
-copies become inactive, rebuild all copies on $V_t$ before publishing
-the answer at time $t$. All copies are then active again. The initial
-rebuilding time is $s=0$, with every copy on the empty vertex set.
-Write $C_t^j$ for the clustering of copy $j$ whenever it is active at
-time $t$.
+assign $v_t$ the local label of $S$. There is at most one such
+cluster, since preparation places all initial vertices with tuple
+$x$ in a single cluster. If no such cluster exists, assign $v_t$ the
+label reserved for vertices with tuple $x$ arriving after time $s$.
+Create this label at the first such arrival. Reserved labels are
+distinct for different tuples and distinct from all initial cluster
+labels.
 
-\paragraph{Independent cost estimates.}
-Independently of all copies, sample $L$ evaluation collections, each
-containing $g$ input clusterings, where
+The sets $S$ and $S_x$ in this test refer only to the initial vertex
+set $V_s$ and remain fixed until the next rebuild. In particular,
+later arrivals do not alter the strict-majority test. No earlier
+vertex changes its local label during an extension. The resulting
+sampled cost increase is bounded in \cref{sig:extend}.
+
+\item \textbf{Test the copies and synchronize rebuilds.}
+A copy is \emph{active} when it is permitted to extend its candidate
+in the current rebuilding interval; otherwise it is \emph{inactive}.
+Every copy is active immediately after initialization or a rebuild.
+At each arrival $t$, first update $D_j(t)$ for every copy. A copy
+initialized at time $s$ remains active precisely while its applicable
+condition holds:
+\[
+ \begin{cases}
+ D_j(t)<1/4,&D_j(s)<1/4,\\[2pt]
+ D_j(t)\le(1+\delta/(18k))D_j(s),&D_j(s)\ge1/4.
+ \end{cases}
+\]
+Mark every copy that violates its condition inactive. Such a copy
+receives no further assignments until the next rebuild and cannot
+be selected for publication. If at least $q$ copies are inactive,
+perform Step~2 for every copy on $V_t$ and set $s=t$. Otherwise,
+perform Step~3 for every active copy. These operations occur before
+the answer at time $t$ is published.
+
+\item \textbf{Estimate costs and select an eligible copy.}
+Before the first arrival, independently of the copy samples and all
+offline randomness, sample $L$ evaluation collections, each containing
+$g$ independently and uniformly sampled input clusterings, where
 \[
  L=4\left\lceil C\delta^{-1}\log\frac{16b}{\zeta}\right\rceil,
  \qquad g=\lceil128\delta^{-3}\rceil,
  \qquad r=L/4.
 \]
-The collections remain fixed and are shared by all copies. For
-$a\in\{1,\ldots,L\}$, denote the inputs in collection $a$ by
-$Q_{a,1},\ldots,Q_{a,g}$, and define its estimate by
+All $Lg$ input indices are mutually independent and sampled with
+replacement. The collections remain fixed and are
+shared by all copies. Denote the inputs in collection $a$ by
+$Q_{a,1},\ldots,Q_{a,g}$. For any clustering $C$ of $V_t$, define
 \[
- \widehat f_{a,t}(C)=\frac1g\sum_{i=1}^g d(C,Q_{a,i}|_{V_t}).
-\]
-Let $G_t(C)$ be the average of the $r$ smallest collection estimates,
-or equivalently,
-\[
+ \widehat f_{a,t}(C)=\frac1g\sum_{i=1}^g d(C,Q_{a,i}|_{V_t}),
+ \qquad
  G_t(C)=\min_{\substack{S\subseteq\{1,\ldots,L\}\\|S|=r}}
           \frac1r\sum_{a\in S}\widehat f_{a,t}(C).
 \]
+Thus $G_t(C)$ is the average of the lowest quarter of the collection
+estimates.
 
-\paragraph{History scores and eligible copies.}
-For each copy $j$, maintain the \emph{history score}
+Initialize $H_j(0)=0$ for each copy and $\beta_0=0$. After the
+rebuild or extensions at time $t$, update each copy's \emph{history
+score} by
 \[
- H_j(t)=\max\bigl(\{0\}\cup
- \{G_v(C_v^j):1\le v\le t,\ j\text{ is active at time }v\}\bigr).
+ H_j(t)=
+ \begin{cases}
+ \max\{H_j(t-1),G_t(C_t^j)\},&j\text{ is active at time }t,\\
+ H_j(t-1),&j\text{ is inactive at time }t.
+ \end{cases}
 \]
-The history score includes all earlier rebuilding intervals and is
-never reset. It stays unchanged while a copy is inactive. Let $M_t$
-be the $\lceil T/80\rceil$th smallest value among
-$H_1(t),\ldots,H_T(t)$. Maintain a selection threshold $\beta_t$,
-initially $\beta_0=0$, by the rule
+History scores are retained across rebuilds. Let $M_t$ be the
+$\lceil T/80\rceil$th smallest value among
+$H_1(t),\ldots,H_T(t)$, and update the \emph{selection threshold}
+by
 \[
  \beta_t=
  \begin{cases}
@@ -750,76 +798,65 @@ initially $\beta_0=0$, by the rule
  \beta_{t-1},&M_t\le\beta_{t-1}.
  \end{cases}
 \]
-Thus the first positive $M_t$ also raises the threshold. Define the
-set of \emph{eligible copies} by
+Define the set of \emph{eligible copies} as
 \[
  \mathcal I_t=
  \{j:j\text{ is active at time }t\text{ and }H_j(t)\le\beta_t\}.
 \]
-The algorithm retains the selected copy until it leaves this set,
-all copies rebuild, or the selection threshold changes. When a new
-selection is required, choose a uniform index from $\mathcal I_t$
-using fresh randomness. The analysis shows that this set is always
-nonempty and that every eligible copy has low cost on the desired
-success event.
+Retain the previously selected index unless it is absent from
+$\mathcal I_t$, a rebuild has occurred, or $\beta_t$ has changed.
+If any of these conditions holds, or if no copy has yet been
+selected, request a new selection. Subject to the limit in Step~6,
+choose an index $j_t$ uniformly from $\mathcal I_t$ using fresh
+randomness. If no selection is requested, let $j_t=j_{t-1}$.
+By \cref{lem:online-eligible}, the eligible set is always nonempty;
+on the stated success event, every eligible candidate has low true
+cost.
 
-\paragraph{A deterministic limit on recourse.}
-To bound recourse on every execution, impose a limit of $A$ selections.
-For an explicit choice, set
+\item \textbf{Publish the output and enforce the recourse limit.}
+Before the first arrival, set
 \[
  K_0=\lceil J_0\rceil+3+
        \left\lceil\frac{\log(1+rgn^2)}{\log(1+\delta)}\right\rceil,
- \qquad p_0=1/200,\qquad
- \vartheta=-\tfrac12\log(1-p_0),
+ \qquad p_0=1/200,
+ \qquad \vartheta=-\tfrac12\log(1-p_0),
 \]
-and let
+and define the selection budget
 \[
  A=\left\lceil
        \frac{K_0\log3+\log(8/\zeta)}{\vartheta}
     \right\rceil.
 \]
-If another selection would exceed $A$, permanently preserve the
-published labels of all earlier vertices and assign each subsequent
-vertex, including the current arrival, a fresh singleton label.
-\Cref{lem:online-recourse} shows that this fallback is used with
-probability at most $\zeta/8$.
+Initialize a selection counter to zero; neither this counter nor
+the history scores or selection threshold are reset at rebuilds.
+If Step~5 requests a selection when the counter already equals $A$,
+activate a permanent fallback before modifying any published label.
+Retain every earlier vertex's published label and assign the current
+vertex, and each subsequent vertex, a fresh singleton label. Once
+the fallback is activated, no further candidate maintenance or
+selection is needed.
 
-To publish an active copy, use labels consisting of the rebuilding
-interval index, the copy index, and the copy's local cluster label.
-This makes labels from different copies or rebuilds distinct. Within
-one selection, the extension preserves all earlier labels. Hence a
-vertex changes its published label only at a selection, and at most
-once per selection. \Cref{alg:online} summarizes the algorithm.
+Otherwise, increment the counter whenever a new selection is made
+and publish $C_t=C_t^{j_t}$. A published label consists of the
+rebuilding interval index, the selected copy index, and that copy's
+local cluster label. Report the arriving vertex's label and all
+changes to earlier published labels. While the selected copy and
+rebuilding interval remain unchanged, extensions preserve every
+earlier label. A selection therefore changes any vertex's published
+label at most once, giving a deterministic bound of $A$ changes per
+vertex. By \cref{lem:online-recourse},
+$A=O(\varepsilon^{-3}\log n+\log(2/\zeta))$, and the fallback is
+activated with probability at most $\zeta/8$.
+\end{enumerate}
 
-\begin{algorithm}[htbp]
-\caption{Explicit online consensus clustering}
-\label{alg:online}
-\begin{algorithmic}[1]
-\Require The copy samples, evaluation samples, and parameters defined above
-\State Initialize all copies on the empty set; set $H_j(0)=0$ and $\beta_0=0$
-\State Initialize the selection count to zero and leave the selected index unset
-\For{each arrival at time $t$}
-  \If{the permanent fallback has been activated}
-    \State Give the arriving vertex a fresh singleton label and continue
-  \EndIf
-  \State Update $D_j(t)$ for every copy and mark threshold violations inactive
-  \If{at least $q$ copies are inactive}
-    \State Rebuild every copy on $V_t$ and mark every copy active
-    \State Prepare each offline clustering with $D_j(t)\ge1/4$; otherwise use the majority clustering
-  \Else
-    \State Extend each active copy to include the arriving vertex
-  \EndIf
-  \State Update the active copies' estimates and history scores, then $M_t$, $\beta_t$, and $\mathcal I_t$
-  \If{no index is selected, a rebuild occurred, $\beta_t$ changed, or the selected index left $\mathcal I_t$}
-    \If{$A$ selections have already been made}
-      \State Activate the permanent fallback, give the arriving vertex a fresh singleton label, and continue
-    \EndIf
-    \State Select a uniform index from $\mathcal I_t$ and increment the selection count
-  \EndIf
-  \State Publish the arriving vertex's label and all changes to earlier labels in the selected copy
-\EndFor
-\end{algorithmic}
-\end{algorithm}
+The copy samples, evaluation collections, and numerical parameters
+are fixed before processing the arrival sequence. At each arrival,
+the algorithm first performs the
+threshold test in Step~4, then rebuilds using Step~2 or extends the
+active copies using Step~3. It next updates the scores and selection
+rule in Step~5 and applies the budget check and publication rule in
+Step~6. The only exception is the permanent fallback, which assigns
+a fresh singleton label at each subsequent arrival.
 
 \subsection{Competitive and Recourse Guarantee of the Online Algorithm}
 \label{sec:analysis-online}
@@ -2229,7 +2266,7 @@ on every execution, and queries take worst-case $O(1)$ time.
 \end{theorem}
 
 For the proof, let $h=\log(n+2)$ and $H=\log(8(n+2)/\zeta)$.
-Use Algorithm~\ref{alg:online} with initial clusterings obtained using sampled input partitions and
+Use the algorithm of \cref{sec:algorithms-online} with initial clusterings obtained using sampled input partitions and
 $\gamma=1.419$ and tolerance $\delta=\varepsilon/100$. Use every
 arrival time as an endpoint in Lemma~\ref{lem:online-training}, so
 $T=O(H)$. Checking simultaneous accuracy on all vertex pairs
