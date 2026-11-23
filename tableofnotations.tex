@@ -1,0 +1,40 @@
+\begin{table}[htbp]
+\centering
+\caption{Notation used throughout the preliminaries.}
+\label{tab:notation}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{@{}>{\ttfamily}p{0.27\textwidth} >{\raggedright\arraybackslash}p{0.18\textwidth} X@{}}
+\toprule
+\normalfont\textbf{Command} & \textbf{Display} & \textbf{Meaning} \\
+\midrule
+\string\clustering & clustering & A partition of the vertex set \\
+\string\clusterings & clusterings & Partitions of the vertex set \\
+\string\Clustering & Clustering & Capitalized form of a clustering \\
+\string\Clusterings & Clusterings & Capitalized form of clusterings \\
+\string\cost & $f$ & Cost function \\
+\string\estcost & $\widehat{\cost}$ & Estimated cost \\
+\string\card\{X\} & $\card{X}$ & Cardinality of $X$ \\
+\texttt{\textbackslash dist\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\dist{\cls{C},\cls{P}}$ & Distance between the clusterings $\cls{C}$ and $\cls{P}$ \\
+\string\weight & $d$ & Edge weight (fraction of input clustering separates $ e $) \\
+\string\weight\{e\} & $\weight{e}$ & Weight of edge $e$ \\
+\string\estweight & $\widehat d$ & Estimated edge weight \\
+\string\estweight\{e\} & $\estweight{e}$ & Estimated weight of edge $e$ \\
+\string\mweight & $p$ & Minimum edge weight \\
+\string\mweight\{e\} & $\mweight{e}$ & Minimum weight $\min(\weight{e},1-\weight{e})$ of edge $e$ \\
+\string\summweight & $B$ & Sum of minimum edge weights $ := \sum_{e}\mweight{e} $\\
+\string\summweight\{t\} & $\summweight{t}$ & Sum of minimum edge weights at time $t$ \\
+\string\cls\{C\} & $\cls{C}$ & Generic clustering $ \cls{C} $\\
+\string\inpcls & $\mathcal P$ & A generic input clustering \\
+\string\inpcls\{i\} & $\inpcls{i}$ & $i$-th input clustering \\
+\string\outcls & $\mathcal S$ & Output clustering \\
+\string\outcls\{t\} & $\outcls{t}$ & Output clustering at time $t$ \\
+\string\nupdate & $\nupdate$ & Number of updates \\
+\texttt{\textbackslash ncocls\{\textbackslash cls\{C\}\}} & $\ncocls{\cls{C}}$ & Number of co-clustered pairs in $\cls{C}$ \\
+\texttt{\textbackslash ncocls\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\ncocls{\cls{C}, \cls{P}}$ & Number of co-clustered pairs in both $\cls{C}$ and $\cls{P}$ \\
+\string\expt & $\mathbb E$ & Expectation operator \\
+\string\expt\{X\} & $\expt{X}$ & Expectation of $X$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+

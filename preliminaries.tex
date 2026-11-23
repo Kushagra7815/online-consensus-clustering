@@ -1,47 +1,8 @@
-\section{Preliminaries}
-\label{sec:preliminaries}
-
-\begin{table}[ht]
-\centering
-\caption{Notation used throughout the preliminaries.}
-\label{tab:notation}
-\renewcommand{\arraystretch}{1.18}
-\begin{tabularx}{\textwidth}{@{}>{\ttfamily}p{0.27\textwidth} >{\raggedright\arraybackslash}p{0.18\textwidth} X@{}}
-\toprule
-\normalfont\textbf{Command} & \textbf{Display} & \textbf{Meaning} \\
-\midrule
-\string\clustering & clustering & A partition of the vertex set \\
-\string\clusterings & clusterings & Partitions of the vertex set \\
-\string\Clustering & Clustering & Capitalized form of a clustering \\
-\string\Clusterings & Clusterings & Capitalized form of clusterings \\
-\string\cost & $f$ & Cost function \\
-\string\estcost & $\widehat{\cost}$ & Estimated cost \\
-\string\card\{X\} & $\card{X}$ & Cardinality of $X$ \\
-\texttt{\textbackslash dist\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\dist{\cls{C},\cls{P}}$ & Distance between the clusterings $\cls{C}$ and $\cls{P}$ \\
-\string\weight & $d$ & Edge weight (fraction of input clustering separates $ e $) \\
-\string\weight\{e\} & $\weight{e}$ & Weight of edge $e$ \\
-\string\estweight & $\widehat d$ & Estimated edge weight \\
-\string\estweight\{e\} & $\estweight{e}$ & Estimated weight of edge $e$ \\
-\string\mweight & $p$ & Minimum edge weight \\
-\string\mweight\{e\} & $\mweight{e}$ & Minimum weight $\min(\weight{e},1-\weight{e})$ of edge $e$ \\
-\string\summweight & $B$ & Sum of minimum edge weights $ := \sum_{e}\mweight{e} $\\
-\string\summweight\{t\} & $\summweight{t}$ & Sum of minimum edge weights at time $t$ \\
-\string\cls\{C\} & $\cls{C}$ & Generic clustering $ \cls{C} $\\
-\string\inpcls & $\mathcal P$ & A generic input clustering \\
-\string\inpcls\{i\} & $\inpcls{i}$ & $i$-th input clustering \\
-\string\outcls & $\mathcal S$ & Output clustering \\
-\string\outcls\{t\} & $\outcls{t}$ & Output clustering at time $t$ \\
-\string\nupdate & $\nupdate$ & Number of updates \\
-\texttt{\textbackslash ncocls\{\textbackslash cls\{C\}\}} & $\ncocls{\cls{C}}$ & Number of co-clustered pairs in $\cls{C}$ \\
-\texttt{\textbackslash ncocls\{\textbackslash cls\{C\},\textbackslash cls\{P\}\}} & $\ncocls{\cls{C}, \cls{P}}$ & Number of co-clustered pairs in both $\cls{C}$ and $\cls{P}$ \\
-\string\expt & $\mathbb E$ & Expectation operator \\
-\string\expt\{X\} & $\expt{X}$ & Expectation of $X$ \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\section{Preliminaries} \label{sec:preliminaries}
 
 \paragraph{\texorpdfstring{\Clusterings}{Clusterings}.}
-A \emph{\clustering} of a vertex set $ V $ is a collection of nonempty, pairwise
+Given a vertex set $ V $ of size $ \card{V} = n $.
+A \emph{\clustering} of $ V $ is a collection of nonempty, pairwise
 disjoint subsets, called \emph{clusters}, whose union is that vertex set.
 In a \clustering, two vertices are \emph{co-clustered} if they belong to
 the same cluster, and \emph{separated} if they belong to different clusters.
@@ -60,67 +21,64 @@ Given $ m $ \clusterings $ \inpcls{1}, \inpcls{2}, \dots, \inpcls{m} $ of a vert
 The subscript $ V $ is omitted when the vertex set is clear from context.
 
 We denote by $ \OPT = \min_{\cls{C}:\ \cls{C} \text{ is a \clustering\ } \text{ of } V}\cost(\cls{C}) $ the optimal cost of the consensus clustering problem on the given input \clusterings.
+A clustering $ \cls{C} $ of $ V $ is $ \alpha $-approximation to $ \OPT $ if $ \cost_{V}(\cls{C}) \leq \alpha \OPT $.
 % paragraph Consensus Clustering. (end)
 
+For a pair of vertices $ e=\{u,v\} $, its weight $ \weight{e}= \weight{uv} $ is the fraction of input \clusterings that separate its $ u $ and $ v $.
+We remark that $ \weight{uv} $ satisfies the triangle inequality.
+That is, $ \weight{uv} \leq \weight{uw} + \weight{wv} $, for any three vertices $ u,v,w \in V $.
+
+For any \clustering $ \cls{C} $, $ e = \{ u,v \} $ contributes $ \weight{e} $ to $ \cost(\cls{C}) $ if $ \cls{C} $ assigns its endpoints to the same cluster, and $ 1- \weight{e} $ otherwise.
+The sum $ \summweight = \sum_{e} \min(\weight{e}, 1-\weight{e}) $ over all unordered pairs $ e $ is therefore a lower bound on the optimal cost $ \OPT $.
+Denote $ \mweight{e} = \min(\weight{e}, 1-\weight{e}) $.
+
 \tienlong{Rememeber to use throughout either identifier or labels}
-\paragraph{Presenting and Querying a \texorpdfstring{\Clustering}{clustering}.}
-Each input \clustering is presented by assigning a cluster label to each vertex.
-Two vertices are co-clustered if and only if they have the same label.
+\subsection{Online and Dynamic Settings}\label{sub:online_and_dynamic_settings} % (fold)
+\paragraph{\texorpdfstring{\Clusterings}{Clusterings}'s Presentation.}
+In online and dynamic settings, we work with a label-based representation of clusterings.
+In particular, in an input \clustering, each vertex is assigned a label so that two vertices are co-clustered if and only if they have the same label.
+In other words, all vertices in the same cluster are assigned the same label, and vertices in different clusters are assigned different labels.
 
-\paragraph{Offline Setting.}\label{par:offline} % (fold)
-The whole input is given at once.
-% paragraph Offline (end)
+Given a label-based representation of a \clustering $ \cls{C} $, the notation $ \cls{C}(v) $ denotes the label of vertex $ v $ in $ \cls{C} $.
 
-The algorithm can obtain a vertex's cluster identifier in any specified
-input in constant time and can sample a uniform input index in constant
-time. Input labels stay fixed while a vertex is active. We treat a
-reinserted vertex as a new vertex. We use a word RAM with counters and identifiers stored
-in a constant number of words at fixed accuracy. Dynamic perfect
-hashing gives worst-case constant lookup time and expected amortized
-constant time for insertions and deletions~\cite{Dietzfelbinger1994}.
+\paragraph{Fully Dynamic Setting.}\label{par:fully_dynamic_setting} % (fold)
+Initially, we start with an empty graph (empty vertex set).
+At each update time $ t $, an adversary either inserts a new vertex or deletes an existing vertex.
+When a vertex is inserted, it reveals all its labels in the input \clusterings.
+Storing these labels is free.
+The algorithm is only charged for each query it makes to read a label.
 
-The offline algorithm outputs one cluster identifier for every vertex.
-The online algorithm starts empty, sees vertex insertions, and reports
-the new label and all changes to previously published labels. Recourse
-counts changes to an individual vertex's published label after it
-arrives. The fully dynamic algorithm also starts empty. Its updates
-insert or delete a vertex, and it provides an implicit \clustering
-through queries. A label query returns a vertex's identifier in the
-maintained \clustering. A same-cluster query tests equality of two such
-identifiers. When a probability guarantee holds simultaneously over the update
-sequence, a single event ensures the approximation or competitive ratio
-after every update.
-
-% (end)
-
-In a \emph{non-offline} setting, each vertex is inserted or deleted one at a time.
-Let $ \nupdate $ be a positive integer and let $ \{ 1,2,\dots, \nupdate \} $ index each time step where a vertex is inserted or deleted.
+Let $ \nupdate $ be the number of update times.
 For each $ t\in \{ 1,2, \dots, \nupdate \} $, an \emph{active set} $ V_t \subseteq V $ is the set of vertices that have arrived by time $ t $ and have not subsequently been deleted.
 We denote by $ \OPT_t $ the optimal cost of the consensus clustering problem on the input \clusterings restricted to $ V_t $.
 A clustering $ \cls{C} $ of $ V_t $ is $ \alpha $-approximation to $ \OPT_t $ if $ \cost_{V_{t}}(\cls{C}) \leq \alpha \OPT_{t} $.
 An \emph{expected approximation ratio} $\alpha$ means $\expt{\cost_{t}(C_t)}\le\alpha\OPT_t$. \tienlong{Specify later what is the randomness in the expectation.}
 
-In this paper, we consider two \emph{non-offline} settings: 
+\tienlong{Talk later about competitive ratio}
 
-\paragraph{Online with Recourse.}\label{par:online_} % (fold)
-Each vertex arrives one at a time, revealing upon arrival all its labels in the input \clusterings.
+\tienlong{Label query and co-cluster query}
+% paragraph Fully Dynamic Setting (end)
 
-\tienlong{Recourse is defined as the number of times a vertex's label changes between two consecutive time steps.}
-% paragraph Online. (end)
+\paragraph{Online with Recourse Setting.}\label{par:online_with_recourse_setting_} % (fold)
+Similar to the fully dynamic setting, the online algorithm starts with an empty vertex set.
+Each update only inserts a new vertex.
+As arrived vertices are never deleted, there are at most $ n $ updates.
+Upon arrival, a vertex reveals all its labels in the input \clusterings.
 
-\paragraph{Fully Dynamic}\label{par:fully_dynamic} % (fold)
-Nodes can be inserted or deleted one at a time. Each vertex reveals upon arrival all its labels in the input \clusterings.
+At each update time $ t $, the algorithm maintains a \clustering solution $ \outcls{t} $, using the label-based representation.
+The recourse of a vertex $ v $, $ \recourse{v} $, that arrive at time $ t $ is the number of times its label changes between two consecutive update times.
+That is $ \recourse{v} = \sum_{t' > t} \idc{\outcls{t'}(v) \neq \outcls{t'-1}(v)} $.
+% paragraph Online with Recourse Setting. (end)
 
-\tienlong{Update time is the time the algorithm takes to maintain the solution}
-\tienlong{Query time is the time the algorithm takes to answer a query}
-% paragraph Fully Dynamic (end)
+\paragraph{Oblivious vs Adaptive Adversary.}\label{par:oblivious_vs_adaptive_adversaty} % (fold)
+We distinguish between two types of adversaries: oblivious and adaptive.
+For each input instance, an \emph{oblivious adversary} fixes the entire sequence of updates (unknown to the algorithm) in advance.
+In contrast, an \emph{adaptive adversary} can choose the next update based on the algorithm's previous outputs \tienlong{and possibly its internal randomness}.
+% paragraph Oblivious vs Adaptive Adversaty (end)
 
-For a pair $e=\{u,v\}$, let $ \weight{e}= \weight{uv} $ be the fraction of inputs
-that separate its endpoints. The pair contributes $ \weight{e} $ to $ \cost(\cls{C}) $ if
-$ \cls{C} $ assigns its endpoints to the same cluster, and $ 1- \weight{e} $ otherwise. Its minimum possible contribution
-is $ \mweight{e}= \mweight{uv}=\min\{\weight{e},1-\weight{e}\}$. The sum $ \summweight=\sum_e \mweight{e} $, over unordered
-pairs, is therefore a lower bound on $\OPT$. The values $ \weight{uv} $ satisfy
-the triangle inequality because each input's separation indicators do.
+% subsection Online and Dynamic Settings (end)
+
+
 
 On insertion-only streams, $\summweight{t}$ and $\OPT_t$ are nondecreasing. The
 majority decision for a pair assigns its endpoints to the same cluster
@@ -140,7 +98,14 @@ their intersections, respectively. We can therefore evaluate one
 distance in $O(n)$ expected time or update it in expected amortized
 $O(1)$ time per insertion, deletion, or change of one vertex's label.
 We use the triangle inequality in the forms
-$|\dist(C,P)-\dist{A,P}|\le \dist{C,A}$ and $\dist{C,A}\le \cost(C)+\cost(A)$.
+$|\dist{C,P}-\dist{A,P}|\le \dist{C,A}$ and $\dist{C,A}\le \cost(C)+\cost(A)$.
+
+\tienlong{ I do not understand the last sentence in this paragraph written by AI:
+The algorithm can obtain a vertex's cluster identifier in any specified input in constant time and can sample a uniform input index in constant time.
+Input labels stay fixed while a vertex is active.
+We treat a reinserted vertex as a new vertex.
+We use a word RAM with counters and identifiers stored in a constant number of words at fixed accuracy.
+Dynamic perfect hashing gives worst-case constant lookup time and expected amortized constant time for insertions and deletions~\cite{Dietzfelbinger1994}. }
 
 \subsection{Sampling input \clusterings and selecting a candidate}
 \label{sec:ensemble-transfer}
