@@ -3,6 +3,7 @@
 \usepackage{lmodern}
 \usepackage[margin=0.9in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools,array,booktabs,tabularx}
+\usepackage{dsfont}
 \usepackage{algorithm,algpseudocode,tikz,needspace}
 \usepackage{fvextra,thmtools,thm-restate,bbm}
 \usepackage[hidelinks,hypertexnames=false]{hyperref}
@@ -54,11 +55,15 @@
 } % output clustering at time #1 S_{#1}
 \newcommand{\nupdate}{U} % number of updates
 \newcommand{\ncocls}[1]{J(#1)} % number of co-clustered pairs
+\NewDocumentCommand{\recourse}{g}{%
+    r\IfValueT{#1}{(#1)}%
+} % recourse of vertex v
 
 % math operators
 \NewDocumentCommand{\expt}{g}{
     \mathbb{E}\IfValueT{#1}{\left[#1\right]}%
 }
+\newcommand{\idc}[1]{\mathds{1}_{#1}} % indicator
 
 \allowdisplaybreaks[1]
 \setlength{\parskip}{0.2em}
@@ -241,6 +246,8 @@ approximation at any fixed update with constant success probability
 and worst-case constant update time in their graph access model.
 In consensus clustering, access to the partitions determines which
 pair weights the algorithm can evaluate efficiently.
+
+\input{tableofnotations.tex}
 
 \input{preliminaries.tex}
 
@@ -670,15 +677,22 @@ sampled inputs that separate $u$ and $v$, and define
  B_j(t)=\sum_{e\in\binom{V_t}{2}}p_{j,e},\qquad
  D_j(t)=\sum_{e\in\binom{V_t}{2}}d_{j,e}(1-d_{j,e}).
 \]
+The quantity $p_{j,e}$ is the minimum cost of pair $e$ on copy $j$'s
+sample, obtained by following the sampled majority decision. Thus,
+$B_j(t)$ sums these unavoidable pairwise costs and lower-bounds the
+optimal clustering cost on that sample. The quantity $D_j(t)$ is an
+efficiently maintainable measure of disagreement among the sampled
+clusterings. It satisfies
+\[
+    \frac{1}{2} B_j(t) \le D_j(t) \le B_j(t),
+\]
+and we use its growth to determine when a copy should stop extending
+its current clustering.
+
 The sampled cost of a clustering $C$ of $V_t$ is
 \[
  f_t^j(C)=\frac1k\sum_{a=1}^k d(C,P_{j,a}|_{V_t}).
 \]
-Here $p_{j,e}$ is the minimum possible sampled contribution of pair
-$e$, so $B_j(t)$ lower-bounds the optimum on the sample. The
-quantity $D_j(t)$ satisfies $B_j(t)/2\le D_j(t)\le B_j(t)$ and
-determines when the copy must stop extending its candidate.
-
 \item \textbf{Initialize or rebuild the candidate clusterings.}
 A \emph{rebuild} replaces every copy's candidate on the current
 vertex set and starts a new rebuilding interval. Write $s$ for its
